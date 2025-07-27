@@ -131,7 +131,7 @@ export function ColorPicker({
       setHsl(prev => {
         const newHsl = { ...prev };
         if (selectedBar === 'h') {
-          newHsl.h = Math.max(0, Math.min(360, prev.h + delta));
+          newHsl.h = Math.max(0, Math.min(359, prev.h + delta));
         } else if (selectedBar === 's') {
           newHsl.s = Math.max(0, Math.min(100, prev.s + delta));
         } else if (selectedBar === 'l') {
