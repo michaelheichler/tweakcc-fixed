@@ -27,7 +27,7 @@ export function ThemesView({ onBack }: ThemesViewProps) {
   const handleCreateTheme = () => {
     const baseTheme = themes[0] || DEFAULT_SETTINGS.themes[0];
     const newTheme: Theme = {
-      ...baseTheme,
+      colors: { ...baseTheme.colors },
       name: 'New Custom Theme',
       id: `custom-${Date.now()}`,
     };
