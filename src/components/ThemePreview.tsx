@@ -55,9 +55,7 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
           </Text>
           <Text>
             <Text color={theme.colors.warning}>│ </Text>
-            <Text color="white" dimColor>
-              Enter to confirm · Esc to exit
-            </Text>
+            <Text dimColor>Enter to confirm · Esc to exit</Text>
             <Text color={theme.colors.warning}>{'              '}│</Text>
           </Text>
           <Text color={theme.colors.claude}>
@@ -85,10 +83,7 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
           </Text>
           <Text>
             <Text color={theme.colors.bashBorder}>│ !</Text>
-            <Text color="white">
-              {' '}
-              ls{'                                        '}
-            </Text>
+            <Text> ls{'                                        '}</Text>
             <Text color={theme.colors.bashBorder}>│</Text>
           </Text>
           <Text color={theme.colors.planMode}>
@@ -140,7 +135,7 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
           <Text color={theme.colors.secondaryText}>&gt; list the dir</Text>
           <Text>
             <Text color={theme.colors.error}>●</Text>
-            <Text color="white"> Update(__init__.py)</Text>
+            <Text> Update(__init__.py)</Text>
           </Text>
           <Text>
             <Text> ⎿ </Text>
@@ -148,7 +143,7 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
               User rejected update to __init__.py
             </Text>
           </Text>
-          <Text color="white">
+          <Text>
             {' '}
             <Text color={theme.colors.secondaryText}>1</Text>{' '}
             <Text
@@ -164,7 +159,7 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
               </Text>
             </Text>
           </Text>
-          <Text color="white">
+          <Text>
             {' '}
             <Text color={theme.colors.secondaryText}>2</Text>{' '}
             <Text
@@ -182,14 +177,14 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
           </Text>
           <Text>
             <Text color={theme.colors.success}>●</Text>
-            <Text color="white"> List(.)</Text>
+            <Text> List(.)</Text>
           </Text>
-          <Text color="white"> ⎿ Listed 123 paths (ctrl+r to expand)</Text>
+          <Text> ⎿ Listed 123 paths (ctrl+r to expand)</Text>
           <Text>
             <Text color={theme.colors.secondaryText}>●</Text>
-            <Text color="white"> The directory </Text>
+            <Text> The directory </Text>
             <Text color={theme.colors.permission}>C:\Users\user</Text>
-            <Text color="white"> contains **123** files.</Text>
+            <Text> contains **123** files.</Text>
           </Text>
           <Text>
             <Text color={theme.colors.claude}>✻ Thinking… </Text>
