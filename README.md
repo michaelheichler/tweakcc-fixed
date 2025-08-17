@@ -8,7 +8,8 @@
 - Create **custom themes** with a graphical HSL/RGB color picker
 - Add custom **thinking verbs** that will show while Claude's working
 - Pick from over **70+ spinning/thinking animations** from [`cli-spinners`](https://github.com/sindresorhus/cli-spinners)
-- Apply **custom styling** to the markdown elements in Claude's responses like code, bold, headers, etc
+- (WIP) Apply **custom styling** to the markdown elements in Claude's responses like code, bold, headers, etc
+- Style the **user messages in the chat history** beyond the default plain gray text
 - Change the "CLAUDE CODE" banner text to your own text with your own [figlet](http://www.figlet.org/) fonts
 
 Run without installation:
