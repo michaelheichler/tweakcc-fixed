@@ -8,6 +8,7 @@ import {
   CONFIG_FILE,
   DEFAULT_SETTINGS,
   StartupCheckInfo,
+  ThinkingVerbsConfig,
   TweakccConfig,
 } from './types.js';
 
@@ -37,17 +38,24 @@ export const readConfigFile = async (): Promise<TweakccConfig> => {
   }
 };
 
+const LAST_CONFIG: TweakccConfig = {
+  settings: DEFAULT_SETTINGS,
+  changesApplied: false,
+  ccVersion: '',
+  lastModified: '',
+  ccInstallationDir: null,
+};
+
 /**
  * Updates the config file with the changes made by the `updateFn` callback.
  */
 export const updateConfigFile = async (
   updateFn: (config: TweakccConfig) => void
 ): Promise<TweakccConfig> => {
-  const config = await readConfigFile();
-  updateFn(config);
-  config.lastModified = new Date().toISOString();
-  await saveConfig(config);
-  return config;
+  updateFn(LAST_CONFIG);
+  LAST_CONFIG.lastModified = new Date().toISOString();
+  await saveConfig(LAST_CONFIG);
+  return LAST_CONFIG;
 };
 
 /**
