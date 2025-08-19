@@ -298,19 +298,36 @@ export const writeThinkerSymbolSpeed = (
 
 const getThinkerVerbsLocation = (
   oldFile: string
-): { okayVerbs: LocationResult } | null => {
-  const okayPattern = /=\[\s*(?:"[A-Z][a-z]+ing",?\s*)+\]/s;
-  const okayMatch = oldFile.match(okayPattern);
-  if (!okayMatch || okayMatch.index == undefined) {
-    console.error('patch: thinker verbs: failed to find okayMatch');
+): { verbsLocation: LocationResult; varName: string } | null => {
+  const verbsPattern = /\b(\w+)\s*=\[\s*(?:"[A-Z][a-z]+ing",?\s*)+\]/s;
+  const verbsMatch = oldFile.match(verbsPattern);
+  if (!verbsMatch || verbsMatch.index == undefined) {
+    console.error('patch: thinker verbs: failed to find verbsMatch');
     return null;
   }
 
   return {
-    okayVerbs: {
-      startIndex: okayMatch.index,
-      endIndex: okayMatch.index + okayMatch[0].length,
+    verbsLocation: {
+      startIndex: verbsMatch.index,
+      endIndex: verbsMatch.index + verbsMatch[0].length,
     },
+    varName: verbsMatch[1],
+  };
+};
+
+const getThinkerVerbsUseLocation = (oldFile: string): LocationResult | null => {
+  const pattern = /createElement\(\w+,\{[\w:]+,spinnerVerbs:[$\w]+,/;
+  const match = oldFile.match(pattern);
+
+  if (!match || match.index == undefined) {
+    console.error('patch: thinker verbs: failed to find match');
+    return null;
+  }
+
+  const startIndex = match[0].indexOf('spinnerVerbs');
+  return {
+    startIndex: match.index + startIndex,
+    endIndex: match.index + startIndex + match[0].substring(startIndex).length,
   };
 };
 
@@ -322,21 +339,43 @@ export const writeThinkerVerbs = (
   if (!location) {
     return null;
   }
+  const { verbsLocation, varName } = location;
 
-  const verbsJson = '=' + JSON.stringify(verbs);
-  const newFile =
-    oldFile.slice(0, location.okayVerbs.startIndex) +
+  const verbsJson = `${varName}=${JSON.stringify(verbs)}`;
+  const newFile1 =
+    oldFile.slice(0, verbsLocation.startIndex) +
     verbsJson +
-    oldFile.slice(location.okayVerbs.endIndex);
+    oldFile.slice(verbsLocation.endIndex);
 
   showDiff(
     oldFile,
-    newFile,
+    newFile1,
     verbsJson,
-    location.okayVerbs.startIndex,
-    location.okayVerbs.endIndex
+    verbsLocation.startIndex,
+    verbsLocation.endIndex
   );
-  return newFile;
+
+  // Update the spinnerVerbs use
+  const useLocation = getThinkerVerbsUseLocation(newFile1);
+  if (!useLocation) {
+    return null;
+  }
+
+  const spinnerVerbsKey = `spinnerVerbs:${varName},`;
+  const newFile2 =
+    newFile1.slice(0, useLocation.startIndex) +
+    spinnerVerbsKey +
+    newFile1.slice(useLocation.endIndex);
+
+  showDiff(
+    newFile1,
+    newFile2,
+    spinnerVerbsKey,
+    useLocation.startIndex,
+    useLocation.endIndex
+  );
+
+  return newFile2;
 };
 
 const getThinkerFormatLocation = (
