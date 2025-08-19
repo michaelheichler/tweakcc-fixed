@@ -15,8 +15,11 @@
 
 Run without installation:
 
-```
+```bash
 $ npx tweakcc
+
+# Or use pnpm:
+$ pnpm dlx tweakcc
 ```
 
 Demo:
