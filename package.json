@@ -1,8 +1,8 @@
 {
   "name": "tweakcc",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "type": "module",
-  "description": "Command-line tool to customize your Claude Code installation",
+  "description": "Command-line tool to customize your Claude Code theme colors, thinking verbs and more.",
   "main": "dist/index.js",
   "bin": {
     "tweakcc": "./dist/index.js"
