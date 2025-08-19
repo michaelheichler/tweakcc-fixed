@@ -267,7 +267,7 @@ export const DEFAULT_SETTINGS: Settings = {
     customText: '',
   },
   thinkingVerbs: {
-    punctuation: '… ',
+    format: '{}… ',
     verbs: [
       // Old verbs
       'Accomplishing',

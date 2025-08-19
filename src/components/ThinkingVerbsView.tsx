@@ -12,21 +12,21 @@ interface ThinkingVerbsViewProps {
 export function ThinkingVerbsView({ onBack }: ThinkingVerbsViewProps) {
   const {
     settings: {
-      thinkingVerbs: { punctuation, verbs },
+      thinkingVerbs: { format, verbs },
       themes,
     },
     updateSettings,
   } = useContext(SettingsContext);
 
-  const options = ['punctuation', 'verbs'] as const;
+  const options = ['format', 'verbs'] as const;
   const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
   const selectedOption = options[selectedOptionIndex];
   const [selectedVerbIndex, setSelectedVerbIndex] = useState(0);
   const [editingVerb, setEditingVerb] = useState(false);
   const [verbInput, setVerbInput] = useState('');
   const [addingNewVerb, setAddingNewVerb] = useState(false);
-  const [editingPunctuation, setEditingPunctuation] = useState(false);
-  const [punctuationInput, setPunctuationInput] = useState(punctuation);
+  const [editingFormat, setEditingFormat] = useState(false);
+  const [formatInput, setFormatInput] = useState(format);
   // Get current Claude theme and color
   const currentThemeId = getCurrentClaudeCodeTheme();
   const currentTheme =
@@ -35,19 +35,19 @@ export function ThinkingVerbsView({ onBack }: ThinkingVerbsViewProps) {
   const claudeColor = currentTheme?.colors.claude || 'rgb(215,119,87)';
 
   useInput((input, key) => {
-    if (editingPunctuation) {
+    if (editingFormat) {
       if (key.return) {
         updateSettings(settings => {
-          settings.thinkingVerbs.punctuation = punctuationInput;
+          settings.thinkingVerbs.format = formatInput;
         });
-        setEditingPunctuation(false);
+        setEditingFormat(false);
       } else if (key.escape) {
-        setPunctuationInput(punctuation);
-        setEditingPunctuation(false);
+        setFormatInput(format);
+        setEditingFormat(false);
       } else if (key.backspace || key.delete) {
-        setPunctuationInput(prev => prev.slice(0, -1));
+        setFormatInput(prev => prev.slice(0, -1));
       } else if (input) {
-        setPunctuationInput(prev => prev + input);
+        setFormatInput(prev => prev + input);
       }
       return;
     }
@@ -81,9 +81,9 @@ export function ThinkingVerbsView({ onBack }: ThinkingVerbsViewProps) {
     if (key.escape) {
       onBack();
     } else if (key.return) {
-      if (selectedOption === 'punctuation') {
-        setPunctuationInput(punctuation);
-        setEditingPunctuation(true);
+      if (selectedOption === 'format') {
+        setFormatInput(format);
+        setEditingFormat(true);
       }
     } else if (key.tab) {
       if (key.shift) {
@@ -144,11 +144,11 @@ export function ThinkingVerbsView({ onBack }: ThinkingVerbsViewProps) {
     <Box>
       <Box flexDirection="column" width={`${100 - previewWidth}%`}>
         <Box marginBottom={1} flexDirection="column">
-          <Header>Thinking verbs</Header>
+          <Header>Thinking Verbs</Header>
           <Box flexDirection="column">
             <Text dimColor>
-              {selectedOption === 'punctuation'
-                ? 'enter to edit punctuation'
+              {selectedOption === 'format'
+                ? 'enter to edit format'
                 : 'changes auto-saved'}
             </Text>
             <Text dimColor>esc to go back</Text>
@@ -158,26 +158,26 @@ export function ThinkingVerbsView({ onBack }: ThinkingVerbsViewProps) {
 
         <Box marginBottom={1}>
           <Text dimColor>
-            Customize the verbs shown during generation with custom punctuation.
+            Customize the verbs shown during generation and their format.
           </Text>
         </Box>
 
         <Box flexDirection="column">
           <Text>
             <Text
-              color={selectedOption === 'punctuation' ? 'yellow' : undefined}
+              color={selectedOption === 'format' ? 'yellow' : undefined}
             >
-              {selectedOption === 'punctuation' ? '❯ ' : '  '}
+              {selectedOption === 'format' ? '❯ ' : '  '}
             </Text>
             <Text
               bold
-              color={selectedOption === 'punctuation' ? 'yellow' : undefined}
+              color={selectedOption === 'format' ? 'yellow' : undefined}
             >
-              Punctuation
+              Format
             </Text>
           </Text>
-          {selectedOption === 'punctuation' &&
-            (editingPunctuation ? (
+          {selectedOption === 'format' &&
+            (editingFormat ? (
               <Text dimColor>{'  '}enter to save</Text>
             ) : (
               <Text dimColor>{'  '}enter to edit</Text>
@@ -187,9 +187,9 @@ export function ThinkingVerbsView({ onBack }: ThinkingVerbsViewProps) {
         <Box marginLeft={2} marginBottom={1}>
           <Box
             borderStyle="round"
-            borderColor={editingPunctuation ? 'yellow' : 'gray'}
+            borderColor={editingFormat ? 'yellow' : 'gray'}
           >
-            <Text>{editingPunctuation ? punctuationInput : punctuation}</Text>
+            <Text>{editingFormat ? formatInput : format}</Text>
           </Box>
         </Box>
 
@@ -297,8 +297,7 @@ export function ThinkingVerbsView({ onBack }: ThinkingVerbsViewProps) {
         >
           <Text>
             <Text color={claudeColor}>
-              ✻ {verbs[selectedVerbIndex]}
-              {punctuation}{' '}
+              ✻ {format.replace(/\{\}/g, verbs[selectedVerbIndex])}{' '}
             </Text>
             <Text color={currentTheme?.colors.secondaryText}>
               (10s · ↑ 456 tokens · esc to interrupt)

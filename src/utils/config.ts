@@ -29,7 +29,18 @@ export const readConfigFile = async (): Promise<TweakccConfig> => {
   };
   try {
     const content = await fs.readFile(CONFIG_FILE, 'utf8');
-    return { ...config, ...JSON.parse(content) };
+    let readConfig: TweakccConfig = { ...config, ...JSON.parse(content) };
+
+    // In v1.1.0 thinkingVerbs.punctuation was renamed to thinkingVerbs.format.  This should catch
+    // old configs.
+    const tmpThinkingVerbs = readConfig?.settings
+      ?.thinkingVerbs as ThinkingVerbsConfig & { punctuation?: string };
+    if (tmpThinkingVerbs?.punctuation) {
+      tmpThinkingVerbs.format = '{}' + tmpThinkingVerbs.punctuation;
+      delete tmpThinkingVerbs.punctuation;
+    }
+
+    return readConfig;
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return config;

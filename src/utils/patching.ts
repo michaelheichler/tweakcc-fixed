@@ -339,43 +339,74 @@ export const writeThinkerVerbs = (
   return newFile;
 };
 
-const getThinkerPunctuationLocation = (
+const getThinkerFormatLocation = (
   oldFile: string
-): LocationResult | null => {
-  // Look for the exact pattern from the document
-  const punctPattern =
-    /[\w$]+\.createElement\([\w$]+,\{color:[\w$]+\},[\w$]+,"… "\)/;
-  const match = oldFile.match(punctPattern);
+): {
+  fmtLocation: LocationResult;
+  curVerb: string;
+} | null => {
+  const approxAreaPattern = /function \w+\(\{[\w:,]+spinnerVerbs:[$\w]+,/;
+  const approxAreaMatch = oldFile.match(approxAreaPattern);
 
-  if (!match || match.index == undefined) {
-    console.error('patch: thinker punctuation: failed to find match');
+  if (!approxAreaMatch || approxAreaMatch.index == undefined) {
+    console.error('patch: thinker format: failed to find approxAreaMatch');
     return null;
   }
 
-  const punctStart = match.index + match[0].indexOf(`"… "`);
-  const punctEnd = punctStart + 4;
+  // Search within a range of 300 characters
+  const searchSection = oldFile.slice(
+    approxAreaMatch.index,
+    approxAreaMatch.index + 300
+  );
+  const formatPattern = /[$\w]+=([^=]+?)\+"…"/;
+  const formatMatch = searchSection.match(formatPattern);
+
+  if (!formatMatch || formatMatch.index == undefined) {
+    console.error('patch: thinker format: failed to find formatMatch');
+    return null;
+  }
+
+  const startIndex = searchSection.indexOf('=', formatMatch.index) + 1;
+
   return {
-    startIndex: punctStart,
-    endIndex: punctEnd,
+    fmtLocation: {
+      startIndex: approxAreaMatch.index + startIndex,
+      endIndex:
+        approxAreaMatch.index + formatMatch.index + formatMatch[0].length,
+    },
+    curVerb: formatMatch[1],
   };
 };
 
-export const writeThinkerPunctuation = (
+export const writeThinkerFormat = (
   oldFile: string,
-  punctuation: string
+  format: string
 ): string | null => {
-  const location = getThinkerPunctuationLocation(oldFile);
+  const location = getThinkerFormatLocation(oldFile);
   if (!location) {
     return null;
   }
+  const { fmtLocation, curVerb } = location;
 
-  const punctJson = JSON.stringify(punctuation);
+  const formatJson =
+    '`' +
+    format
+      .replace(/\\/g, '\\\\')
+      .replace(/`/g, '\\`')
+      .replace(/\{\}/g, '${' + curVerb + '}') +
+    '`';
   const newFile =
-    oldFile.slice(0, location.startIndex) +
-    punctJson +
-    oldFile.slice(location.endIndex);
+    oldFile.slice(0, fmtLocation.startIndex) +
+    formatJson +
+    oldFile.slice(fmtLocation.endIndex);
 
-  showDiff(oldFile, newFile, punctJson, location.startIndex, location.endIndex);
+  showDiff(
+    oldFile,
+    newFile,
+    formatJson,
+    fmtLocation.startIndex,
+    fmtLocation.endIndex
+  );
   return newFile;
 };
 
@@ -506,7 +537,7 @@ export const applyCustomization = async (
   if (config.settings.thinkingVerbs) {
     if ((result = writeThinkerVerbs(content, config.settings.thinkingVerbs.verbs)))
       content = result;
-    if ((result = writeThinkerPunctuation(content, config.settings.thinkingVerbs.punctuation)))
+    if ((result = writeThinkerFormat(content, config.settings.thinkingVerbs.format)))
       content = result;
   }
 
