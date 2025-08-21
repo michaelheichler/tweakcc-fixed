@@ -515,6 +515,42 @@ export const writeThinkerSymbolMirrorOption = (
   return newFile;
 };
 
+const getThinkerSymbolWidthLocation = (
+  oldFile: string
+): LocationResult | null => {
+  const widthPattern = /\{flexWrap:"wrap",height:1,width:2\}/;
+  const match = oldFile.match(widthPattern);
+
+  if (!match || match.index == undefined) {
+    console.error('patch: thinker symbol width: failed to find match');
+    return null;
+  }
+
+  return {
+    startIndex: match.index,
+    endIndex: match.index + match[0].length,
+  };
+};
+
+export const writeThinkerSymbolWidthLocation = (
+  oldFile: string,
+  width: number
+): string | null => {
+  const location = getThinkerSymbolWidthLocation(oldFile);
+  if (!location) {
+    return null;
+  }
+
+  const newCss = `{flexWrap:"wrap",height:1,width:${width}}`;
+  const newFile =
+    oldFile.slice(0, location.startIndex) +
+    newCss +
+    oldFile.slice(location.endIndex);
+
+  showDiff(oldFile, newFile, newCss, location.startIndex, location.endIndex);
+  return newFile;
+};
+
 // Debug function for showing diffs (currently disabled)
 /* eslint-disable @typescript-eslint/no-unused-vars */
 function showDiff(
@@ -546,10 +582,10 @@ function showDiff(
   );
 
   if (isDebug()) {
-    console.log("\n--- Diff ---");
-    console.log("OLD:", oldBefore + `\x1b[31m${oldChanged}\x1b[0m` + oldAfter);
-    console.log("NEW:", newBefore + `\x1b[32m${newChanged}\x1b[0m` + newAfter);
-    console.log("--- End Diff ---\n");
+    console.log('\n--- Diff ---');
+    console.log('OLD:', oldBefore + `\x1b[31m${oldChanged}\x1b[0m` + oldAfter);
+    console.log('NEW:', newBefore + `\x1b[32m${newChanged}\x1b[0m` + newAfter);
+    console.log('--- End Diff ---\n');
   }
 }
 /* eslint-enable @typescript-eslint/no-unused-vars */
@@ -612,6 +648,9 @@ export const applyCustomization = async (
     content = result;
   // prettier-ignore
   if ((result = writeThinkerSymbolSpeed(content, config.settings.thinkingStyle.updateInterval)))
+    content = result;
+  // prettier-ignore
+  if ((result = writeThinkerSymbolWidthLocation(content, Math.max(...config.settings.thinkingStyle.phases.map(p => p.length)) + 1)))
     content = result;
   // prettier-ignore
   if ((result = writeThinkerSymbolMirrorOption(content, config.settings.thinkingStyle.reverseMirror)))

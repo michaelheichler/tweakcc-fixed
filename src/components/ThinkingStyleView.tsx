@@ -137,14 +137,14 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
     }
 
     if (editingPhase || addingNewPhase) {
-      if (key.return && phaseInput.trim()) {
+      if (key.return && phaseInput.length) {
         // Depending on if we're adding a new phase or editing an existing one...
         const newPhases = addingNewPhase
           ? // Add the new phase.
-            [...phases, phaseInput.trim()]
+            [...phases, phaseInput]
           : // Replace the selectedPhaseIndex'th phase with the new phase.
             phases.map((phase, index) =>
-              index === selectedPhaseIndex ? phaseInput.trim() : phase
+              index === selectedPhaseIndex ? phaseInput : phase
             );
 
         updateSettings(settings => {
@@ -276,7 +276,7 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
     }
   });
 
-  const checkboxChar = reverseMirror ? 'x' : ' ';
+  const checkboxChar = reverseMirror ? '●' : '○';
   const previewWidth = 50;
 
   const getAnimatedPhases = () => {
@@ -291,77 +291,115 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
 
   return (
     <Box>
-      <Box flexDirection="column" width={`${100 - previewWidth}%`}>
-        <Box marginBottom={1} flexDirection="column">
-          <Header>Thinking style</Header>
-          <Box flexDirection="column">
-            <Text dimColor>
-              enter to{' '}
-              {selectedOption === 'updateInterval'
-                ? 'edit interval'
-                : selectedOption === 'presets'
-                  ? 'apply preset'
-                  : 'save'}
-            </Text>
-            <Text dimColor>esc to go back</Text>
-            <Text dimColor>tab to switch sections</Text>
+      <Box flexDirection="column" width="100%">
+        <Box flexDirection="row" width="100%">
+          <Box
+            marginBottom={1}
+            flexDirection="column"
+            width={`${100 - previewWidth}%`}
+          >
+            <Header>Thinking style</Header>
+            <Box flexDirection="column">
+              <Text dimColor>
+                enter to{' '}
+                {selectedOption === 'updateInterval'
+                  ? 'edit interval'
+                  : selectedOption === 'presets'
+                    ? 'apply preset'
+                    : 'save'}
+              </Text>
+              <Text dimColor>esc to go back</Text>
+              <Text dimColor>tab to switch sections</Text>
+            </Box>
+          </Box>
+
+          <Box width={`${previewWidth}%`} flexDirection="column">
+            <Box>
+              <Text bold>Preview</Text>
+            </Box>
+            <Box
+              borderStyle="single"
+              borderColor="gray"
+              paddingX={1}
+              flexDirection="row"
+            >
+              <Box width={(currentPhase?.length ?? 0) + 1}>
+                <Text color={claudeColor}>{currentPhase}</Text>
+              </Box>
+              <Text>
+                <Text color={claudeColor}>Thinking… </Text>
+                <Text color={currentTheme?.colors.secondaryText}>
+                  (esc to interrupt)
+                </Text>
+              </Text>
+            </Box>
           </Box>
         </Box>
 
-        <Box>
-          <Text>
-            <Text
-              color={selectedOption === 'reverseMirror' ? 'yellow' : undefined}
-            >
-              {selectedOption === 'reverseMirror' ? '❯ ' : '  '}
+        <Box flexDirection="row" gap={4}>
+          <Box flexDirection="column">
+            <Text>
+              <Text
+                color={
+                  selectedOption === 'reverseMirror' ? 'yellow' : undefined
+                }
+              >
+                {selectedOption === 'reverseMirror' ? '❯ ' : '  '}
+              </Text>
+              <Text
+                bold
+                color={
+                  selectedOption === 'reverseMirror' ? 'yellow' : undefined
+                }
+              >
+                Reverse-mirror phases
+              </Text>
             </Text>
-            <Text
-              bold
-              color={selectedOption === 'reverseMirror' ? 'yellow' : undefined}
-            >
-              Reverse-mirror phases
+
+            {selectedOption === 'reverseMirror' && (
+              <Text dimColor>{'  '}space to toggle</Text>
+            )}
+
+            <Box marginLeft={2} marginBottom={1}>
+              <Text>
+                {checkboxChar} {reverseMirror ? 'Enabled' : 'Disabled'}
+              </Text>
+            </Box>
+          </Box>
+
+          <Box flexDirection="column">
+            <Text>
+              <Text
+                color={
+                  selectedOption === 'updateInterval' ? 'yellow' : undefined
+                }
+              >
+                {selectedOption === 'updateInterval' ? '❯ ' : '  '}
+              </Text>
+              <Text
+                bold
+                color={
+                  selectedOption === 'updateInterval' ? 'yellow' : undefined
+                }
+              >
+                Update interval (ms)
+              </Text>
             </Text>
-          </Text>
-        </Box>
+            {selectedOption === 'updateInterval' &&
+              (editingInterval ? (
+                <Text dimColor>{'  '}enter to save</Text>
+              ) : (
+                <Text dimColor>{'  '}enter to edit</Text>
+              ))}
 
-        {selectedOption === 'reverseMirror' && (
-          <Text dimColor>{'  '}space to toggle</Text>
-        )}
-
-        <Box marginLeft={2} marginBottom={1}>
-          <Text>
-            [{checkboxChar}] {reverseMirror ? 'Enabled' : 'Disabled'}
-          </Text>
-        </Box>
-
-        <Box flexDirection="column">
-          <Text>
-            <Text
-              color={selectedOption === 'updateInterval' ? 'yellow' : undefined}
-            >
-              {selectedOption === 'updateInterval' ? '❯ ' : '  '}
-            </Text>
-            <Text
-              bold
-              color={selectedOption === 'updateInterval' ? 'yellow' : undefined}
-            >
-              Update interval (ms)
-            </Text>
-          </Text>
-          {selectedOption === 'updateInterval' &&
-            (editingInterval ? (
-              <Text dimColor>{'  '}enter to save</Text>
-            ) : (
-              <Text dimColor>{'  '}enter to edit</Text>
-            ))}
-        </Box>
-
-        <Box marginLeft={2} marginBottom={1}>
-          <Box
-            borderStyle="round"
-            borderColor={editingInterval ? 'yellow' : 'gray'}
-          >
-            <Text>{editingInterval ? intervalInput : updateInterval}</Text>
+            <Box marginLeft={2} marginBottom={1}>
+              <Box
+                borderStyle="round"
+                borderColor={editingInterval ? 'yellow' : 'gray'}
+              >
+                <Text>{editingInterval ? intervalInput : updateInterval}</Text>
+              </Box>
+            </Box>
           </Box>
         </Box>
 
@@ -382,8 +420,8 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
         {selectedOption === 'phases' && (
           <Box marginBottom={1} flexDirection="column">
             <Text dimColor>
-              {'  '}e to edit · a to add · d to delete · w to move up · s to
-              move down
+              {'  '}[e]dit{'  '}[a]dd{'  '}[d]elete{'  '}[w]move up{'  '}[s]move
+              down
             </Text>
           </Box>
         )}
@@ -538,31 +576,6 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
 
         <Box marginTop={1}>
           <Text dimColor>ctrl+r to reset all settings to default</Text>
-        </Box>
-      </Box>
-
-      <Box width={`${previewWidth}%`} flexDirection="column">
-        <Box marginBottom={1}>
-          <Text bold>Preview</Text>
-        </Box>
-        <Box
-          borderStyle="single"
-          borderColor="gray"
-          padding={1}
-          flexDirection="column"
-        >
-          <Text>
-            <Text color={claudeColor}>{currentPhase} Thinking… </Text>
-            <Text color={currentTheme?.colors.secondaryText}>
-              (10s · ↑ 456 tokens · esc to interrupt)
-            </Text>
-          </Text>
-
-          <Box marginTop={1} flexDirection="column">
-            <Text dimColor>Phases: {phases.join('')}</Text>
-            <Text dimColor>Reverse-mirror: {reverseMirror ? 'Yes' : 'No'}</Text>
-            <Text dimColor>Update interval: {updateInterval}ms</Text>
-          </Box>
         </Box>
       </Box>
     </Box>
