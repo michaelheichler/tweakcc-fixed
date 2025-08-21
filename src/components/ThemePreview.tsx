@@ -213,7 +213,7 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
               ◯ IDE connected ⧉ 44 lines selected
             </Text>
           </Text>
-          <Text>
+          {/* <Text>
             <Text bold color={theme.colors.secondaryText}>
               ●
             </Text>{' '}
@@ -293,7 +293,7 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
               general
             </Text>
             <Text>(Reviewing architecture)</Text>
-          </Text>
+          </Text> */}
         </Box>
       </Box>
     </Box>
