@@ -187,7 +187,7 @@ export async function startupCheck(): Promise<StartupCheckInfo | null> {
 
   // If the installed CC version is different from what we have backed up, clear out our backup
   // and make a new one.
-  if (realVersion !== backedUpVersion) {
+  if (backedUpVersion && realVersion !== backedUpVersion) {
     await fs.unlink(CLIJS_BACKUP_FILE);
     await backupClijs(ccInstInfo);
     return {
