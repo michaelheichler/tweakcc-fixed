@@ -8,11 +8,15 @@
 
 - Create **custom themes** with a graphical HSL/RGB color picker
 - Add custom **thinking verbs** that will show while Claude's working
-- Pick from over **70+ spinning/thinking animations** from [`cli-spinners`](https://github.com/sindresorhus/cli-spinners)
-- (WIP) Apply **custom styling** to the markdown elements in Claude's responses like code, bold, headers, etc
-- Style the **user messages in the chat history** beyond the default plain gray text
+- Create custom **thinking spinner animations** with different speeds and phases
 - Change the "CLAUDE CODE" banner text to your own text with your own [figlet](http://www.figlet.org/) fonts
 - Supports Claude Code installed on **Windows, macOS, and Linux**, using npm, yarn, pnpm, bun, Homebrew, nvm, fnm, n, volta, nvs, and nodenv, or a custom location
+
+Planned / in progress:
+- Pick from over **70+ spinning/thinking animations** from [`cli-spinners`](https://github.com/sindresorhus/cli-spinners)
+- Apply **custom styling** to the markdown elements in Claude's responses like code, bold, headers, etc
+- Customize the **shimmering effect** on the thinking verb: disable it; change its speed, width, and colors
+- Style the **user messages in the chat history** beyond the default plain gray text
 
 Run without installation:
 
