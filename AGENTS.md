@@ -126,6 +126,18 @@ or a syntax error inside `cli.js` if the install is NPM-style.
 
 ## When CC ships a new version (the recurring task)
 
+> **▶ The runnable runbook is the `/showtime` skill**
+> (`.claude/skills/showtime/SKILL.md` + `driver.mjs`). It is the
+> authoritative, end-to-end version of this section — Step-0 grounding, all 9
+> phases, the driver health-check, the four-zeros bar, the LCC realignment, the
+> VPS sync, and the full gotcha catalog (stale-backup downgrade, VPS Tailscale
+> auth, commit-message bad-substitution, etc.). On "it's showtime", use the skill.
+> The notes below are background; where they disagree with the skill, the skill
+> wins (e.g. the source-of-truth policy **flipped** — our extractor is now
+> canonical and Piebald is the comparison signal, per
+> `memory/feedback_prompts_jsons_pull_from_upstream_pr.md`; the paragraph just
+> below predates that flip).
+
 The key insight: Piebald has an extraction pipeline that produces canonical, fully-named `prompts-X.Y.Z.json` files. **Always pull from their pipeline before considering anything else.** The naive `tools/promptExtractor.js` in this repo produces a strict subset of what Piebald publishes (the user pushed back hard the one time we tried it as a substitute — see `memory/feedback_prompt_jsons_pull_from_upstream_pr.md`).
 
 1. `git -C ~/dev/tweakcc-fixed fetch upstream` and `git merge upstream/main`. If the merge brought a `prompts-X.Y.Z.json` for the new CC version, you're done with step 1 — skip to 4.
