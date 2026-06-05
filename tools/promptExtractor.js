@@ -31,6 +31,88 @@ const WORKFLOW_SCRIPT_IDENTIFIER_MAP = {
 // semantic names for the prompt's interpolated identifiers — required when
 // override .md files reference those names (`${ATTACHMENT_OBJECT.filename}`).
 const NEW_PROMPT_ASSIGNMENTS = [
+  // 2.1.165
+  {
+    // Fuzzy-carryover miss: the $TMPDIR tool-description's opening was reworded
+    // ("set to the same sandbox-writable directory for both sandboxed and
+    // unsandboxed commands" -> "automatically set to the correct
+    // sandbox-writable directory in sandbox mode"), changing the 100-char fuzzy
+    // fingerprint so the name dropped. Same prompt -> same id.
+    matcher: t =>
+      t.includes(
+        'TMPDIR is automatically set to the correct sandbox-writable directory in sandbox mode'
+      ),
+    name: 'Tool Description: Bash (sandbox — tmpdir)',
+    id: 'tool-description-bash-sandbox-tmpdir',
+    description: 'Use $TMPDIR for temporary files in sandbox mode',
+  },
+  {
+    // New system-prompt section in 2.1.165 (returned by tg3(), injected into the
+    // assembled system prompt alongside the security-testing guidance).
+    matcher: t =>
+      t.startsWith(
+        '# Communicating with the user\n\nYour text output is what the user reads'
+      ),
+    name: 'System Prompt: Communicating with the user',
+    id: 'system-prompt-communicating-with-the-user',
+    description:
+      'System-prompt section on writing user-facing text between tool calls (the reader usually cannot see thinking or raw tool results)',
+  },
+  {
+    // New "Cowork Plugin Authoring" skill (SKILL.md = jG4); bundles four
+    // reference docs under references/ (the four entries below).
+    matcher: t => t.startsWith('# Cowork Plugin Authoring'),
+    name: 'Skill: Cowork Plugin Authoring',
+    id: 'skill-cowork-plugin-authoring',
+    description:
+      'Skill for creating a new Cowork plugin from scratch or customizing an existing one for an organization, delivering an installable .plugin file',
+  },
+  {
+    // references/component-schemas.md (KG4) bundled by the Cowork skill.
+    matcher: t =>
+      t.startsWith(
+        '# Component Schemas\n\nDetailed format specifications for every plugin component'
+      ),
+    name: 'Skill: Cowork Plugin Authoring — Component Schemas',
+    id: 'skill-cowork-plugin-authoring-component-schemas',
+    description:
+      'Cowork plugin-authoring reference: format specifications for every plugin component type (skills, commands, agents, MCP, hooks)',
+  },
+  {
+    // references/example-plugins.md (TG4).
+    matcher: t =>
+      t.startsWith('# Example Plugins\n\nThree complete plugin structures'),
+    name: 'Skill: Cowork Plugin Authoring — Example Plugins',
+    id: 'skill-cowork-plugin-authoring-example-plugins',
+    description:
+      'Cowork plugin-authoring reference: three complete example plugin structures (minimal to complex) used as implementation templates',
+  },
+  {
+    // references/mcp-servers.md (zG4).
+    matcher: t => t.startsWith('# MCP Discovery and Connection'),
+    name: 'Skill: Cowork Plugin Authoring — MCP Discovery and Connection',
+    id: 'skill-cowork-plugin-authoring-mcp-discovery',
+    description:
+      'Cowork plugin-authoring reference: how to find and connect MCP servers during plugin customization (search_mcp_registry et al.)',
+  },
+  {
+    // references/search-strategies.md (YG4).
+    matcher: t => t.startsWith('# Knowledge MCP Search Strategies'),
+    name: 'Skill: Cowork Plugin Authoring — Knowledge MCP Search Strategies',
+    id: 'skill-cowork-plugin-authoring-search-strategies',
+    description:
+      'Cowork plugin-authoring reference: query patterns for gathering organizational context from a Knowledge MCP during plugin customization',
+  },
+  {
+    // shared/token-counting.md (Ak4) bundled by the Build-with-Claude-API skill.
+    // In 2.1.162 "# Token Counting" only existed as a section inside the
+    // per-language API reference docs; 2.1.165 promoted it to a shared doc.
+    matcher: t => t.startsWith('# Token Counting\n\nUse the '),
+    name: 'Data: Token counting',
+    id: 'data-token-counting',
+    description:
+      'Shared Build-with-Claude-API reference: using the count_tokens endpoint for accurate, model-specific token counts',
+  },
   // 2.1.162
   {
     // NotebookEdit description rewritten in 2.1.162 (was "Completely replaces
@@ -863,6 +945,23 @@ function validateInput(text, minLength = 500) {
     /^\/\/ /.test(text) &&
     /\nimport\s.+\sfrom\s['"]/.test(text) &&
     /\nexport\s+(function|const|default|\{)/.test(text)
+  )
+    return false;
+
+  // Runtime-hardening IIFEs the bundler emits in 2.1.165 (`(() => { ... })`):
+  // an Error.prepareStackTrace lockdown and a WeakMap/Array snapshot guard.
+  // These are executable code, not model-facing prompt text.
+  if (text.startsWith('(() => {')) return false;
+
+  // claude-in-chrome browser MCP tool descriptions are embedded in cli.js as a
+  // tool-definition array but are not part of the catalogued prompt set (no
+  // sibling browser tool is catalogued, and none were through 2.1.162). 2.1.165
+  // extended file_upload's description enough to trip an include heuristic; drop
+  // it to stay consistent with the baseline.
+  if (
+    text.startsWith(
+      'Upload one or multiple files to a file input element on the page'
+    )
   )
     return false;
 
