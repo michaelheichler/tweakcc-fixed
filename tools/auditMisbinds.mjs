@@ -22,7 +22,21 @@ const overridesDir =
   `${process.env.HOME}/.tweakcc/lobotomized-claude-code/system-prompts-opus-4-8`;
 
 const OURS = JSON.parse(fs.readFileSync(ourJson, 'utf8'));
-const PIEB = JSON.parse(fs.readFileSync(upstreamJson, 'utf8'));
+// Upstream reference is required. On a box without the `upstream` remote (e.g. a
+// VPS mirror) the dump is empty — skip loudly rather than crash with a raw
+// JSON.parse stack. The audit runs during showtime on the Mac, which has upstream.
+let PIEB;
+try {
+  const raw = fs.readFileSync(upstreamJson, 'utf8');
+  if (!raw.trim()) throw new Error('file is empty');
+  PIEB = JSON.parse(raw);
+} catch (e) {
+  console.error(
+    `mis-bind audit: SKIPPED — upstream reference '${upstreamJson}' missing/empty (${e.message}). ` +
+      `Dump it first: git show upstream/main:data/prompts/prompts-<ver>.json > ${upstreamJson}`
+  );
+  process.exit(0);
+}
 const invert = m => {
   const r = {};
   if (m) for (const [s, n] of Object.entries(m)) r[n] = s;
