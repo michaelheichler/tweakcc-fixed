@@ -1,5 +1,5 @@
 {
-  "version": null,
+  "version": "2.1.169",
   "prompts": [
     {
       "name": "Agent Prompt: Onboarding guide draft share link workflow",
@@ -526,7 +526,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Skill: /dream memory consolidation",
@@ -658,7 +658,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Skill: /design-sync Storybook probe",
@@ -669,7 +669,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Skill: /design-sync Storybook source adapter",
@@ -680,7 +680,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Workflow: /simplify cleanup agents",
@@ -984,7 +984,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "System Prompt: Autonomous loop persistence guidance (CLAUDE_CODE_LOOP_PERSISTENT)",
@@ -1279,7 +1279,7 @@
       "identifierMap": {
         "0": "SYSTEM_PROMPT_COMMUNICATING_WITH_THE_USER_VAR_0"
       },
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Skill: Cowork Plugin Authoring — Component Schemas",
@@ -1632,7 +1632,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Skill: claude-code-docs live documentation sources",
@@ -1899,7 +1899,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Data: Prompt Caching — Design & Optimization",
@@ -2017,7 +2017,7 @@
         "13": "CHECK_FEATURE_FLAG_FN",
         "14": "USER_REQUEST"
       },
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "System Prompt: Scratchpad directory",
@@ -2055,7 +2055,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Data: Streaming reference — Python",
@@ -2292,7 +2292,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "System Reminder: Exited plan mode",
@@ -2580,7 +2580,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Agent Prompt: Plan mode Phase 4 final plan",
@@ -2625,10 +2625,11 @@
       ],
       "identifierMap": {
         "0": "SYSTEM_TAG_NAME",
-        "1": "WORKER_DIRECTIVE",
-        "2": "ADDITIONAL_CONTEXT"
+        "1": "AGENT_TOOL_NAME",
+        "2": "WORKER_DIRECTIVE",
+        "3": "ADDITIONAL_CONTEXT"
       },
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "System Reminder: MCP resource no content",
@@ -2946,10 +2947,10 @@
       "identifierMap": {
         "0": "BASH_TOOL_NAME",
         "1": "COMMIT_CO_AUTHORED_BY_CLAUDE_CODE",
-        "2": "TODO_TOOL_OBJECT",
-        "3": "AGENT_TOOL_NAME",
-        "4": "PR_PREAMBLE_STUB",
-        "5": "PR_GENERATED_WITH_CLAUDE_CODE",
+        "2": "GET_TODO_TOOL_FN",
+        "3": "TASK_TOOL_NAME",
+        "4": "EMPTY_STRING",
+        "5": "PR_INSTRUCTIONS_PREFIX",
         "6": "PR_GENERATED_WITH_CLAUDE_CODE",
         "7": "PR_COMMON_OPERATIONS_NOTE"
       },
@@ -3003,7 +3004,7 @@
         0
       ],
       "identifierMap": {
-        "0": "SYSTEM_PROMPT_ACTION_SAFETY_AND_TRUTHFUL_REPORTING_VAR_0"
+        "0": "SHOULD_PERSIST_APPROVAL_CONTEXT_FN"
       },
       "version": "2.1.161"
     },
@@ -3120,7 +3121,7 @@
         "1": "SYSTEM_REMINDER_CROSS_SESSION_PEER_MESSAGE_AUTHORITY_WARNING_VAR_1",
         "2": "SYSTEM_REMINDER_CROSS_SESSION_PEER_MESSAGE_AUTHORITY_WARNING_VAR_2"
       },
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Tool Description: Agent (usage notes)",
@@ -3592,7 +3593,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Agent Prompt: Code review wrap-in-analysis-tags",
@@ -3981,11 +3982,11 @@
         4
       ],
       "identifierMap": {
-        "0": "WORKFLOW_INVOCATION_QUALIFIER",
-        "1": "WORKFLOW_RESEND_NOTE",
-        "2": "WORKFLOW_ISOLATION_TYPE",
-        "3": "WORKFLOW_WORKTREE_NOTE",
-        "4": "WORKFLOW_GROUP_GLYPH"
+        "0": "WORKFLOW_TOOL_NAME",
+        "1": "WORKFLOW_SCRIPT_PATH_NOTE",
+        "2": "WORKFLOW_AGENT_ISOLATION_OPTION",
+        "3": "WORKFLOW_AGENT_ISOLATION_NOTE",
+        "4": "WORKFLOW_GROUP_PREFIX"
       },
       "version": "2.1.167"
     },
@@ -4861,7 +4862,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Skill: /init CLAUDE.md and skill setup (new version)",
@@ -5643,7 +5644,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Agent Prompt: Plan mode (enhanced)",
@@ -5969,7 +5970,7 @@
       ],
       "identifiers": [],
       "identifierMap": {},
-      "version": null
+      "version": "2.1.169"
     },
     {
       "name": "Agent Prompt: Session search",
@@ -5993,7 +5994,9 @@
       "identifiers": [
         0
       ],
-      "identifierMap": {},
+      "identifierMap": {
+        "0": "EMPTY_STRING"
+      },
       "version": "2.1.148"
     },
     {
@@ -6114,7 +6117,7 @@
         0
       ],
       "identifierMap": {
-        "0": "OPTIONAL_TAIL_NOTE"
+        "0": "EMPTY_STRING"
       },
       "version": "2.1.148"
     },
