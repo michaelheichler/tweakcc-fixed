@@ -31,6 +31,103 @@ const WORKFLOW_SCRIPT_IDENTIFIER_MAP = {
 // semantic names for the prompt's interpolated identifiers — required when
 // override .md files reference those names (`${ATTACHMENT_OBJECT.filename}`).
 const NEW_PROMPT_ASSIGNMENTS = [
+  // 2.1.169
+  {
+    // 2.1.169 grew the /schedule prompt from 15 interpolation sites to 34, which
+    // dropped it below the fuzzy-match threshold so it extracts anonymous and the
+    // opus-4-8/4-7 override stops binding. The 34 sites still dedupe to the SAME
+    // 15 underlying identifiers (identifierMap is keyed by unique-identifier index
+    // 0–14, not by site), and every index keeps its .168 first-appearance order
+    // and meaning (0 one-off gate … 7 NEW_ENVIRONMENT_OBJECT with .name/.environment_id
+    // … 8 USER_TIMEZONE … 14 USER_REQUEST at the closing "The user said:"). So the
+    // .168 identifierMap carries over verbatim — the override's ${VAR}s re-bind 1:1.
+    matcher: t =>
+      t.includes('# Schedule Cloud Agents') &&
+      t.includes('each routine spawns a fully isolated cloud session'),
+    name: 'Agent Prompt: /schedule slash command',
+    id: 'agent-prompt-schedule-slash-command',
+    description:
+      'Guides the user through scheduling, updating, listing, or running remote Claude Code agents on cron triggers via the Anthropic cloud API',
+    identifierMap: {
+      '0': 'ONE_OFF_ENABLED_FN',
+      '1': 'ASK_USER_QUESTION_TOOL_NAME',
+      '2': 'ADDITIONAL_INFO_BLOCK',
+      '3': 'REMOTE_TRIGGER_TOOL_NAME',
+      '4': 'DEFAULT_GIT_REPO_URL',
+      '5': 'MCP_CONNECTORS_LIST',
+      '6': 'ENVIRONMENTS_LIST',
+      '7': 'NEW_ENVIRONMENT_OBJECT',
+      '8': 'USER_TIMEZONE',
+      '9': 'NOW_LOCAL_TIME',
+      '10': 'NOW_UTC_ISO',
+      '11': 'IS_GITHUB_REMINDER_ENABLED',
+      '12': 'IS_TRUTHY_FN',
+      '13': 'CHECK_FEATURE_FLAG_FN',
+      '14': 'USER_REQUEST',
+    },
+  },
+  {
+    // 2.1.169 restructured "Communicating with the user" enough to drop below
+    // the fuzzy-match threshold (it gained a `${cond?…:…}` conditional opener),
+    // so it extracts anonymous and its opus-4-8 override stops binding. Re-pin
+    // the .168 id/name. The override is a static full replacement (no `${VAR}`),
+    // so no identifierMap is needed.
+    matcher: t =>
+      t.includes('# Communicating with the user') &&
+      t.includes('Write it for a teammate who stepped away'),
+    name: 'System Prompt: Communicating with the user',
+    id: 'system-prompt-communicating-with-the-user',
+    description:
+      'System-prompt section on writing user-facing text between tool calls (the reader usually cannot see thinking or raw tool results)',
+  },
+  {
+    // 2.1.169 reworked the bundled design-sync package source adapter (the
+    // non-Storybook `package` adapter); content moved past the rename threshold
+    // so it extracts anonymous. Re-pin the .168 id/name. Executable adapter
+    // source, no interpolation slots.
+    matcher: t =>
+      t.includes('Non-storybook') &&
+      t.includes('adapter. Bundles dist/ when present'),
+    name: 'Skill: /design-sync package source adapter',
+    id: 'skill-design-sync-package-source-adapter',
+    description:
+      'Bundled lib/source-kit.mjs adapter for the design-sync skill: the non-Storybook package source adapter that bundles dist/ and enriches components from shipped .d.ts',
+  },
+  {
+    // New in 2.1.169: the /code-review "Efficiency" review dimension (cL section
+    // listing wasted-work signals). Net-new section, no override yet.
+    matcher: t =>
+      t.includes('### Efficiency') &&
+      t.includes('Flag wasted work the diff introduces'),
+    name: 'Skill: /code-review efficiency dimension',
+    id: 'skill-code-review-efficiency',
+    description:
+      'Code-review dimension: flag wasted work the diff introduces (redundant computation/IO, needless sequential work, closures that retain large scopes) and name the cheaper alternative',
+  },
+  {
+    // New in 2.1.169: EnterWorktree isolation directive — instructs the agent to
+    // call EnterWorktree before its first edit unless already isolated. Net-new
+    // system-prompt fragment paired with the EnterWorktree/ExitWorktree tools.
+    matcher: t =>
+      t.includes('use the EnterWorktree tool to isolate your work'),
+    name: 'System Prompt: EnterWorktree isolation directive',
+    id: 'system-prompt-enter-worktree-isolation-directive',
+    description:
+      "Directs the agent to call EnterWorktree before its first edit to isolate work from parallel jobs and the user's working copy, unless the cwd is already under .claude/worktrees/",
+  },
+  {
+    // New in 2.1.169: "operating autonomously" directive — the AFK-mode guidance
+    // that suppresses permission-seeking and requires finishing promised work
+    // before ending the turn. Distinct from the autonomous-loop-tick prompts.
+    matcher: t =>
+      t.includes(
+        'You are operating autonomously. The user is not watching in real time'
+      ),
+    name: 'System Prompt: Operating autonomously',
+    id: 'system-prompt-operating-autonomously',
+    description:
+      'Autonomous-mode directive: proceed on reversible actions without asking, stop only for destructive actions or genuine scope changes, and finish any promised work before ending the turn',
+  },
   // 2.1.168
   {
     // croncreate's carried-over identifierMap was partial: 3 of 7 slots named,
@@ -995,6 +1092,12 @@ function validateInput(text, minLength = 500) {
   // lib/*.mjs modules (ts-morph .d.ts extraction, esbuild bundling, storybook
   // adapters). Piebald excludes these too. Mirror the `#!/usr/bin/env bun` rule.
   if (text.startsWith('#!/usr/bin/env node')) return false;
+
+  // @internal JSDoc annotations on staged-release Options fields (new in
+  // 2.1.169: supportedDialogKinds dialog-kind gating, retracted-message uuid
+  // wiring). TS doc-comments the AST walk surfaces as prose — not model-facing
+  // prompt text, no override target.
+  if (text.startsWith('@internal ')) return false;
   // The lib/*.mjs ESM modules open with a `// ` banner comment and carry both an
   // `import ... from '...'` line and a top-level `export` — a shape no prompt has.
   if (
