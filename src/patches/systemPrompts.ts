@@ -5,6 +5,7 @@ import {
   loadSystemPromptsWithRegex,
   reconstructContentFromPieces,
   escapeDepthZeroBackticks,
+  escapeNonAsciiChars,
   loadIdentifierMapUnion,
 } from '../systemPromptSync';
 import { setAppliedHashes, computeMD5Hash } from '../systemPromptHashIndex';
@@ -105,6 +106,23 @@ export const applySystemPrompts = async (
   // literal. Loaded once per apply.
   const identifierMapUnion = await loadIdentifierMapUnion();
 
+  // Per-id union of identifierMap names across same-id entries. A prompt that
+  // exists at multiple code-sites yields one entry per site sharing one id and
+  // one .md; when the sites have different shapes (e.g. a template wrapper vs
+  // plain string copies), an .md authored against the richer shape carries
+  // placeholders the plain entries cannot resolve — injecting it there writes
+  // the placeholder names as literal text into the binary (silent content
+  // corruption; quote contexts never crash). Used below to skip those sites.
+  const groupNames = new Map<string, Set<string>>();
+  for (const sp of systemPrompts) {
+    let names = groupNames.get(sp.promptId);
+    if (!names) {
+      names = new Set();
+      groupNames.set(sp.promptId, names);
+    }
+    for (const v of Object.values(sp.identifierMap)) names.add(v);
+  }
+
   // Track per-prompt results
   const results: PatchResult[] = [];
   const appliedHashUpdates: Record<string, string> = {};
@@ -191,7 +209,7 @@ export const applySystemPrompts = async (
       // inside backtick template literals; the same token in a plain '...'/"..."
       // string is inert. Skip the prompt and keep CC's original blob rather than
       // shipping a binary that won't boot.
-      if (delimiter === '`') {
+      {
         // Only UNescaped `${NAME}` is dangerous: a backslash-escaped
         // `\${NAME}` is intentional literal text (e.g. the env-var docs
         // `\${CLAUDE_PLUGIN_ROOT}` in the cowork plugin prompts, which have an
@@ -201,15 +219,45 @@ export const applySystemPrompts = async (
         const inOutput = new Set(
           [...interpolatedContent.matchAll(placeholderRe)].map(m => m[1])
         );
-        const leaked = [...inOutput].find(
+        const leaked = [...inOutput].filter(
           name =>
             identifierMapUnion.has(name) &&
             new RegExp('(?<!\\\\)\\$\\{' + name + '\\}').test(prompt.content)
         );
-        if (leaked) {
+
+        // Every leaked name resolvable by a same-id sibling entry (and none by
+        // this one) means the .md is authored against a different shape of
+        // this multi-site prompt. Expected per-site situation, not drift:
+        // leave this site pristine, quietly.
+        const ownNames = new Set(Object.values(identifierMap));
+        const siblingNames = groupNames.get(promptId);
+        if (
+          leaked.length > 0 &&
+          leaked.every(n => !ownNames.has(n) && siblingNames?.has(n))
+        ) {
+          debug(
+            `"${prompt.name}": placeholders resolve via a same-id sibling shape — leaving this site pristine`
+          );
+          results.push({
+            id: promptId,
+            name: prompt.name,
+            group: PatchGroup.SYSTEM_PROMPTS,
+            applied: false,
+            skipped: true,
+          });
+          continue;
+        }
+
+        // A leaked name this entry should have resolved (or that no sibling
+        // can): genuine vocabulary drift. Inside a backtick template literal
+        // it is invalid JS that ReferenceErrors at launch — skip loudly. In
+        // '…'/"…" strings the same token is inert text and can be intentional
+        // (e.g. data-anthropic-cli's literal ${VERSION}), so it passes through
+        // unchanged there.
+        if (delimiter === '`' && leaked.length > 0) {
           console.log(
             chalk.red(
-              `Unresolved placeholder \${${leaked}} in "${prompt.name}" (markdown vocabulary out of sync with CC ${version} prompt data) - skipping`
+              `Unresolved placeholder \${${leaked[0]}} in "${prompt.name}" (markdown vocabulary out of sync with CC ${version} prompt data) - skipping`
             )
           );
           results.push({
@@ -217,7 +265,7 @@ export const applySystemPrompts = async (
             name: prompt.name,
             group: PatchGroup.SYSTEM_PROMPTS,
             applied: false,
-            details: `unresolved placeholder \${${leaked}} - markdown out of sync with prompt data`,
+            details: `unresolved placeholder \${${leaked[0]}} - markdown out of sync with prompt data`,
           });
           continue;
         }
@@ -280,6 +328,13 @@ export const applySystemPrompts = async (
           );
         }
         replacementContent = escaped;
+      }
+
+      // Non-ASCII → \uXXXX last, AFTER the backslash-doubling above — doubling
+      // an already-escaped `—` ships literal `\\u2014` text to the model
+      // (silent corruption at every quote-context site with an em-dash).
+      if (shouldEscapeNonAscii) {
+        replacementContent = escapeNonAsciiChars(replacementContent);
       }
 
       // Replace the matched content with the interpolated content from the markdown file.

@@ -427,6 +427,127 @@ describe('systemPrompts.ts', () => {
       expect(result.newContent).toBe('desc:`use \\${CLAUDE_PLUGIN_ROOT} now`');
     });
 
+    it('should quietly skip a site whose placeholders resolve via a same-id sibling shape', async () => {
+      // A multi-site prompt: one template-wrapper entry (slot 0 named) and one
+      // plain-string entry, sharing one promptId and one .md. The .md is
+      // authored against the wrapper shape, so at the plain site the
+      // placeholder cannot resolve — injecting it would write
+      // "${PEER_MESSAGE_HEADER}" as literal text into the binary (the
+      // cross-session reminder corruption, 2.1.170). The plain entry must
+      // skip and leave its site pristine, without the loud drift warning.
+      vi.mocked(promptSync.loadIdentifierMapUnion).mockResolvedValue(
+        new Set(['PEER_MESSAGE_HEADER'])
+      );
+      const md = '${PEER_MESSAGE_HEADER}\nIMPORTANT: stay safe edited';
+      const wrapperEntry = buildMockPromptData({
+        promptId: 'peer-warning',
+        prompt: { content: md },
+        regex: '\\$\\{([\\w$]+)\\}\\nIMPORTANT: stay safe',
+        getInterpolatedContent: m =>
+          '${' + m[1] + '}\nIMPORTANT: stay safe edited',
+        pieces: ['${', '}\nIMPORTANT: stay safe'],
+        identifiers: [0],
+        identifierMap: { '0': 'PEER_MESSAGE_HEADER' },
+      });
+      const plainEntry = buildMockPromptData({
+        promptId: 'peer-warning',
+        prompt: { content: md },
+        regex: 'IMPORTANT: stay safe',
+        getInterpolatedContent: () => md,
+        pieces: ['IMPORTANT: stay safe'],
+      });
+      vi.mocked(promptSync.loadSystemPromptsWithRegex).mockResolvedValue([
+        wrapperEntry,
+        plainEntry,
+      ]);
+      vi.mocked(systemPromptHashIndex.setAppliedHashes).mockResolvedValue();
+
+      const cliContent =
+        'a:`${q9}\nIMPORTANT: stay safe`;b:"IMPORTANT: stay safe"';
+
+      const result = await applySystemPrompts(cliContent, '1.0.0', false);
+
+      // Wrapper site applied with the real var; plain site left pristine.
+      expect(result.newContent).toBe(
+        'a:`${q9}\nIMPORTANT: stay safe edited`;b:"IMPORTANT: stay safe"'
+      );
+      expect(result.results[0].applied).toBe(true);
+      expect(result.results[1].applied).toBe(false);
+      expect(result.results[1].skipped).toBe(true);
+      expect(result.results[1].details ?? '').not.toContain(
+        'unresolved placeholder'
+      );
+    });
+
+    it('should still pass an inert union-name literal through in quote context when no sibling resolves it', async () => {
+      // data-anthropic-cli class: the .md holds an unescaped ${VERSION} that is
+      // a union member, but the prompt is a quoted string where the token is
+      // inert literal text — and no same-id sibling names it. Behavior must
+      // stay inject-as-is, not skip.
+      vi.mocked(promptSync.loadIdentifierMapUnion).mockResolvedValue(
+        new Set(['VERSION'])
+      );
+      const mockPromptData = buildMockPromptData({
+        prompt: { content: 'run with ${VERSION} flag now' },
+        regex: 'run with \\$\\{VERSION\\} flag',
+        getInterpolatedContent: () => 'run with ${VERSION} flag now',
+        pieces: ['run with ${VERSION} flag'],
+      });
+
+      setupMocks(mockPromptData);
+
+      const cliContent = 'd:"run with ${VERSION} flag"';
+
+      const result = await applySystemPrompts(cliContent, '1.0.0', false);
+
+      expect(result.results[0].applied).toBe(true);
+      expect(result.newContent).toBe('d:"run with ${VERSION} flag now"');
+    });
+
+    it('should escape non-ASCII after backslash-doubling in quote contexts (no \\\\uXXXX double-escape)', async () => {
+      // Native binaries store non-ASCII as \uXXXX escapes. The escape used to
+      // run inside getInterpolatedContent, BEFORE the quote-context
+      // backslash-doubling — which doubled the escape's own backslash and
+      // shipped literal `\\u2014` text to the model at every quote-context
+      // site containing an em-dash.
+      const mockPromptData = buildMockPromptData({
+        prompt: { content: 'left — right edited' },
+        regex: 'left \\\\u2014 right',
+        getInterpolatedContent: () => 'left — right edited',
+        pieces: ['left — right'],
+      });
+
+      setupMocks(mockPromptData);
+
+      const cliContent = 'd:"left \\u2014 right"';
+
+      const result = await applySystemPrompts(cliContent, '1.0.0', true);
+
+      expect(result.newContent).toBe('d:"left \\u2014 right edited"');
+      expect(result.newContent).not.toContain('\\\\u2014');
+    });
+
+    it('should make an unchanged non-ASCII override a byte-identical no-op in quote contexts', async () => {
+      // An override whose body equals pristine must splice back the exact
+      // original bytes — the double-escape bug made even no-op applies mutate
+      // every \uXXXX sequence.
+      const mockPromptData = buildMockPromptData({
+        prompt: { content: 'left — right' },
+        regex: 'left \\\\u2014 right',
+        getInterpolatedContent: () => 'left — right',
+        pieces: ['left — right'],
+      });
+
+      setupMocks(mockPromptData);
+
+      const cliContent = 'd:"left \\u2014 right"';
+
+      const result = await applySystemPrompts(cliContent, '1.0.0', true);
+
+      expect(result.newContent).toBe(cliContent);
+      expect(result.results[0].applied).toBe(false);
+    });
+
     it('should auto-escape multiple backticks in template literal context', async () => {
       const mockPromptData = buildMockPromptData({
         content: 'Use `foo` and `bar` for config',

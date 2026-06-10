@@ -1253,8 +1253,11 @@ const escapeNonAsciiForRegex = (text: string): string => {
 /**
  * Converts non-ASCII characters to Unicode escape sequences (\uXXXX).
  * Used when writing prompts back to cli.js for environments that only support ASCII.
+ * MUST run after any delimiter-specific backslash escaping (the '"'/"'" paths
+ * double every backslash), or the escapes it emits get doubled into literal
+ * `\\uXXXX` text in the binary.
  */
-const escapeNonAsciiChars = (text: string): string => {
+export const escapeNonAsciiChars = (text: string): string => {
   // eslint-disable-next-line no-control-regex
   return text.replace(/[^\x00-\x7F]/g, char => {
     const codePoint = char.charCodeAt(0);
@@ -1566,6 +1569,9 @@ const applyIdentifierMapping = (
  */
 export const loadSystemPromptsWithRegex = async (
   ccVersion: string,
+  // Kept for signature stability; non-ASCII escaping moved to
+  // applySystemPrompts, AFTER delimiter-specific backslash handling.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   escapeNonAscii = false,
   buildTime?: string
 ): Promise<
@@ -1628,13 +1634,17 @@ export const loadSystemPromptsWithRegex = async (
 
       // The markdown file has content with human-readable variable names
       // We need to replace those with the actual minified variable names from cli.js
+      // Non-ASCII escaping deliberately NOT applied here: the apply loop's
+      // quote-context paths double every backslash (#660/#664), which would
+      // turn an early `\uXXXX` into literal `\\uXXXX` in the binary. The
+      // caller (applySystemPrompts) escapes after delimiter handling instead.
       return applyIdentifierMapping(
         replacementPrompt.content,
         jsonPrompt.identifiers,
         jsonPrompt.identifierMap,
         extractedVars,
         ccVersion,
-        escapeNonAscii,
+        false,
         buildTime,
         jsonPrompt.pieces
       );
