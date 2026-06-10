@@ -56,7 +56,16 @@ export const writeAutoModeClassifierModel = (
   const pattern167 =
     /function\s+([$\w]+)\s*\(\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\)\s*,\s*([$\w]+)\s*=\s*[$\w]+\s*\(\s*"tengu_auto_mode_config"\s*,\s*\{\s*\}\s*\)\s*,\s*([$\w]+)\s*=\s*\3\s*\?\.\s*modelByMainModel\s*;\s*if\s*\(\s*\4\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\2\s*\)\s*\.\s*replace\([^)]*\)\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*`[^`]*`\s*\]\s*;\s*if\s*\(\s*\6\s*\)\s*return\s+\6\s*\}\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*\5\s*\]\s*;\s*if\s*\(\s*\7\s*\)\s*return\s+\7\s*\}\s*if\s*\(\s*\3\s*\?\.\s*model\s*\)\s*return\s+\3\s*\.\s*model\s*;\s*return\s+\2\s*\}/;
 
+  // CC 2.1.170 shape: same as 2.1.167 but with a Fable branch before the final
+  // fallback — when the main model is Fable/Mythos, resolve to the default
+  // Opus model (env override ?? opus48), appending [1m] when the main model is
+  // a [1m]/fast variant and the default isn't already one:
+  // function NAME(){let H=MAIN(),_=R("tengu_auto_mode_config",{}),q=_?.modelByMainModel;if(q){...}if(_?.model)return _.model;if(ISFABLE(H)||ISMYTHOS(H)){let K=ENV.ANTHROPIC_DEFAULT_OPUS_MODEL??DEFAULTS().opus48;if((IS1M(H)||ISFAST(H))&&!IS1M(K)&&!ISPINNED(K))return K+"[1m]";return K}return H}
+  const pattern170 =
+    /function\s+([$\w]+)\s*\(\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\)\s*,\s*([$\w]+)\s*=\s*[$\w]+\s*\(\s*"tengu_auto_mode_config"\s*,\s*\{\s*\}\s*\)\s*,\s*([$\w]+)\s*=\s*\3\s*\?\.\s*modelByMainModel\s*;\s*if\s*\(\s*\4\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\2\s*\)\s*\.\s*replace\([^)]*\)\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*`[^`]*`\s*\]\s*;\s*if\s*\(\s*\6\s*\)\s*return\s+\6\s*\}\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*\5\s*\]\s*;\s*if\s*\(\s*\7\s*\)\s*return\s+\7\s*\}\s*if\s*\(\s*\3\s*\?\.\s*model\s*\)\s*return\s+\3\s*\.\s*model\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\|\|\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\.\s*ANTHROPIC_DEFAULT_OPUS_MODEL\s*\?\?\s*[$\w]+\s*\(\s*\)\s*\.\s*[$\w]+\s*;\s*if\s*\(\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\|\|\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*&&\s*!\s*[$\w]+\s*\(\s*\8\s*\)\s*&&\s*!\s*[$\w]+\s*\(\s*\8\s*\)\s*\)\s*return\s+\8\s*\+\s*"\[1m\]"\s*;\s*return\s+\8\s*\}\s*return\s+\2\s*\}/;
+
   const match =
+    oldFile.match(pattern170) ||
     oldFile.match(pattern167) ||
     oldFile.match(pattern156) ||
     oldFile.match(pattern);
