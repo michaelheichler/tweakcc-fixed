@@ -72,6 +72,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     tableFormat: 'default' as TableFormat,
     enableSwarmMode: true,
     enableSessionMemory: true,
+    enableDreamMode: true,
     enableRememberSkill: false,
     tokenCountRounding: null as number | null,
     autoAcceptPlanMode: false,
@@ -557,6 +558,19 @@ export function MiscView({ onSubmit }: MiscViewProps) {
             ensureMisc();
             settings.misc!.enableSessionMemory =
               !settings.misc!.enableSessionMemory;
+          });
+        },
+      },
+      {
+        id: 'enableDreamMode',
+        title: 'Enable dream mode',
+        description:
+          'Force-enable dream (/dream + auto-dream background memory consolidation) by bypassing the tengu_onyx_plover statsig gate. On/off still follows autoDreamEnabled in ~/.claude/settings.json.',
+        getValue: () => settings.misc?.enableDreamMode ?? true,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.enableDreamMode = !settings.misc!.enableDreamMode;
           });
         },
       },

@@ -62,6 +62,7 @@ import { writeIncreaseFileReadLimit } from './increaseFileReadLimit';
 import { writeSuppressLineNumbers } from './suppressLineNumbers';
 import { writeSuppressRateLimitOptions } from './suppressRateLimitOptions';
 import { writeSessionMemory } from './sessionMemory';
+import { writeDreamMode } from './dreamMode';
 import { writeRememberSkill } from './rememberSkill';
 import { writeThinkingBlockStyling } from './thinkingBlockStyling';
 import { writeMcpNonBlocking, writeMcpBatchSize } from './mcpStartup';
@@ -420,6 +421,13 @@ const PATCH_DEFINITIONS = [
     group: PatchGroup.FEATURES,
     description:
       'Enable session memory (auto-extraction + past session search)',
+  },
+  {
+    id: 'dream-mode',
+    name: 'Dream mode',
+    group: PatchGroup.FEATURES,
+    description:
+      'Enable dream (/dream + auto-dream background memory consolidation)',
   },
   {
     id: 'toolsets',
@@ -996,6 +1004,10 @@ export const applyCustomization = async (
     'session-memory': {
       fn: c => writeSessionMemory(c),
       condition: !!config.settings.misc?.enableSessionMemory,
+    },
+    'dream-mode': {
+      fn: c => writeDreamMode(c),
+      condition: !!config.settings.misc?.enableDreamMode,
     },
     toolsets: {
       fn: c =>

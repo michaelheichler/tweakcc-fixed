@@ -706,6 +706,7 @@ export const DEFAULT_SETTINGS: Settings = {
     tableFormat: 'default',
     enableSwarmMode: true,
     enableSessionMemory: true,
+    enableDreamMode: true,
     enableRememberSkill: false,
     tokenCountRounding: null,
     autoAcceptPlanMode: false,

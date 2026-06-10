@@ -129,6 +129,7 @@ export interface MiscConfig {
   tableFormat: TableFormat;
   enableSwarmMode: boolean;
   enableSessionMemory: boolean;
+  enableDreamMode: boolean;
   enableRememberSkill: boolean;
   tokenCountRounding: number | null;
   autoAcceptPlanMode: boolean;
