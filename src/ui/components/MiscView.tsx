@@ -75,6 +75,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     enableDreamMode: true,
     enableLeanMemoryTypes: false,
     fixSummarizeFromHere: true,
+    fixRewindSummaryHeader: true,
     enableRememberSkill: false,
     tokenCountRounding: null as number | null,
     autoAcceptPlanMode: false,
@@ -587,6 +588,21 @@ export function MiscView({ onSubmit }: MiscViewProps) {
             ensureMisc();
             settings.misc!.fixSummarizeFromHere = !(
               settings.misc!.fixSummarizeFromHere ?? true
+            );
+          });
+        },
+      },
+      {
+        id: 'fixRewindSummaryHeader',
+        title: 'Honest rewind summary header',
+        description:
+          'Label a rewind summary as a deliberate rewind (you continued forward, then rewound and chose to carry the summary forward) instead of the misleading "ran out of context" header.',
+        getValue: () => settings.misc?.fixRewindSummaryHeader ?? true,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.fixRewindSummaryHeader = !(
+              settings.misc!.fixRewindSummaryHeader ?? true
             );
           });
         },

@@ -53,6 +53,7 @@ import { applySystemPrompts } from './systemPrompts';
 import { applyInlineBlobOverrides } from './inlineBlobOverrides';
 import { writeFixLspSupport } from './fixLspSupport';
 import { writeFixSummarizeFromHere } from './fixSummarizeFromHere';
+import { writeFixRewindSummaryHeader } from './fixRewindSummaryHeader';
 import { writeToolsets } from './toolsets';
 import { writeTableFormat } from './tableFormat';
 import { writeConversationTitle } from './conversationTitle';
@@ -197,6 +198,13 @@ const PATCH_DEFINITIONS = [
     group: PatchGroup.MISC_CONFIGURABLE,
     description:
       'Make "Summarize from here" summarize only the messages after the rewind point (feed the slice, not the whole conversation)',
+  },
+  {
+    id: 'fix-rewind-summary-header',
+    name: 'Honest rewind summary header',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'Label a rewind summary as a deliberate rewind instead of the misleading "ran out of context" header',
   },
   {
     id: 'statusline-update-throttle',
@@ -825,6 +833,10 @@ export const applyCustomization = async (
     'fix-summarize-from-here': {
       fn: c => writeFixSummarizeFromHere(c),
       condition: config.settings.misc?.fixSummarizeFromHere !== false,
+    },
+    'fix-rewind-summary-header': {
+      fn: c => writeFixRewindSummaryHeader(c),
+      condition: config.settings.misc?.fixRewindSummaryHeader !== false,
     },
     'statusline-update-throttle': {
       fn: c =>
