@@ -324,6 +324,17 @@
       "version": "2.1.118"
     },
     {
+      "name": "Tool Description: AskUserQuestion (velvet decision-guidance addendum)",
+      "id": "tool-description-askuserquestion-velvet-addendum",
+      "description": "Velvet-only addendum appended to the AskUserQuestion tool description for Opus 4.8 / Fable 5 / Mythos 5 — reserve the question dialog for decisions whose answer changes what you do next, not for choices with a conventional default",
+      "pieces": [
+        "\nReserve this for decisions where the user's answer changes what you do next — not for choices with a conventional default or facts you can verify in the codebase yourself. In those cases pick the obvious option, mention it in your response, and proceed.\n"
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
+    },
+    {
       "name": "Agent Prompt: WebFetch summarizer",
       "id": "agent-prompt-webfetch-summarizer",
       "description": "Prompt for agent that summarizes verbose output from WebFetch for the main model",
@@ -462,6 +473,17 @@
       "identifiers": [],
       "identifierMap": {},
       "version": "2.1.72"
+    },
+    {
+      "name": "Tool Description: Glob",
+      "id": "tool-description-glob",
+      "description": "Verbose Glob tool description (the GY=false branch for older models) — glob pattern matching that works with any codebase size, results sorted by modification time. Glob had NO id in our JSON before this (the only built-in tool wholly uncovered)",
+      "pieces": [
+        "- Fast file pattern matching tool that works with any codebase size\n- Supports glob patterns like \"**/*.js\" or \"src/**/*.ts\"\n- Returns matching file paths sorted by modification time\n- Use this tool when you need to find files by name patterns\n- When you are doing an open ended search that may require multiple rounds of globbing and grepping, use the Agent tool instead"
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
     },
     {
       "name": "Tool Description: Bash (prefer dedicated tools bullet)",
@@ -3708,6 +3730,22 @@
       "version": "2.1.53"
     },
     {
+      "name": "Tool Description: Grep (concise)",
+      "id": "tool-description-grep-concise",
+      "description": "Concise (velvet) Grep tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — ripgrep-backed content search preferred over raw grep/rg, with the permission-UI integration note",
+      "pieces": [
+        "Content search built on ripgrep. Prefer this over \\`grep\\`/\\`rg\\` via ${",
+        "} — results integrate with the permission UI and file links.\n\n- Full regex syntax (e.g. \"log.*Error\", \"function\\\\s+\\\\w+\"). Ripgrep, not grep — escape literal braces (\\`interface\\\\{\\\\}\\`).\n- Filter with \\`glob\\` (e.g. \"**/*.tsx\") or \\`type\\` (e.g. \"js\", \"py\", \"rust\").\n- \\`output_mode\\`: \"content\" (matching lines), \"files_with_matches\" (paths only, default), or \"count\".\n- \\`multiline: true\\` for patterns that span lines."
+      ],
+      "identifiers": [
+        0
+      ],
+      "identifierMap": {
+        "0": "TOOL_DESCRIPTION_GREP_CONCISE_VAR_0"
+      },
+      "version": "2.1.177"
+    },
+    {
       "name": "Tool Description: Bash (alternative — content search)",
       "id": "tool-description-bash-alt-content-search",
       "description": "Bash tool alternative: use Grep for content search instead of grep/rg",
@@ -3762,6 +3800,17 @@
         "2": "MEMORY_CONTENT"
       },
       "version": "2.1.79"
+    },
+    {
+      "name": "Tool Description: TodoWrite (concise)",
+      "id": "tool-description-todowrite-concise",
+      "description": "Concise (velvet) TodoWrite tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — session task list rendered to the user as the working plan",
+      "pieces": [
+        "Create and update a task list for the current session. The list is rendered to the user as your working plan.\n\n- Each todo has `content`, `status` (\"pending\" | \"in_progress\" | \"completed\"), and `activeForm` (present-tense label shown while in progress).\n- Send the full list each call; it replaces the previous one.\n- Keep one item `in_progress` at a time and mark it `completed` when done."
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
     },
     {
       "name": "System Prompt: Doing tasks — no comments default",
@@ -4184,6 +4233,17 @@
         "10": "SWEEP_GAP_FOCUS"
       },
       "version": "2.1.160"
+    },
+    {
+      "name": "Tool Description: Glob (concise)",
+      "id": "tool-description-glob-concise",
+      "description": "Concise (velvet) Glob tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — glob pattern matching returning paths sorted by modification time",
+      "pieces": [
+        "Fast file pattern matching. Supports glob patterns like \"**/*.js\" or \"src/**/*.ts\". Returns matching file paths sorted by modification time."
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
     },
     {
       "name": "Tool Description: WebFetch (concise)",
@@ -4691,6 +4751,25 @@
       "version": "2.1.141"
     },
     {
+      "name": "Tool Description: Edit (concise)",
+      "id": "tool-description-edit-concise",
+      "description": "Concise (velvet) Edit tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — single exact string replacement, must-Read-first, uniqueness requirement, replace_all option",
+      "pieces": [
+        "Performs exact string replacement in a file.\n\n- You must ${",
+        "} the file in this conversation before editing, or the call will fail.\n- \\`old_string\\` must match the file exactly, including indentation, and be unique — the edit fails otherwise. Strip the Read line prefix (${",
+        "?\"line number + a single tab or `:`\":\"line number + tab\"}) before matching.\n- \\`replace_all: true\\` replaces every occurrence instead."
+      ],
+      "identifiers": [
+        0,
+        1
+      ],
+      "identifierMap": {
+        "0": "TOOL_DESCRIPTION_EDIT_CONCISE_VAR_0",
+        "1": "TOOL_DESCRIPTION_EDIT_CONCISE_VAR_1"
+      },
+      "version": "2.1.177"
+    },
+    {
       "name": "Tool Description: Edit",
       "id": "tool-description-edit",
       "description": "Tool for performing exact string replacements in files",
@@ -4753,6 +4832,28 @@
       "identifiers": [],
       "identifierMap": {},
       "version": "2.0.14"
+    },
+    {
+      "name": "System Prompt: PowerShell edition (7+)",
+      "id": "system-prompt-powershell-edition-for-7-plus",
+      "description": "Windows PowerShell 7+ (pwsh) edition note — pipeline chain operators && and || are available and behave like bash (the 7+ branch of the edition switch; we previously captured only the 5.1 branch)",
+      "pieces": [
+        "PowerShell edition: PowerShell 7+ (pwsh)\n   - Pipeline chain operators `&&` and `||` ARE available and work like bash. Prefer `cmd1 && cmd2` over `cmd1; cmd2` when cmd2 should only run if cmd1 succeeds.\n   - Ternary (`$cond ? $a : $b`), null-coalescing (`??`), and null-conditional (`?.`) operators are available.\n   - Default file encoding is UTF-8 without BOM."
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
+    },
+    {
+      "name": "System Prompt: PowerShell edition (unknown)",
+      "id": "system-prompt-powershell-edition-unknown",
+      "description": "Windows PowerShell edition-unknown note — assume Windows PowerShell 5.1 for compatibility, do not use && / || / ternary (the unknown branch of the edition switch)",
+      "pieces": [
+        "PowerShell edition: unknown — assume Windows PowerShell 5.1 for compatibility\n   - Do NOT use `&&`, `||`, ternary `?:`, null-coalescing `??`, or null-conditional `?.`. These are PowerShell 7+ only and parser-error on 5.1.\n   - To chain commands conditionally: `A; if ($?) { B }`. Unconditionally: `A; B`."
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
     },
     {
       "name": "System Prompt: PowerShell edition for 5.1",
@@ -4824,6 +4925,37 @@
         "0": "READ_TOOL_NAME"
       },
       "version": "2.1.53"
+    },
+    {
+      "name": "Tool Description: Read (concise)",
+      "id": "tool-description-read-concise",
+      "description": "Concise (velvet) Read tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — absolute path, default line cap, image/PDF/notebook handling, and the \"do not re-read a just-edited file\" note",
+      "pieces": [
+        "Reads a file from the local filesystem.\n\n- \\`file_path\\` must be an absolute path.\n- Reads up to ${",
+        "} lines by default${",
+        "}.\n${",
+        "}\n${",
+        "}\n- Reads images (PNG, JPG, …) and presents them visually.${",
+        "()?' Reads PDFs via the `pages` parameter (e.g. \"1-5\", max 20 pages/request; required for PDFs over 10 pages).':\"\"} Reads Jupyter notebooks (.ipynb) as cells with outputs.\n- Reading a directory, a missing file, or an empty file returns an error or system reminder rather than content.${",
+        "}"
+      ],
+      "identifiers": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "identifierMap": {
+        "0": "TOOL_DESCRIPTION_READ_CONCISE_VAR_0",
+        "1": "TOOL_DESCRIPTION_READ_CONCISE_VAR_1",
+        "2": "TOOL_DESCRIPTION_READ_CONCISE_VAR_2",
+        "3": "TOOL_DESCRIPTION_READ_CONCISE_VAR_3",
+        "4": "TOOL_DESCRIPTION_READ_CONCISE_VAR_4",
+        "5": "TOOL_DESCRIPTION_READ_CONCISE_VAR_5"
+      },
+      "version": "2.1.177"
     },
     {
       "name": "Tool Description: ReadFile",
@@ -4977,6 +5109,33 @@
       "identifiers": [],
       "identifierMap": {},
       "version": "2.1.140"
+    },
+    {
+      "name": "Tool Description: WebSearch (concise)",
+      "id": "tool-description-websearch-concise",
+      "description": "Concise (velvet) WebSearch tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — US-only web search returning titled URL result blocks, with the current-month grounding note",
+      "pieces": [
+        "Search the web. Returns result blocks with titles and URLs. US-only.\n\n- The current month is ${",
+        "} — use this when searching for recent information.\n- \\`allowed_domains\\` / \\`blocked_domains\\` filter results.\n- After answering from results, end with a \"Sources:\" list of the URLs you used as markdown links."
+      ],
+      "identifiers": [
+        0
+      ],
+      "identifierMap": {
+        "0": "CURRENT_MONTH_YEAR"
+      },
+      "version": "2.1.177"
+    },
+    {
+      "name": "Tool Description: SendUserMessage (verbatim default)",
+      "id": "tool-description-sendusermessage-verbatim",
+      "description": "Default (brief-mode-off) branch of the user-message tool, rendered for everyone outside brief mode — send content the user reads exactly as written between tool calls",
+      "pieces": [
+        "Send a message the user will read verbatim. Use this for content they need to see exactly as written between tool calls — a generated code snippet, a specific value, a direct reply to something they asked mid-task. Don't use it for routine narration of what you're about to do, or for your final answer — normal text reaches them for those.\n\n`status`: 'normal' when replying to what they just asked; 'proactive' when you're surfacing something unprompted."
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
     },
     {
       "name": "Tool Description: SendMessageTool (non-agent-teams)",
@@ -6074,6 +6233,17 @@
       "identifiers": [],
       "identifierMap": {},
       "version": "2.1.20"
+    },
+    {
+      "name": "Agent Prompt: Hook condition evaluator",
+      "id": "agent-prompt-hook-condition-evaluator",
+      "description": "LLM-judge prompt for evaluating a non-stop hook condition — returns a JSON verdict on whether the user-provided condition is met (the concise sibling of the captured stop-condition evaluator)",
+      "pieces": [
+        "You are evaluating a hook condition in Claude Code. Judge whether the user-provided condition is met.\n\nYour response must be a JSON object with one of these shapes:\n- {\"ok\": true, \"reason\": \"<reason the condition is met>\"}\n- {\"ok\": false, \"reason\": \"<reason the condition is not met>\"}\n\nAlways include a \"reason\" field."
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.177"
     },
     {
       "name": "Agent Prompt: Hook condition evaluator (stop)",

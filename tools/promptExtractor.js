@@ -95,6 +95,114 @@ const NEW_PROMPT_ASSIGNMENTS = [
     description:
       'Agent tool description — launch a new agent for complex multi-step tasks, with the subagent_type selector (fork yourself vs. start a fresh agent type)',
   },
+  // 2.1.177 — velvet/concise tool-description variants. CC serves these CONCISE
+  // branches to the newest models via `if(GY(H))return CONCISE:VERBOSE` (gP5
+  // returns false for opus-4-8/fable-5/mythos-5 → GY=true), so Opus 4.8 renders
+  // them. They're all < 500 chars so the minLength floor dropped them, and the
+  // verbose siblings masked the gap (an override on the verbose id never reaches
+  // the model). The matcher doubles as the sub-500 inclusion gate. Names follow
+  // upstream where it has them; glob is net-new over both us and Piebald.
+  {
+    matcher: t =>
+      t.startsWith('Reads a file from the local filesystem.') &&
+      t.includes(
+        'Reading a directory, a missing file, or an empty file returns an error'
+      ),
+    name: 'Tool Description: Read (concise)',
+    id: 'tool-description-read-concise',
+    description:
+      'Concise (velvet) Read tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — absolute path, default line cap, image/PDF/notebook handling, and the "do not re-read a just-edited file" note',
+  },
+  {
+    matcher: t => t.startsWith('Performs exact string replacement in a file.'),
+    name: 'Tool Description: Edit (concise)',
+    id: 'tool-description-edit-concise',
+    description:
+      'Concise (velvet) Edit tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — single exact string replacement, must-Read-first, uniqueness requirement, replace_all option',
+  },
+  {
+    matcher: t =>
+      t.startsWith('Content search built on ripgrep. Prefer this over'),
+    name: 'Tool Description: Grep (concise)',
+    id: 'tool-description-grep-concise',
+    description:
+      'Concise (velvet) Grep tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — ripgrep-backed content search preferred over raw grep/rg, with the permission-UI integration note',
+  },
+  {
+    matcher: t =>
+      t.startsWith(
+        'Search the web. Returns result blocks with titles and URLs. US-only.'
+      ),
+    name: 'Tool Description: WebSearch (concise)',
+    id: 'tool-description-websearch-concise',
+    description:
+      'Concise (velvet) WebSearch tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — US-only web search returning titled URL result blocks, with the current-month grounding note',
+  },
+  {
+    matcher: t =>
+      t.startsWith(
+        'Create and update a task list for the current session. The list is rendered to the user as your working plan.'
+      ),
+    name: 'Tool Description: TodoWrite (concise)',
+    id: 'tool-description-todowrite-concise',
+    description:
+      'Concise (velvet) TodoWrite tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — session task list rendered to the user as the working plan',
+  },
+  {
+    matcher: t =>
+      t.startsWith('Fast file pattern matching. Supports glob patterns like'),
+    name: 'Tool Description: Glob (concise)',
+    id: 'tool-description-glob-concise',
+    description:
+      'Concise (velvet) Glob tool description rendered for Opus 4.8 / Fable 5 / Mythos 5 — glob pattern matching returning paths sorted by modification time',
+  },
+  {
+    matcher: t =>
+      t.includes(
+        'Fast file pattern matching tool that works with any codebase size'
+      ),
+    name: 'Tool Description: Glob',
+    id: 'tool-description-glob',
+    description:
+      'Verbose Glob tool description (the GY=false branch for older models) — glob pattern matching that works with any codebase size, results sorted by modification time. Glob had NO id in our JSON before this (the only built-in tool wholly uncovered)',
+  },
+  {
+    matcher: t => t.includes('Reserve this for decisions where the user'),
+    name: 'Tool Description: AskUserQuestion (velvet decision-guidance addendum)',
+    id: 'tool-description-askuserquestion-velvet-addendum',
+    description:
+      'Velvet-only addendum appended to the AskUserQuestion tool description for Opus 4.8 / Fable 5 / Mythos 5 — reserve the question dialog for decisions whose answer changes what you do next, not for choices with a conventional default',
+  },
+  {
+    matcher: t => t.startsWith('Send a message the user will read verbatim'),
+    name: 'Tool Description: SendUserMessage (verbatim default)',
+    id: 'tool-description-sendusermessage-verbatim',
+    description:
+      'Default (brief-mode-off) branch of the user-message tool, rendered for everyone outside brief mode — send content the user reads exactly as written between tool calls',
+  },
+  {
+    matcher: t =>
+      t.startsWith('You are evaluating a hook condition in Claude Code') &&
+      t.includes('Judge whether the user-provided condition is met'),
+    name: 'Agent Prompt: Hook condition evaluator',
+    id: 'agent-prompt-hook-condition-evaluator',
+    description:
+      'LLM-judge prompt for evaluating a non-stop hook condition — returns a JSON verdict on whether the user-provided condition is met (the concise sibling of the captured stop-condition evaluator)',
+  },
+  {
+    matcher: t => t.includes('PowerShell edition: PowerShell 7+'),
+    name: 'System Prompt: PowerShell edition (7+)',
+    id: 'system-prompt-powershell-edition-for-7-plus',
+    description:
+      'Windows PowerShell 7+ (pwsh) edition note — pipeline chain operators && and || are available and behave like bash (the 7+ branch of the edition switch; we previously captured only the 5.1 branch)',
+  },
+  {
+    matcher: t => t.includes('PowerShell edition: unknown'),
+    name: 'System Prompt: PowerShell edition (unknown)',
+    id: 'system-prompt-powershell-edition-unknown',
+    description:
+      'Windows PowerShell edition-unknown note — assume Windows PowerShell 5.1 for compatibility, do not use && / || / ternary (the unknown branch of the edition switch)',
+  },
   // 2.1.175 — new: Projects (claude.ai Project docs read/write, method
   // dispatch). Tool name literal: var nxK="Projects",e9q="Read and write…".
   {
