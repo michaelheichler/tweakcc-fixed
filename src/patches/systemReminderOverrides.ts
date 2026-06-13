@@ -1215,9 +1215,13 @@ IMPORTANT: After completing your current task, you MUST address the user's messa
     // case-label prefix and reuse it verbatim so both the <=2.1.168 shape
     // (`case"human":case void 0:default:`) and the 2.1.169+ shape are preserved
     // (never hardcode the prefix — that would corrupt whichever shape didn't match).
+    // 2.1.177 hoisted the intro line into a standalone var: the return now reads
+    // `return`${$Tq}${H}\n\nIMPORTANT:…`` instead of inlining the English text.
+    // The intro is matched as a non-capturing alternation (old inline literal OR a
+    // `${VAR}` reference) so group numbering stays stable (1=prefix, 2=message var).
     return findAndReplace(
       content,
-      /((?:case"auto-continuation":)?case"human":case void 0:(?:default:)?)return`The user sent a new message while you were working:\n\$\{([$\w]+)\}\n\nIMPORTANT: After completing your current task, you MUST address the user's message above\. Do not ignore it\.`/,
+      /((?:case"auto-continuation":)?case"human":case void 0:(?:default:)?)return`(?:The user sent a new message while you were working:\n|\$\{[$\w]+\})\$\{([$\w]+)\}\n\nIMPORTANT: After completing your current task, you MUST address the user's message above\. Do not ignore it\.`/,
       m => {
         const [, prefix, hParam] = m;
         if (isSuppressed) return `${prefix}return\`\${${hParam}}\``;

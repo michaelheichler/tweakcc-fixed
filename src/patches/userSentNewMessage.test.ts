@@ -24,6 +24,13 @@ const cli2168 =
   'case"human":case void 0:default:return`The user sent a new message while you were working:\n${H}\n\n' +
   "IMPORTANT: After completing your current task, you MUST address the user's message above. Do not ignore it.`;";
 
+// 2.1.177 shape: the intro line is hoisted into a standalone `$Tq` var, so the
+// return reads `${$Tq}${H}` instead of inlining the English text.
+const cli2177 =
+  'case"auto-continuation":case"human":case void 0:return`${$Tq}${H}\n\n' +
+  "IMPORTANT: After completing your current task, you MUST address the user's message above. Do not ignore it.`;" +
+  'default:{let q=_;return`[MESSAGE FROM NON-USER SOURCE - NOT USER INPUT]\n${H}`}';
+
 describe('user-sent-new-message reminder injection', () => {
   it('preserves the 2.1.169 case-label prefix (and leaves the split default case intact)', () => {
     const out = injection.apply(cli2169, defaultBody, false)!;
@@ -51,6 +58,28 @@ describe('user-sent-new-message reminder injection', () => {
     expect(out).toContain(
       'case"auto-continuation":case"human":case void 0:return`${H}`'
     );
+    expect(out).not.toContain('The user sent a new message');
+  });
+
+  it('matches the 2.1.177 hoisted-intro (${$Tq}) shape', () => {
+    const out = injection.apply(cli2177, defaultBody, false)!;
+    expect(out).not.toBeNull();
+    // The hoisted `${$Tq}${H}` intro is replaced by the override body, prefix kept.
+    expect(out).toContain(
+      'case"auto-continuation":case"human":case void 0:return`The user sent a new message while you were working:'
+    );
+    expect(out).not.toContain('${$Tq}');
+    expect(out).toContain(
+      'default:{let q=_;return`[MESSAGE FROM NON-USER SOURCE - NOT USER INPUT]'
+    );
+  });
+
+  it('suppresses the 2.1.177 hoisted-intro shape to the bare message', () => {
+    const out = injection.apply(cli2177, defaultBody, true)!;
+    expect(out).toContain(
+      'case"auto-continuation":case"human":case void 0:return`${H}`'
+    );
+    expect(out).not.toContain('${$Tq}');
     expect(out).not.toContain('The user sent a new message');
   });
 });

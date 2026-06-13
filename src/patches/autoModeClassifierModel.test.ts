@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { writeAutoModeClassifierModel } from './autoModeClassifierModel';
 
+const SHAPE_2_1_177 =
+  'function Gr9(){let H=w7(),_=j_("tengu_auto_mode_config",{}),q=_?.modelByMainModel;' +
+  'if(q){let K=HW(D9(H));if(_J(H)){let T=q[`${K}[1m]`];if(T)return T}let O=q[K];if(O)return O}' +
+  'if(_?.model)return _.model;' +
+  'if(KJ_(H)||OJ_(H))return iM_(H);' +
+  'return H}';
+
 const SHAPE_2_1_170 =
   'function Fr7(){let H=w7(),_=j_("tengu_auto_mode_config",{}),q=_?.modelByMainModel;' +
   'if(q){let K=W9(H).replace(/\\[1m\\]$/,"");if(_J(H)){let T=q[`${K}[1m]`];if(T)return T}let O=q[K];if(O)return O}' +
@@ -14,6 +21,15 @@ const SHAPE_2_1_167 =
   'if(_?.model)return _.model;return H}';
 
 describe('writeAutoModeClassifierModel', () => {
+  it('rewrites the 2.1.177 resolver (nested key-normalization + collapsed Fable branch)', () => {
+    const file = `var A=1;${SHAPE_2_1_177}var B=2;`;
+    const result = writeAutoModeClassifierModel(file, 'sonnet');
+    expect(result).toContain('function Gr9(){return "claude-sonnet-4-6"}');
+    expect(result).not.toContain('tengu_auto_mode_config');
+    expect(result).toContain('var A=1;');
+    expect(result).toContain('var B=2;');
+  });
+
   it('rewrites the 2.1.170 resolver (with the Fable default-opus branch)', () => {
     const file = `var A=1;${SHAPE_2_1_170}var B=2;`;
     const result = writeAutoModeClassifierModel(file, 'sonnet');
