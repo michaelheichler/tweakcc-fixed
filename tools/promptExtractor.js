@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const parser = require('@babel/parser');
 
 function slugify(text) {
@@ -94,6 +96,63 @@ const NEW_PROMPT_ASSIGNMENTS = [
     id: 'tool-description-agent-when-to-launch-subagents',
     description:
       'Agent tool description — launch a new agent for complex multi-step tasks, with the subagent_type selector (fork yourself vs. start a fresh agent type)',
+  },
+  // 2.1.178 — four shared prompts had their openings reworded past the 100-char
+  // fuzzy fingerprint, so they extracted anonymous (renamed/re-wrapped, NOT
+  // removed — distinctive bodies still present in cli.js). These ship LCC
+  // overrides, so the id must rebind for the override's search regex AND so the
+  // upstream identifierMap adoption (TWEAKCC_UPSTREAM_JSON) keys on the right id.
+  {
+    matcher: t => t.includes('matches it against the deferred tool list'),
+    name: 'Tool Description: ToolSearch',
+    id: 'tool-description-toolsearch',
+    description:
+      'ToolSearch tool description — takes a query, matches it against the deferred-tool list, and returns the matched tools’ JSONSchema in a <functions> block so they become callable; documents the select:/keyword/+require query forms',
+  },
+  {
+    matcher: t =>
+      t.startsWith('${.commit?') && t.includes('Git Safety Protocol'),
+    name: 'Tool Description: Bash git commit and PR creation instructions',
+    id: 'tool-description-bash-git-commit-and-pr-creation-instructions',
+    description:
+      'Bash-tool git commit + PR creation instructions (now wrapped in a ${.commit?…} conditional) — the git safety protocol, commit-only-when-asked rule, and the numbered parallel-command commit/PR workflow',
+  },
+  {
+    matcher: t =>
+      t.includes('## Usage notes') &&
+      t.includes(
+        'Always include a short description summarizing what the agent will do'
+      ),
+    name: 'Tool Description: Agent usage notes',
+    id: 'tool-description-agent-usage-notes',
+    description:
+      'Agent tool usage notes — always include a short description, the agent returns a single result not visible to the user, and guidance on stateless invocation and trusting agent output',
+  },
+  {
+    matcher: t =>
+      t.includes("You are a teammate in this session's agent team"),
+    name: 'System Reminder: Team coordination',
+    id: 'system-reminder-team-coordination',
+    description:
+      'Team-coordination system reminder injected for a teammate agent — establishes its identity, how messages from teammates arrive automatically, and how to reach others via SendMessage by name',
+  },
+  // 2.1.178 — genuinely new. skill-code-review-conventions is shared with upstream
+  // (same id); data-bridge-worker-teardown-event is a net-new find of ours (a Zod
+  // .describe() doc for the bridge graceful-teardown event — upstream misses it).
+  {
+    matcher: t => t.startsWith('### Conventions (CLAUDE.md)'),
+    name: 'Skill: /code-review CLAUDE.md conventions',
+    id: 'skill-code-review-conventions',
+    description:
+      'Code-review step: locate the CLAUDE.md files that govern the changed code (user-level, repo-root, and ancestor-directory CLAUDE.md/CLAUDE.local.md) so the review honors project conventions',
+  },
+  {
+    matcher: t =>
+      t.startsWith('Emitted by the bridge on opt-in graceful worker teardown'),
+    name: 'Data: Bridge worker teardown event',
+    id: 'data-bridge-worker-teardown-event',
+    description:
+      'Schema .describe() for the bridge worker graceful-teardown event — explains it is emitted only on opt-in teardown with a reason, that absence is not a dead-host signal, and that clients must treat it as a live-tail signal only',
   },
   // 2.1.177 — velvet/concise tool-description variants. CC serves these CONCISE
   // branches to the newest models via `if(GY(H))return CONCISE:VERBOSE` (gP5
@@ -1391,7 +1450,134 @@ function inferPromptIdentity(content) {
   return null;
 }
 
-function validateInput(text, minLength = 500) {
+// ////////////////////////////////////////////////////////////////////////////
+// Model-facing capture below the 500-char floor.
+//
+// The inherited minLength=500 floor (Piebald, #115) silently drops every prompt
+// shorter than 500 chars. A 2026-06-16 classification of the ~1100 sub-500
+// strings the floor was eating found ~425 are genuinely model-facing (system
+// reminders, tool/param descriptions, short system-prompt fragments) — exactly
+// the override surface the floor was hiding. The other ~675 are user-facing UI
+// (error toasts, tooltips, --help) or internal (thrown errors, logs, config
+// schemas). The decisive signal is the EMISSION SITE, not the prose.
+//
+// Rather than reproduce the bundler-minified drop contexts (console/throw/JSX
+// factory names change every CC version and per platform — a maintenance trap),
+// we keep the floor as the default gate (so junk stays dropped by construction)
+// and lower it ONLY for strings carrying a STABLE, non-minified model-facing
+// signal: (a) lead-in context Anthropic controls semantically (the JSON-schema
+// tool/param shape, descriptionForModel, tool-result text), and (b) content
+// markers (<system-reminder>, plus distinctive anchors for residual prose
+// prompts, collision-checked against the drop set).
+// ////////////////////////////////////////////////////////////////////////////
+
+// (a) Lead-in context (the source immediately before the string) that marks a
+// HIGH-CONFIDENCE model-facing emission site. Checked in extractStrings, where
+// node.start is available. A match makes the string a capture regardless of
+// length AND bypasses the prose-quality gates (those gates assume a long
+// English prompt and wrongly reject short tool/param descriptions). All signals
+// are STABLE — JSON-schema keys + Anthropic-controlled property names, never
+// bundler-minified identifiers — so they survive version bumps.
+function leadShowsModelFacingContext(lead) {
+  const tail = lead.slice(-120);
+  // A description: field sitting beside a name: or a JSON-schema type: in the
+  // same object literal = a tool / agent / skill / command DEFINITION or a
+  // JSON-schema PARAM the model reads in an inputSchema. (Plain description:
+  // alone is ambiguous — config/CLI use it too — so it must be paired.)
+  if (
+    /\bdescription:\s*$/.test(tail) &&
+    (/\bname:/.test(tail) ||
+      /\btype:\s*["'](?:string|number|integer|boolean|array|object)["']/.test(
+        tail
+      ))
+  )
+    return true;
+  // Tool descriptions explicitly surfaced to the model.
+  if (/\bdescriptionForModel:\s*$/.test(tail)) return true;
+  // Static tool-result text block the model reads: {type:"text",text:"<here>"}.
+  if (/\btype:\s*["']text["']\s*,\s*text:\s*$/.test(tail)) return true;
+  // Skill/slash-command "when to use" guidance — surfaced in the model's
+  // available-skills list.
+  if (/\bwhenToUse:\s*$/.test(tail)) return true;
+  return false;
+}
+
+// (b) Lead-in context that marks a NON-model-facing emission site. All STABLE
+// JS keywords / built-ins / library method names (NOT minified identifiers), so
+// they keep working across versions. A match drops the string regardless of how
+// prompt-like its prose is (the emission site overrides the tone).
+function leadShowsDropContext(lead) {
+  const tail = lead.slice(-120);
+  // Thrown exception messages (internal): `throw ...`, `throw new X(`, `new
+  // <Anything>Error|Exception(`.
+  if (/\bthrow\s+(?:new\s+)?[$\w.]*\(?\s*$/.test(tail)) return true;
+  if (/\bnew\s+[$\w]*(?:Error|Exception)[$\w]*\(\s*$/.test(tail)) return true;
+  // Console / leveled-logger diagnostics (internal).
+  if (/\bconsole\.(?:log|error|warn|info|debug|trace)\(\s*$/.test(tail))
+    return true;
+  // React/Ink element children (TUI copy shown to the human, never the model).
+  // The factory var is minified but `.createElement(` is a stable React API.
+  if (/\.createElement\(/.test(tail)) return true;
+  // Direct terminal writes (user-facing).
+  if (/process\.(?:stderr|stdout)\.write\(\s*$/.test(tail)) return true;
+  // commander/yargs --help builders (render in the terminal, not the model).
+  if (/\.(?:option|command|usage|epilog|epilogue|example)\(\s*$/.test(tail))
+    return true;
+  return false;
+}
+
+// (c) Content markers (text-only) that a short string IS model-facing.
+function contentIsModelFacingShortPrompt(text) {
+  // A real system-reminder BLOCK (opens with the tag) is always model-injected.
+  // (Merely mentioning <system-reminder> in prose is handled by other signals.)
+  if (/^\s*<system-reminder>/.test(text)) return true;
+  return false;
+}
+
+// Floor for UNSIGNALLED strings (no model-facing lead/content signal). Replaces
+// the inherited 500-char floor: a string this long that clears the drop-context
+// rules + prose-quality gates is admitted. Lead/content-signalled model-facing
+// strings ignore this entirely (captured at any length).
+const ADMIT_FLOOR = 40;
+
+// ////////////////////////////////////////////////////////////////////////////
+// Classification cache — the authority for below-floor capture.
+//
+// Static rules can't reliably tell a model-facing tool-result from a UI/internal
+// error ("X is not available" reads identically; only the per-version minified
+// emission site disambiguates). So the extractor captures broadly and defers the
+// precise model-facing vs UI/internal call to this cache, which is populated by
+// an LLM classification phase that reads each string's emission site in cli.js
+// (see `driver.mjs classify` + the showtime-skrabe skill). Keyed by content hash
+// so it is version-independent: identical prompts hit across versions; only
+// genuinely-new strings need re-classification. facing: 'model' (keep, what the
+// AI reads) | 'ui' | 'internal' (drop). Optional id/name/desc name the keepers.
+// ////////////////////////////////////////////////////////////////////////////
+const CLASSIFICATION_CACHE_PATH = path.join(
+  __dirname,
+  '..',
+  'data',
+  'prompt-classification.json'
+);
+let _classificationCache = null;
+function loadClassificationCache() {
+  if (_classificationCache) return _classificationCache;
+  try {
+    _classificationCache = JSON.parse(
+      fs.readFileSync(CLASSIFICATION_CACHE_PATH, 'utf-8')
+    );
+  } catch {
+    _classificationCache = {};
+  }
+  return _classificationCache;
+}
+function classifyByCache(body) {
+  const cache = loadClassificationCache();
+  const h = crypto.createHash('sha1').update(body).digest('hex');
+  return cache[h] || null;
+}
+
+function validateInput(text, minLength = 500, opts = {}) {
   if (!text || typeof text !== 'string') return false;
 
   // ////////////////
@@ -1656,12 +1842,22 @@ function validateInput(text, minLength = 500) {
   )
     return false;
 
+  // Model-facing short prompts the floor would otherwise drop (2026-06-16).
+  // Runs after the exclude rules above (so genuine junk is still filtered) and
+  // before the floor, so a verified model-facing signal survives sub-500.
+  if (contentIsModelFacingShortPrompt(text)) return true;
+
   if (text.length < minLength) return false;
 
   const first10 = text.substring(0, 10);
   if (first10.startsWith('AGFzbQ') || /^[A-Z0-9+/=]{10}$/.test(first10)) {
     return false;
   }
+
+  // Lead-signalled model-facing strings (tool/param descriptions, etc.) skip the
+  // prose-quality gates below — those gates assume a long English prompt and
+  // wrongly reject short, single-sentence tool descriptions.
+  if (opts.bypassQuality) return true;
 
   const sample = text.substring(0, 500);
   const words = sample.split(/\s+/).filter(w => w.length > 0);
@@ -1778,17 +1974,29 @@ function extractStrings(filepath, minLength = 500) {
 
     // Extract string literals
     if (node.type === 'StringLiteral') {
-      if (validateInput(node.value, minLength)) {
-        stringData.push({
-          name: '',
-          id: '',
-          description: '',
-          pieces: [node.value],
-          identifiers: [],
-          identifierMap: {},
-          start: node.start,
-          end: node.end,
-        });
+      const lead = code.slice(Math.max(0, node.start - 140), node.start);
+      const signalled = leadShowsModelFacingContext(lead);
+      const eff = signalled ? 1 : Math.min(minLength, ADMIT_FLOOR);
+      if (
+        !leadShowsDropContext(lead) &&
+        validateInput(node.value, eff, { bypassQuality: signalled })
+      ) {
+        const cls = classifyByCache(node.value);
+        // Cache decides KEEP/DROP here (facing); NAMES are applied post-merge so
+        // established fuzzy-carryover ids win over cache names (applyCacheNames).
+        if (!cls || cls.facing === 'model') {
+          stringData.push({
+            name: '',
+            id: '',
+            description: '',
+            pieces: [node.value],
+            identifiers: [],
+            identifierMap: {},
+            start: node.start,
+            end: node.end,
+          });
+        }
+        // cls.facing 'ui'/'internal' -> not sent to the model, drop.
       }
     }
 
@@ -1801,8 +2009,15 @@ function extractStrings(filepath, minLength = 500) {
       const contentEnd = node.end - 1; // Before closing backtick
       const fullContent = code.substring(contentStart, contentEnd);
 
+      const lead = code.slice(Math.max(0, node.start - 140), node.start);
+      const signalled = leadShowsModelFacingContext(lead);
+      const eff = signalled ? 1 : Math.min(minLength, ADMIT_FLOOR);
+
       // Validate before processing
-      if (!validateInput(fullContent, minLength)) {
+      if (
+        leadShowsDropContext(lead) ||
+        !validateInput(fullContent, eff, { bypassQuality: signalled })
+      ) {
         return;
       }
 
@@ -1929,16 +2144,23 @@ function extractStrings(filepath, minLength = 500) {
         labelEncodedMap[varToLabel[varName]] = '';
       });
 
-      stringData.push({
-        name: '',
-        id: '',
-        description: '',
-        pieces,
-        identifiers: labelEncodedIdentifiers,
-        identifierMap: labelEncodedMap,
-        start: node.start,
-        end: node.end,
-      });
+      const tbody = pieces.join('');
+      const cls = classifyByCache(tbody);
+      // Cache decides KEEP/DROP here (facing); NAMES applied post-merge so
+      // established fuzzy-carryover ids win over cache names (applyCacheNames).
+      if (!cls || cls.facing === 'model') {
+        stringData.push({
+          name: '',
+          id: '',
+          description: '',
+          pieces,
+          identifiers: labelEncodedIdentifiers,
+          identifierMap: labelEncodedMap,
+          start: node.start,
+          end: node.end,
+        });
+      }
+      // cls.facing 'ui'/'internal' -> not sent to the model, drop.
     }
 
     // Recursively traverse
@@ -2014,6 +2236,79 @@ function extractStrings(filepath, minLength = 500) {
 //    cross-session reminder override flip-flopping 2.1.167↔2.1.169. The
 //    id-level "content last changed at" is the group's max; stamp every entry
 //    with it.
+// Fill names for still-anonymous prompts from the classification cache. Runs
+// AFTER mergeWithExisting's fuzzy carryover, so an established id (carried from
+// the previous JSON) always wins over a cache name — the cache only NAMES
+// genuinely-new model-facing captures. (Facing/keep-drop already happened in
+// extractStrings.) See [[reference_below_floor_classification_cache]].
+function applyCacheNames(prompts) {
+  const body = (p) => (p.pieces || []).filter((x) => typeof x === 'string').join('');
+  for (const p of prompts) {
+    if (p.id) continue; // established/fuzzy-carried name wins
+    const cls = classifyByCache(body(p));
+    if (cls && cls.facing === 'model' && cls.id) {
+      p.id = cls.id;
+      p.name = cls.name || '';
+      p.description = cls.desc || '';
+    }
+  }
+  return prompts;
+}
+
+// Disambiguate DIFFERENT-content strings that landed on the SAME id (a below-floor
+// capture named by the classification cache can collide with an established
+// prompt's id, or two new captures can collide). Same-content same-id entries are
+// intentional multi-site splices and are left alone. The bare id stays with any
+// content present in the PREVIOUS JSON (so existing override targets — and
+// pre-existing verbose/concise variant pairs — are preserved); genuinely-new
+// colliding content gets a -N suffix so every prompt stays independently
+// overridable. Battleproof: handles collisions from any naming source.
+function disambiguateIdCollisions(prompts, existingData) {
+  const body = (p) => (p.pieces || []).filter((x) => typeof x === 'string').join('');
+  const established = new Map(); // id -> Set(content) from the seed/previous JSON
+  for (const p of (existingData && existingData.prompts) || []) {
+    if (!p.id) continue;
+    if (!established.has(p.id)) established.set(p.id, new Set());
+    established.get(p.id).add(body(p));
+  }
+  const allIds = new Set(prompts.filter((p) => p.id).map((p) => p.id));
+  const uniqueSuffix = (base) => {
+    let n = 2;
+    while (allIds.has(`${base}-${n}`)) n++;
+    const id = `${base}-${n}`;
+    allIds.add(id);
+    return id;
+  };
+  const byId = new Map();
+  for (const p of prompts) {
+    if (!p.id) continue;
+    if (!byId.has(p.id)) byId.set(p.id, []);
+    byId.get(p.id).push(p);
+  }
+  for (const [id, group] of byId) {
+    const clusters = new Map(); // content -> [prompts]
+    for (const p of group) {
+      const c = body(p);
+      if (!clusters.has(c)) clusters.set(c, []);
+      clusters.get(c).push(p);
+    }
+    if (clusters.size < 2) continue; // single content (multi-site) is fine
+    const est = established.get(id);
+    const keepBare = new Set([...clusters.keys()].filter((c) => est && est.has(c)));
+    if (keepBare.size === 0) {
+      // all-new collision: longest content keeps the bare id.
+      keepBare.add([...clusters.keys()].sort((a, b) => b.length - a.length)[0]);
+    }
+    for (const [c, members] of clusters) {
+      if (keepBare.has(c)) continue;
+      const newId = uniqueSuffix(id);
+      for (const p of members) p.id = newId;
+      console.log(`Disambiguated id collision: "${id}" -> "${newId}" (distinct content not established)`);
+    }
+  }
+  return prompts;
+}
+
 function normalizeIdGroups(prompts) {
   const byId = new Map();
   for (const p of prompts) {
@@ -2337,7 +2632,9 @@ if (require.main === module) {
     existingData,
     version
   );
+  mergedResult.prompts = applyCacheNames(mergedResult.prompts);
   mergedResult.prompts = normalizeIdGroups(mergedResult.prompts);
+  mergedResult.prompts = disambiguateIdCollisions(mergedResult.prompts, existingData);
 
   // For every prompt upstream also ships whose `identifiers` array matches ours,
   // take upstream's identifierMap. Upstream labels every slot, so it is the
@@ -2421,3 +2718,9 @@ if (require.main === module) {
 
 module.exports = extractStrings;
 module.exports.normalizeIdGroups = normalizeIdGroups;
+// Exported for the test suite (below-floor capture rules — battleproof guarantee).
+module.exports.leadShowsModelFacingContext = leadShowsModelFacingContext;
+module.exports.leadShowsDropContext = leadShowsDropContext;
+module.exports.contentIsModelFacingShortPrompt = contentIsModelFacingShortPrompt;
+module.exports.validateInput = validateInput;
+module.exports.ADMIT_FLOOR = ADMIT_FLOOR;

@@ -384,9 +384,14 @@ function main() {
       `${extractedMetrics.anonymous} anonymous extracted prompt(s)`
     );
   }
-  if (extraction?.noMatchCount) {
+  // A "No match for item" log line means the item didn't hit a
+  // NEW_PROMPT_ASSIGNMENTS matcher — but below-floor model-facing captures are
+  // now named post-merge from the classification cache (see §6.5), so a no-match
+  // is only a problem if it stays ANONYMOUS. The `anonymous` check above is the
+  // real gate; surface noMatchCount as a non-blocking diagnostic only.
+  if (extraction?.noMatchCount && extractedMetrics?.anonymous) {
     blockingIssues.push(
-      `${extraction.noMatchCount} extractor no-match item(s)`
+      `${extraction.noMatchCount} extractor no-match item(s) left anonymous`
     );
   }
   if (committedMatchesExtraction === false) {
