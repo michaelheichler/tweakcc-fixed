@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
@@ -9,5 +9,9 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Never glob test files from agent git worktrees (Agent/Workflow isolation
+    // checks out copies under .claude/worktrees/**); their scratch/in-progress
+    // tests would otherwise run and false-fail the suite.
+    exclude: [...configDefaults.exclude, '.claude/**'],
   },
 });
