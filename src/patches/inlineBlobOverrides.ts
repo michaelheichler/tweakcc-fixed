@@ -434,15 +434,50 @@ const extractArrayIdentifiers = (
         i + 1 < text.length &&
         text[i + 1] === '{'
       ) {
+        // Recurse into the interpolation expression so identifiers nested
+        // inside a template-literal array element (e.g. `${to5[_]}`, `${GE8}`)
+        // are remapped too. These minified names are platform-specific (differ
+        // Mac↔Linux), so a raw-passthrough body must pick them up from the
+        // pristine literal positionally rather than carry stale names that the
+        // top-level array scan can't reach (the lL8 mis-bind). String/brace
+        // aware so `${cond?"}":"x"}` doesn't terminate early.
         let bd = 1;
         let j = i + 2;
+        let innerStr = false;
+        let innerQ: string | null = null;
         while (j < text.length && bd > 0) {
           const cj = text[j];
+          if (innerStr) {
+            if (cj === '\\' && j + 1 < text.length) {
+              j += 2;
+              continue;
+            }
+            if (cj === innerQ) innerStr = false;
+            j++;
+            continue;
+          }
+          if (cj === '"' || cj === "'" || cj === '`') {
+            innerStr = true;
+            innerQ = cj;
+            j++;
+            continue;
+          }
           if (cj === '{') bd++;
-          else if (cj === '}') bd--;
+          else if (cj === '}') {
+            bd--;
+            if (bd === 0) break;
+          }
           j++;
         }
-        i = j;
+        const inner = text.slice(i + 2, j);
+        for (const r of extractArrayIdentifiers(inner)) {
+          out.push({
+            name: r.name,
+            start: r.start + i + 2,
+            end: r.end + i + 2,
+          });
+        }
+        i = j + 1;
         continue;
       }
       i++;

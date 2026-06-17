@@ -26,11 +26,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PRISTINE = process.argv[2] || '/tmp/cli-2.1.178.js';
+const PRISTINE = process.argv[2] || '/tmp/cli-2.1.179.js';
 if (!fs.existsSync(PRISTINE)) {
   console.error(`harness: pristine cli.js not found: ${PRISTINE}`);
   process.exit(2);
 }
+// Version drives which prompts-X.Y.Z.json the apply loads — derive it from the
+// pristine filename (cli-X.Y.Z.js) so the harness tracks the binary under test
+// across version bumps instead of pinning a stale version.
+const VERSION =
+  (PRISTINE.match(/cli-(\d+\.\d+\.\d+)\.js$/) || [, '2.1.179'])[1];
 const orig = fs.readFileSync(PRISTINE, 'utf8');
 
 // minified `${var}` tokens: 1-4 alnum/$ chars, not an ALL_CAPS tweakcc name.
@@ -68,7 +73,7 @@ try {
   fs.copyFileSync(PRISTINE, cliCopy);
   fs.writeFileSync(
     path.join(pkgDir, 'package.json'),
-    JSON.stringify({ name: '@anthropic-ai/claude-code', version: '2.1.178' })
+    JSON.stringify({ name: '@anthropic-ai/claude-code', version: VERSION })
   );
 
   let log = '';

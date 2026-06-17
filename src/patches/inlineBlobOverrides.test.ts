@@ -279,4 +279,38 @@ describe('inlineBlobOverrides: applyInlineBlobOverrides (integration)', () => {
     expect(out).toContain('...H.map((_)=>`- ${_}`)');
     expect(out).not.toContain('AAA');
   });
+
+  // memory-types-dynamic shape: the stale minified names (Fu5/lL8) live INSIDE
+  // template-literal `${...}` array elements. The remap must recurse into the
+  // interpolations and rewrite them to the pristine's platform-specific names
+  // (to5/GE8), not leave them verbatim (which the introduced-var guard would
+  // then skip-with-warning — the original "would introduce ${lL8}" bug).
+  it('remaps identifiers nested inside template `${...}` array elements', async () => {
+    clearOverrides();
+    writeOverride(
+      'inline-mem.md',
+      [
+        '<!--',
+        "name: 'Inline blob: mem'",
+        'description: x',
+        'inlineBlobAnchor: \'return\\["## Types of memory"\'',
+        "inlineBlobKind: 'array'",
+        "inlineBlobRawPassthrough: 'true'",
+        'injectionGate: always on',
+        'ccVersion: 2.1.179',
+        '-->',
+        '"## Types of memory","",...H.map((_)=>`- **${_}** ${Fu5[_]}`),`Invoke ${lL8} skill.`',
+      ].join('\n')
+    );
+    // Pristine carries platform-specific names to5 (was Fu5) and GE8 (was lL8).
+    const content =
+      'x(){return["## Types of memory","",...A.map((_)=>`- **${_}** ${to5[_]}`),`Invoke ${GE8} skill.`]}';
+    const { content: out, results } = await applyInlineBlobOverrides(content);
+    expect(results[0].applied).toBe(true);
+    // Nested names remapped to the pristine's; no stale Fu5/lL8 survive.
+    expect(out).toContain('...A.map((_)=>`- **${_}** ${to5[_]}`)');
+    expect(out).toContain('`Invoke ${GE8} skill.`');
+    expect(out).not.toContain('Fu5');
+    expect(out).not.toContain('lL8');
+  });
 });
