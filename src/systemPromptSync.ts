@@ -1290,7 +1290,7 @@ export const escapeNonAsciiChars = (text: string): string => {
   });
 };
 
-const buildSearchRegexFromPieces = (
+export const buildSearchRegexFromPieces = (
   pieces: string[],
   ccVersion: string,
   buildTime?: string
@@ -1311,6 +1311,12 @@ const buildSearchRegexFromPieces = (
   // has one `\` per source `\\` while cli.js retains the two-char source form.
   const BS_SENTINEL = '\x00BS\x00';
 
+  // Sentinel for a member-access key (`obj[f]`) closing an interpolation. The
+  // object is captured as a slot, leaving `[f]}…` at a piece start; `f` is a
+  // minified identifier that differs Mac↔Linux, so it must be generalized like
+  // the slot rather than pinned to the literal Mac key.
+  const MEMBER_SENTINEL = '\x00MEMBER\x00';
+
   for (let i = 0; i < pieces.length; i++) {
     // Replace <<CCVERSION>> with actual version before escaping
     let piece = pieces[i].replace(/<<CCVERSION>>/g, ccVersion);
@@ -1318,6 +1324,15 @@ const buildSearchRegexFromPieces = (
     // Replace <<BUILD_TIME>> with actual build time if provided
     if (buildTime) {
       piece = piece.replace(/<<BUILD_TIME>>/g, buildTime);
+    }
+
+    // A piece beginning with `[<ident>]` directly followed by `}` (only when a
+    // slot precedes it, i>0) is a member access closing the prior interpolation
+    // — e.g. ${OBJ[f]} extracts OBJ as a slot and leaves "[f]}…" here. Stash the
+    // bracketed key so the final step matches ANY minified key; otherwise the
+    // literal Mac key fails on the Linux native build ("Could not find ...").
+    if (i > 0) {
+      piece = piece.replace(/^\[[A-Za-z_$][\w$]*\](?=\})/, MEMBER_SENTINEL);
     }
 
     // Stash inline ${...} interpolations behind a sentinel before regex-escape.
@@ -1366,7 +1381,14 @@ const buildSearchRegexFromPieces = (
       new RegExp(BS_SENTINEL, 'g'),
       '(?:\\\\|\\\\\\\\)'
     );
-    pattern += withBackslashHandling;
+
+    // Restore each member-access key sentinel as a "match any minified key"
+    // bracket so the regex works on both Mac and Linux native builds.
+    const withMemberHandling = withBackslashHandling.replace(
+      new RegExp(MEMBER_SENTINEL, 'g'),
+      '\\[[\\w$]+\\]'
+    );
+    pattern += withMemberHandling;
 
     // Add capture group for the variable if this isn't the last piece
     if (i < pieces.length - 1) {
