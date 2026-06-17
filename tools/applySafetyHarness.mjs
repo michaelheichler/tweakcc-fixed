@@ -181,13 +181,48 @@ try {
     parseMode = `equivalence(node): pristine=${base} patched=${got}`;
   }
 
+  // Workflow-script override JS check. A workflow-script-*.md override is
+  // EXECUTABLE JS spliced into cli.js as a template-literal string, so "patched
+  // parses" only proves cli.js parses — NOT that the embedded script is itself
+  // valid (a duplicate `const`, etc. ships silently; smoke never runs the
+  // workflow). Resolve the body the way it lives at runtime (interpolations ->
+  // placeholder, one backslash layer collapsed, export dropped), wrap so
+  // top-level await/return are legal, and node --check it (plain modern JS, no
+  // `using`, so the harness node suffices).
+  const wfScriptErrors = [];
+  const spDir = path.join(tc, 'system-prompts');
+  let wfFiles = [];
+  try {
+    wfFiles = fs
+      .readdirSync(spDir)
+      .filter(f => /^workflow-script-.*\.md$/.test(f));
+  } catch {
+    /* no override dir */
+  }
+  for (const f of wfFiles) {
+    const body = fs
+      .readFileSync(path.join(spDir, f), 'utf8')
+      .replace(/^<!--[\s\S]*?-->\n?/, '');
+    if (!body.trim()) continue; // empty body = no override
+    const js = body
+      .replace(/\$\{[^{}]*\}/g, '(null)')
+      .replace(/\\\\/g, '\\')
+      .replace(/^export /m, '');
+    const wrapped = path.join(tmpHome, `wfcheck-${f}.js`);
+    fs.writeFileSync(wrapped, `async function __f(){\n${js}\n}`);
+    const err = firstSyntaxError(wrapped, 'node', []);
+    if (err) wfScriptErrors.push(`${f}: ${err}`);
+  }
+
   console.log('=== apply-safety harness ===');
   console.log(`pristine:          ${PRISTINE}`);
   console.log(`Could not find:    ${cnf}`);
   console.log(`cannot apply safely (warns): ${cannotApply}`);
   console.log(`introduced minified \${var}: ${introduced.length}  ${introduced.slice(0, 12).join(' ')}`);
   console.log(`patched parses:    ${parses}  [${parseMode}]`);
-  const ok = cnf === 0 && introduced.length === 0 && parses;
+  console.log(`workflow-script JS: ${wfScriptErrors.length === 0 ? 'ok' : wfScriptErrors.join(' | ')}`);
+  const ok =
+    cnf === 0 && introduced.length === 0 && parses && wfScriptErrors.length === 0;
   console.log(ok ? 'RESULT: PASS' : 'RESULT: FAIL');
   process.exit(ok ? 0 : 1);
 } finally {
