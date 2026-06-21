@@ -22,6 +22,11 @@ export function SelectInput({
   onSubmit,
 }: SelectInputProps) {
   useInput((input, key) => {
+    // Shared primitive: guard the empty-items case so a caller that passes a
+    // dynamic (possibly empty) list can't crash on Enter via
+    // `items[selectedIndex].name`, or wrap selectedIndex to -1 on the arrows.
+    // Current callers pass fixed non-empty lists, so this is a no-op for them.
+    if (items.length === 0) return;
     if (key.upArrow) {
       onSelect(selectedIndex > 0 ? selectedIndex - 1 : items.length - 1);
     } else if (key.downArrow) {

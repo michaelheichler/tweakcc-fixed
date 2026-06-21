@@ -50,6 +50,11 @@ export default function App({
     !initialConfig.hidePiebaldAnnouncement
   );
 
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  } | null>(null);
+
   // Function to update the settings, automatically updated changesApplied.
   const updateSettings = useCallback(
     (updateFn: (settings: Settings) => void) => {
@@ -66,20 +71,25 @@ export default function App({
         changesApplied: false,
       }));
 
-      // Also update the config file
+      // Also update the config file. The write is async; surface a failure
+      // instead of silently swallowing it (a dropped rejection here would let
+      // the user believe a setting saved when it didn't).
       updateConfigFile(cfg => {
         cfg.settings = newSettings;
         cfg.changesApplied = false;
+      }).catch((err: unknown) => {
+        setNotification({
+          type: 'error',
+          message: `Failed to save settings: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        });
       });
     },
     [config.settings]
   );
 
   const [currentView, setCurrentView] = useState<MainMenuItem | null>(null);
-  const [notification, setNotification] = useState<{
-    message: string;
-    type: 'success' | 'error' | 'warning' | 'info';
-  } | null>(null);
 
   // Startup check.
   useEffect(() => {
@@ -143,13 +153,29 @@ Please reapply your changes by running \`${invocationCommand} --apply\`.`,
             ? restoreNativeBinaryFromBackup(startupCheckInfo.ccInstInfo)
             : restoreClijsFromBackup(startupCheckInfo.ccInstInfo);
 
-          restorePromise.then(() => {
-            setNotification({
-              message: 'Original Claude Code restored successfully!',
-              type: 'success',
+          restorePromise
+            .then(restored => {
+              if (restored) {
+                setNotification({
+                  message: 'Original Claude Code restored successfully!',
+                  type: 'success',
+                });
+                updateSettings(() => {});
+              } else {
+                setNotification({
+                  message: 'No backup found — nothing to restore.',
+                  type: 'warning',
+                });
+              }
+            })
+            .catch((error: unknown) => {
+              setNotification({
+                message: `Failed to restore: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+                type: 'error',
+              });
             });
-            updateSettings(() => {});
-          });
         }
         break;
       case MainMenuItem.OPEN_CONFIG:

@@ -7,6 +7,7 @@ import { DEFAULT_SETTINGS } from '@/defaultSettings';
 
 import { SettingsContext } from '../App';
 import Header from './Header';
+import { getCenteredViewportSlice } from '../viewport';
 
 interface ThinkingStyleViewProps {
   onBack: () => void;
@@ -117,6 +118,16 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
       return () => clearInterval(interval);
     }
   }, [phases, updateInterval, reverseMirror]);
+
+  // Keep the phase cursor in range whenever `phases` shrinks — by deleting the
+  // last phase, or by applying a shorter preset (selectedPhaseIndex persists
+  // across section switches). A stale index past the new end would make [e]dit
+  // read phases[stale] = undefined → setPhaseInput(undefined) → the Enter
+  // handler crashes on `phaseInput.length`. Math.min is a no-op (no re-render)
+  // while the index is already valid.
+  useEffect(() => {
+    setSelectedPhaseIndex(i => Math.min(i, Math.max(0, phases.length - 1)));
+  }, [phases.length]);
 
   useInput((input, key) => {
     if (editingInterval) {
@@ -242,9 +253,8 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
             phases.filter((_, index) => index !== selectedPhaseIndex)
           );
         });
-        if (selectedPhaseIndex >= phases.length) {
-          setSelectedPhaseIndex(Math.max(0, phases.length - 1));
-        }
+        // Cursor re-clamp handled by the phases-length effect above (the old
+        // guard here compared against the pre-delete length and never fired).
       }
     } else if (input === 'w' && selectedOption === 'phases') {
       // Move phase up
@@ -434,12 +444,12 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
           <Box flexDirection="column">
             {(() => {
               const maxVisible = 8; // Show 8 phases at a time
-              const startIndex = Math.max(
-                0,
-                selectedPhaseIndex - Math.floor(maxVisible / 2)
-              );
-              const endIndex = Math.min(phases.length, startIndex + maxVisible);
-              const adjustedStartIndex = Math.max(0, endIndex - maxVisible);
+              const { start: adjustedStartIndex, end: endIndex } =
+                getCenteredViewportSlice(
+                  selectedPhaseIndex,
+                  phases.length,
+                  maxVisible
+                );
 
               const visiblePhases = phases.slice(adjustedStartIndex, endIndex);
 
@@ -524,15 +534,12 @@ export function ThinkingStyleView({ onBack }: ThinkingStyleViewProps) {
           <Box flexDirection="column">
             {(() => {
               const maxVisible = 12; // Show 12 presets at a time (more room for the larger list)
-              const startIndex = Math.max(
-                0,
-                selectedPresetIndex - Math.floor(maxVisible / 2)
-              );
-              const endIndex = Math.min(
-                PRESETS.length,
-                startIndex + maxVisible
-              );
-              const adjustedStartIndex = Math.max(0, endIndex - maxVisible);
+              const { start: adjustedStartIndex, end: endIndex } =
+                getCenteredViewportSlice(
+                  selectedPresetIndex,
+                  PRESETS.length,
+                  maxVisible
+                );
 
               const visiblePresets = PRESETS.slice(
                 adjustedStartIndex,

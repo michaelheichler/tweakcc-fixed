@@ -94,6 +94,15 @@ export function SystemRemindersView({ onSubmit }: SystemRemindersViewProps) {
     setEntries(loadEntries());
   }, [refreshTick]);
 
+  // Keep the cursor in range when `entries` shrinks (deleting an entry, or a
+  // refresh that dropped files). Otherwise deleting the LAST entry leaves
+  // selectedIndex past the new end: the highlight vanishes and o/Enter/d become
+  // silent no-ops until the user arrows up. Math.min is a no-op (no re-render)
+  // while the index is already valid.
+  useEffect(() => {
+    setSelectedIndex(i => Math.min(i, Math.max(0, entries.length - 1)));
+  }, [entries.length]);
+
   const deferredToolsSuppressed = settings.misc?.suppressDeferredTools ?? false;
 
   const totalItems = entries.length;

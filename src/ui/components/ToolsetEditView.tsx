@@ -103,6 +103,13 @@ export function ToolsetEditView({
   useInput((input, key) => {
     if (editingName) {
       if (key.return) {
+        // Don't commit an empty/whitespace-only name: it's the toolset's
+        // identity key (defaultToolset/planModeToolset match on it) and its
+        // display label, so a blank name renders as nothing and collides.
+        // Restore the prior name, mirroring the escape branch below.
+        if (!name.trim()) {
+          setName(toolset?.name || 'New Toolset');
+        }
         setEditingName(false);
       } else if (key.escape) {
         setName(toolset?.name || 'New Toolset');
