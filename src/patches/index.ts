@@ -96,6 +96,7 @@ import { writeAutonomousOperationAllModels } from './autonomousOperationAllModel
 import { writeAutoModeClassifierModel } from './autoModeClassifierModel';
 import { writeVoiceMode } from './voiceMode';
 import { writeChannelsMode } from './channelsMode';
+import { writeClearScreen } from './clearScreen';
 import { writeReadDefaultLines } from './readDefaultLines';
 import {
   writeSuppressDeferredTools,
@@ -225,6 +226,13 @@ const PATCH_DEFINITIONS = [
     name: `Statusline update throttling correction`,
     group: PatchGroup.ALWAYS_APPLIED,
     description: `Statusline updates will be properly throttled instead of queued (or debounced)`,
+  },
+  {
+    id: 'clear-screen',
+    name: 'Clear screen command',
+    group: PatchGroup.ALWAYS_APPLIED,
+    description:
+      'Register a /clear-screen command that clears the terminal scrollback and redraws without resetting conversation context',
   },
   {
     id: 'strip-empty-system-reminders',
@@ -888,6 +896,9 @@ export const applyCustomization = async (
           config.settings.misc?.statuslineUseFixedInterval ?? false
         ),
       condition: config.settings.misc?.statuslineThrottleMs != null,
+    },
+    'clear-screen': {
+      fn: c => writeClearScreen(c),
     },
     'strip-empty-system-reminders': {
       fn: c => writeStripEmptySystemReminders(c),
