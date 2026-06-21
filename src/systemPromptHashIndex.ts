@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { StringsFile, reconstructContentFromPieces } from './systemPromptSync';
 import { CONFIG_DIR } from './config';
+import { debug } from './utils';
 
 /**
  * Gets the path to the system prompt hash index file
@@ -43,41 +44,61 @@ export const computeMD5Hash = (content: string): string => {
   return crypto.createHash('md5').update(content.trim(), 'utf8').digest('hex');
 };
 
-/**
- * Reads the hash index from disk. Returns empty object if file doesn't exist.
- */
-export const readHashIndex = async (): Promise<HashIndex> => {
+// Both indexes are regenerable caches. Read resiliently (missing OR corrupt JSON
+// -> empty, so a truncated/hand-edited index rebuilds instead of crashing the
+// tool, cf. F-69 for config), and write atomically (temp + rename, so a crash
+// mid-write can't truncate the index, cf. F-72 for backups).
+const readJsonIndexFile = async <T extends object>(
+  filePath: string
+): Promise<T> => {
   try {
-    const content = await fs.readFile(getHashIndexPath(), 'utf8');
-    return JSON.parse(content);
+    return JSON.parse(await fs.readFile(filePath, 'utf8')) as T;
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return {};
+      return {} as T;
+    }
+    if (error instanceof SyntaxError) {
+      debug(`${filePath} was not valid JSON — ignoring it and rebuilding.`);
+      return {} as T;
+    }
+    throw error;
+  }
+};
+
+const writeJsonIndexFileAtomic = async (
+  filePath: string,
+  index: Record<string, unknown>
+): Promise<void> => {
+  await fs.mkdir(CONFIG_DIR, { recursive: true });
+  // Sort keys for consistent formatting.
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(index).sort()) sorted[key] = index[key];
+  const tmp = `${filePath}.tmp-${process.pid}`;
+  try {
+    await fs.writeFile(tmp, JSON.stringify(sorted, null, 2), 'utf8');
+    await fs.rename(tmp, filePath);
+  } catch (error) {
+    try {
+      await fs.unlink(tmp);
+    } catch {
+      // best-effort temp cleanup; ignore
     }
     throw error;
   }
 };
 
 /**
- * Writes the hash index to disk
+ * Reads the hash index from disk. Returns empty object if the file is missing
+ * or corrupt (it's a regenerable cache).
  */
-export const writeHashIndex = async (index: HashIndex): Promise<void> => {
-  // Ensure config directory exists
-  await fs.mkdir(CONFIG_DIR, { recursive: true });
+export const readHashIndex = async (): Promise<HashIndex> =>
+  readJsonIndexFile<HashIndex>(getHashIndexPath());
 
-  // Sort keys for consistent formatting
-  const sortedIndex: HashIndex = {};
-  const sortedKeys = Object.keys(index).sort();
-  for (const key of sortedKeys) {
-    sortedIndex[key] = index[key];
-  }
-
-  await fs.writeFile(
-    getHashIndexPath(),
-    JSON.stringify(sortedIndex, null, 2),
-    'utf8'
-  );
-};
+/**
+ * Writes the hash index to disk (atomically).
+ */
+export const writeHashIndex = async (index: HashIndex): Promise<void> =>
+  writeJsonIndexFileAtomic(getHashIndexPath(), index);
 
 /**
  * Main utility function: Takes the entire contents of a strings-x.y.z.json file
@@ -167,40 +188,15 @@ export interface AppliedHashIndex {
 /**
  * Reads the applied hashes index from disk. Returns empty object if file doesn't exist.
  */
-export const readAppliedHashIndex = async (): Promise<AppliedHashIndex> => {
-  try {
-    const content = await fs.readFile(getAppliedHashesPath(), 'utf8');
-    return JSON.parse(content);
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return {};
-    }
-    throw error;
-  }
-};
+export const readAppliedHashIndex = async (): Promise<AppliedHashIndex> =>
+  readJsonIndexFile<AppliedHashIndex>(getAppliedHashesPath());
 
 /**
  * Writes the applied hashes index to disk
  */
 export const writeAppliedHashIndex = async (
   index: AppliedHashIndex
-): Promise<void> => {
-  // Ensure config directory exists
-  await fs.mkdir(CONFIG_DIR, { recursive: true });
-
-  // Sort keys for consistent formatting
-  const sortedIndex: AppliedHashIndex = {};
-  const sortedKeys = Object.keys(index).sort();
-  for (const key of sortedKeys) {
-    sortedIndex[key] = index[key];
-  }
-
-  await fs.writeFile(
-    getAppliedHashesPath(),
-    JSON.stringify(sortedIndex, null, 2),
-    'utf8'
-  );
-};
+): Promise<void> => writeJsonIndexFileAtomic(getAppliedHashesPath(), index);
 
 /**
  * Updates the applied hash for a specific prompt ID

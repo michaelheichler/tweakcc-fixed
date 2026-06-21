@@ -402,11 +402,15 @@ async function extractVersionFromJsFile(cliPath: string): Promise<string> {
 async function extractVersionFromNativeBinary(
   binaryPath: string
 ): Promise<string> {
-  const { data: claudeJsBuffer } =
+  const { data: claudeJsBuffer, error: extractError } =
     await extractClaudeJsFromNativeInstallation(binaryPath);
 
   if (!claudeJsBuffer) {
-    throw new Error(`Could not extract JS from native binary: ${binaryPath}`);
+    throw new Error(
+      `Could not extract JS from native binary: ${binaryPath}${
+        extractError ? ` (${extractError})` : ''
+      }`
+    );
   }
 
   const content = claudeJsBuffer.toString('utf8');
@@ -524,10 +528,11 @@ export async function collectCandidates(): Promise<InstallationCandidate[]> {
     }
   }
 
-  // Sort paths so bunx cache entries are checked in descending version order.
-  // This ensures that if multiple bunx cache versions exist, the latest is patched.
+  // Sort candidates in descending version order (latest first) so the picker
+  // pre-selects, and the error example suggests, the newest install. The
+  // comparator returns a-b (ascending), so swap the args to get descending.
   const sortedCandidates = [...candidates].sort((a, b) =>
-    compareSemverVersions(a.version, b.version)
+    compareSemverVersions(b.version, a.version)
   );
 
   return sortedCandidates;

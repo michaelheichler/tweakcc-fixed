@@ -56,10 +56,15 @@ async function tryLoadNativeInstallationModule(): Promise<NativeInstallationModu
 export async function extractClaudeJsFromNativeInstallation(
   nativeInstallationPath: string,
   version?: string
-): Promise<{ data: Buffer | null; clearBytecode: boolean }> {
+): Promise<{ data: Buffer | null; clearBytecode: boolean; error?: string }> {
   const mod = await tryLoadNativeInstallationModule();
   if (!mod) {
-    return { data: null, clearBytecode: false };
+    return {
+      data: null,
+      clearBytecode: false,
+      error:
+        'node-lief native module unavailable on this platform/runtime (cannot extract from native installs)',
+    };
   }
   return mod.extractClaudeJsFromNativeInstallation(
     nativeInstallationPath,

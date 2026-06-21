@@ -212,24 +212,44 @@ describe('config.ts', () => {
 
       expect(result.settings.misc.enableModelCustomizations).toBe(false);
     });
+
+    it('should recover from a corrupt config.json instead of crashing', async () => {
+      vi.spyOn(fs, 'readFile').mockResolvedValue('{ "ccVersion": "2.1.1'); // invalid JSON
+      const renameSpy = vi.spyOn(fs, 'rename').mockResolvedValue(undefined);
+
+      const result = await readConfigFile();
+
+      // Falls back to defaults rather than throwing an uncaught SyntaxError.
+      expect(result.settings).toEqual(DEFAULT_SETTINGS);
+      // Moves the bad file aside so it stays recoverable.
+      expect(renameSpy).toHaveBeenCalledWith(
+        CONFIG_FILE,
+        expect.stringMatching(/config\.json\.corrupt-/)
+      );
+    });
   });
 
   describe('updateConfigFile', () => {
-    it('should update the config file', async () => {
+    it('should write the config atomically (temp file then rename)', async () => {
       const writeFileSpy = vi
         .spyOn(fs, 'writeFile')
         .mockResolvedValue(undefined);
+      const renameSpy = vi.spyOn(fs, 'rename').mockResolvedValue(undefined);
       vi.spyOn(fs, 'readFile').mockRejectedValue(createEnoent()); // Start with default config
       const newSettings = { ...DEFAULT_SETTINGS, themes: [] };
       await updateConfigFile(c => {
         c.settings = newSettings;
       });
 
+      // Content is written to a sibling temp file...
       expect(writeFileSpy).toHaveBeenCalledTimes(1);
-      const [filePath, fileContent] = writeFileSpy.mock.calls[0];
-      expect(filePath).toBe(CONFIG_FILE);
+      const [tmpPath, fileContent] = writeFileSpy.mock.calls[0];
+      expect(tmpPath).toEqual(expect.stringMatching(/config\.json\.tmp-/));
       const writtenConfig = JSON.parse(fileContent as string);
       expect(writtenConfig.settings).toEqual(newSettings);
+
+      // ...then atomically renamed onto the real config path.
+      expect(renameSpy).toHaveBeenCalledWith(tmpPath, CONFIG_FILE);
     });
   });
 
@@ -247,8 +267,14 @@ describe('config.ts', () => {
         .mockResolvedValueOnce(Buffer.from('backup content')) // Reading backup file
         .mockRejectedValue(createEnoent()); // Reading config file and others
 
-      // Mock file operations for the helper function
-      vi.spyOn(fs, 'stat').mockRejectedValue(createEnoent()); // File doesn't exist
+      // Mock file operations for the helper function. The backup file must
+      // appear to exist (restore now guards on it); the target cli.js does not.
+      vi.spyOn(fs, 'stat').mockImplementation(async p => {
+        if (typeof p === 'string' && p.includes('cli.js.backup')) {
+          return {} as Awaited<ReturnType<typeof fs.stat>>;
+        }
+        throw createEnoent();
+      });
       vi.spyOn(fs, 'unlink').mockResolvedValue(undefined);
       const writeFileSpy = vi
         .spyOn(fs, 'writeFile')
@@ -276,6 +302,17 @@ describe('config.ts', () => {
 
       expect(cliWriteCall).toBeDefined();
       expect(cliWriteCall![1]).toEqual(Buffer.from('backup content'));
+    });
+
+    it('should return false when no cli.js backup exists', async () => {
+      vi.spyOn(fs, 'stat').mockRejectedValue(createEnoent()); // backup absent
+      const ccInstInfo = {
+        cliPath: '/fake/path/cli.js',
+      } as ClaudeCodeInstallationInfo;
+
+      const result = await restoreClijsFromBackup(ccInstInfo);
+
+      expect(result).toBe(false);
     });
   });
 

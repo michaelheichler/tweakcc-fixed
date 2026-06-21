@@ -10,6 +10,25 @@ import { clearAllAppliedHashes } from './systemPromptHashIndex';
 import { debug, replaceFileBreakingHardLinks, doesFileExist } from './utils';
 import { ClaudeCodeInstallationInfo } from './types';
 
+// Copy a file into place atomically: copy to a sibling temp, then rename onto
+// the destination. rename(2) is atomic within a filesystem, so a crash mid-copy
+// leaves only a temp file — never a truncated backup that would later be trusted
+// and restored as if it were pristine (F-72).
+const atomicCopyFile = async (src: string, dest: string): Promise<void> => {
+  const tmp = `${dest}.tmp-${process.pid}`;
+  try {
+    await fs.copyFile(src, tmp);
+    await fs.rename(tmp, dest);
+  } catch (error) {
+    try {
+      await fs.unlink(tmp);
+    } catch {
+      // best-effort temp cleanup; ignore
+    }
+    throw error;
+  }
+};
+
 export const backupClijs = async (ccInstInfo: ClaudeCodeInstallationInfo) => {
   // Only backup cli.js for NPM installs (when cliPath is set)
   if (!ccInstInfo.cliPath) {
@@ -19,7 +38,7 @@ export const backupClijs = async (ccInstInfo: ClaudeCodeInstallationInfo) => {
 
   await ensureConfigDir();
   debug(`Backing up cli.js to ${CLIJS_BACKUP_FILE}`);
-  await fs.copyFile(ccInstInfo.cliPath, CLIJS_BACKUP_FILE);
+  await atomicCopyFile(ccInstInfo.cliPath, CLIJS_BACKUP_FILE);
   await updateConfigFile(config => {
     config.changesApplied = false;
     config.ccVersion = ccInstInfo.version;
@@ -38,7 +57,7 @@ export const backupNativeBinary = async (
 
   await ensureConfigDir();
   debug(`Backing up native binary to ${NATIVE_BINARY_BACKUP_FILE}`);
-  await fs.copyFile(
+  await atomicCopyFile(
     ccInstInfo.nativeInstallationPath,
     NATIVE_BINARY_BACKUP_FILE
   );
@@ -60,6 +79,11 @@ export const restoreClijsFromBackup = async (
     debug(
       'restoreClijsFromBackup: Skipping for native installation (no cliPath)'
     );
+    return false;
+  }
+
+  if (!(await doesFileExist(CLIJS_BACKUP_FILE))) {
+    debug('restoreClijsFromBackup: No backup file exists, skipping');
     return false;
   }
 

@@ -236,6 +236,48 @@ describe('userMessageDisplay migration', () => {
       fitBoxToContent: false,
     });
   });
+
+  it('should map legacy `padding` to paddingX when borderStyle is also missing', async () => {
+    // Regression for the dual-object aliasing bug: a new-format config that still
+    // carries the pre-split `padding` AND lacks `borderStyle` used to lose the
+    // padding value (the border block set paddingX=0, so the padding-split
+    // self-skipped) — paddingX became 0 and a stray `padding` key was left.
+    const oldConfig = {
+      ccVersion: '1.0.0',
+      ccInstallationDir: null,
+      lastModified: '2024-01-01',
+      changesApplied: true,
+      settings: {
+        ...DEFAULT_SETTINGS,
+        userMessageDisplay: {
+          format: ' > {} ',
+          styling: [],
+          foregroundColor: 'default',
+          backgroundColor: null,
+          padding: 2,
+          // no borderStyle, no paddingX, no fitBoxToContent
+        },
+      },
+    };
+
+    vi.spyOn(fs, 'readFile').mockResolvedValue(JSON.stringify(oldConfig));
+
+    const result = await readConfigFile();
+
+    // padding (2) must carry into paddingX, the stray `padding` key must be gone
+    // (toEqual asserts the exact shape — a leftover `padding` would fail).
+    expect(result.settings.userMessageDisplay).toEqual({
+      format: ' > {} ',
+      styling: [],
+      foregroundColor: 'default',
+      backgroundColor: null,
+      borderStyle: 'none',
+      borderColor: 'rgb(255,255,255)',
+      paddingX: 2,
+      paddingY: 0,
+      fitBoxToContent: false,
+    });
+  });
 });
 
 describe('migrateConfigIfNeeded', () => {
@@ -307,5 +349,11 @@ describe('migrateConfigIfNeeded', () => {
 
     expect(result1).toBe(true);
     expect(result2).toBe(false);
+  });
+
+  it('should return false (not throw) on a corrupt config.json', async () => {
+    vi.spyOn(fs, 'readFile').mockResolvedValue('{ not valid json');
+    const result = await migrateConfigIfNeeded();
+    expect(result).toBe(false);
   });
 });

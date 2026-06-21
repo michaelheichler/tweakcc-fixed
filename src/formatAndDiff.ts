@@ -25,6 +25,20 @@ export interface FormatDiffResult {
   };
 }
 
+/**
+ * Returned instead of a diff when formatting couldn't produce one. `reason`
+ * distinguishes a benign missing formatter from a parse failure; for the latter
+ * `modifiedFailed && !originalFailed` is a corruption signal (the patch made the
+ * JS unparseable while the original was fine).
+ */
+export interface FormatDiffSkipped {
+  reason: 'oxfmt-unavailable' | 'format-error';
+  originalFailed: boolean;
+  modifiedFailed: boolean;
+}
+
+export type FormatDiffOutcome = FormatDiffResult | FormatDiffSkipped;
+
 // ======================================================================
 // oxfmt lazy loader (graceful fallback when native binary unavailable)
 // ======================================================================
@@ -58,11 +72,15 @@ export async function formatAndDiff(
   original: string,
   modified: string,
   options?: { contextLines?: number; printWidth?: number }
-): Promise<FormatDiffResult | null> {
+): Promise<FormatDiffOutcome> {
   const fmt = await getOxfmtFormat();
   if (!fmt) {
     debug('oxfmt unavailable, skipping format+diff');
-    return null;
+    return {
+      reason: 'oxfmt-unavailable',
+      originalFailed: false,
+      modifiedFailed: false,
+    };
   }
 
   const contextLines = options?.contextLines ?? 10;
@@ -85,7 +103,11 @@ export async function formatAndDiff(
       'modified:',
       fmtMod.errors
     );
-    return null;
+    return {
+      reason: 'format-error',
+      originalFailed: fmtOrig.errors.length > 0,
+      modifiedFailed: fmtMod.errors.length > 0,
+    };
   }
 
   const patch = structuredPatch(

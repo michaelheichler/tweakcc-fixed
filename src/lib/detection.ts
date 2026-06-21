@@ -67,12 +67,23 @@ export async function findAllInstallations(): Promise<Installation[]> {
 }
 
 /**
- * Options for tryDetectInstallation()
+ * Options for {@link tryDetectInstallation}.
+ *
+ * @example
+ * ```typescript
+ * import { tryDetectInstallation, type DetectInstallationOptions } from 'tweakcc';
+ *
+ * const opts: DetectInstallationOptions = { interactive: true };
+ * const installation = await tryDetectInstallation(opts);
+ * ```
  */
 export interface DetectInstallationOptions {
-  /** Explicit path to Claude Code - skips auto-detection */
+  /** Explicit path to a Claude Code installation — skips auto-detection. */
   path?: string;
-  /** Show interactive picker UI if multiple installations found (default: false) */
+  /**
+   * Show the interactive picker when multiple installations are found, instead
+   * of throwing with the list. Default: `false`.
+   */
   interactive?: boolean;
 }
 

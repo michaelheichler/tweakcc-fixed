@@ -9,42 +9,62 @@ import { CONFIG_FILE, ensureConfigDir } from './config';
  * @param readConfig The config that was read.
  */
 export const migrateUserMessageDisplayToV320 = (readConfig: TweakccConfig) => {
-  // In v3.2.0 userMessageDisplay was restructured from prefix/message to a single format string.
-  const tmpPreV320UserMessageDisplay = readConfig?.settings
-    ?.userMessageDisplay as unknown as {
-    prefix?: {
-      format: string;
-      styling: string[];
-      foregroundColor: string;
-      backgroundColor: string;
-    };
-    message?: {
-      format: string;
-      styling: string[];
-      foregroundColor: string;
-      backgroundColor: string;
-    };
-    padding?: number;
-  };
+  // Across v3.2.x, userMessageDisplay was restructured from prefix/message to a
+  // single format string, then border props, paddingX/paddingY (split from a
+  // single `padding`), and fitBoxToContent were added.
+  const orig = readConfig?.settings?.userMessageDisplay as unknown as
+    | ({
+        prefix?: {
+          format: string;
+          styling: string[];
+          foregroundColor: string;
+          backgroundColor: string;
+        };
+        message?: {
+          format: string;
+          styling: string[];
+          foregroundColor: string;
+          backgroundColor: string;
+        };
+        padding?: number;
+      } & Record<string, unknown>)
+    | undefined;
 
-  if (tmpPreV320UserMessageDisplay?.prefix) {
-    const old = tmpPreV320UserMessageDisplay;
+  if (!orig) return;
+
+  // Snapshot the ORIGINAL shape up front and key every condition below off this
+  // snapshot, never the live object. When there is no `prefix`, the live
+  // userMessageDisplay IS `orig`, so a block that adds e.g. `paddingX` would
+  // otherwise make a later `!('paddingX' in …)` check skip and drop the user's
+  // `padding`. (This is the bug fix: the border block used to set paddingX,
+  // pre-empting the padding-split below.)
+  const hadPrefix = !!orig.prefix;
+  const hadBorderStyle = 'borderStyle' in orig;
+  const hadPadding = 'padding' in orig;
+  const hadPaddingX = 'paddingX' in orig;
+  const hadFitBoxToContent = 'fitBoxToContent' in orig;
+  const origPadding = orig.padding;
+
+  // 1. prefix/message -> single format string.
+  if (hadPrefix) {
     readConfig.settings.userMessageDisplay = {
-      format: (old.prefix?.format || '') + (old.message?.format || '{}'),
+      format: (orig.prefix?.format || '') + (orig.message?.format || '{}'),
       styling: [
-        ...(old.prefix?.styling || []),
-        ...(old.message?.styling || []),
+        ...(orig.prefix?.styling || []),
+        ...(orig.message?.styling || []),
       ],
       foregroundColor:
-        old.message?.foregroundColor === 'rgb(0,0,0)'
+        orig.message?.foregroundColor === 'rgb(0,0,0)'
           ? 'default'
-          : old.message?.foregroundColor ||
-            old.prefix?.foregroundColor ||
+          : orig.message?.foregroundColor ||
+            orig.prefix?.foregroundColor ||
             'default',
       backgroundColor:
-        old.message?.backgroundColor === 'rgb(0,0,0)'
+        orig.message?.backgroundColor === 'rgb(0,0,0)'
           ? null
-          : old.message?.backgroundColor || old.prefix?.backgroundColor || null,
+          : orig.message?.backgroundColor ||
+            orig.prefix?.backgroundColor ||
+            null,
       borderStyle: 'none',
       borderColor: 'rgb(255,255,255)',
       paddingX: 0,
@@ -53,36 +73,29 @@ export const migrateUserMessageDisplayToV320 = (readConfig: TweakccConfig) => {
     };
   }
 
-  // In v3.2.0 border properties were added to userMessageDisplay.
-  if (
-    tmpPreV320UserMessageDisplay &&
-    !('borderStyle' in tmpPreV320UserMessageDisplay)
-  ) {
-    readConfig.settings.userMessageDisplay.borderStyle = 'none';
-    readConfig.settings.userMessageDisplay.borderColor = 'rgb(255,255,255)';
-    readConfig.settings.userMessageDisplay.paddingX = 0;
-    readConfig.settings.userMessageDisplay.paddingY = 0;
-    readConfig.settings.userMessageDisplay.fitBoxToContent = false;
+  const umd = readConfig.settings.userMessageDisplay;
+
+  // 2. border properties added. (paddingX/paddingY belong to the split below,
+  // so this block must NOT touch them — see the snapshot note above.)
+  if (!hadBorderStyle) {
+    umd.borderStyle = 'none';
+    umd.borderColor = 'rgb(255,255,255)';
   }
 
-  // In v3.2.0 padding was split into paddingX and paddingY.
-  if (
-    tmpPreV320UserMessageDisplay &&
-    'padding' in tmpPreV320UserMessageDisplay &&
-    !('paddingX' in tmpPreV320UserMessageDisplay)
-  ) {
-    readConfig.settings.userMessageDisplay.paddingX =
-      tmpPreV320UserMessageDisplay.padding || 0;
-    readConfig.settings.userMessageDisplay.paddingY = 0;
-    delete tmpPreV320UserMessageDisplay.padding; // This will delete it from the readConfig but with type safety.
+  // 3. single `padding` split into paddingX/paddingY.
+  if (hadPadding && !hadPaddingX) {
+    umd.paddingX = origPadding || 0;
+    umd.paddingY = 0;
+    delete (umd as unknown as Record<string, unknown>).padding;
+  } else if (!hadPaddingX) {
+    // No legacy `padding` and no paddingX yet -> initialize the new defaults.
+    umd.paddingX = 0;
+    umd.paddingY = 0;
   }
 
-  // In v3.2.x fitBoxToContent was added to userMessageDisplay.
-  if (
-    tmpPreV320UserMessageDisplay &&
-    !('fitBoxToContent' in tmpPreV320UserMessageDisplay)
-  ) {
-    readConfig.settings.userMessageDisplay.fitBoxToContent = false;
+  // 4. fitBoxToContent added.
+  if (!hadFitBoxToContent) {
+    umd.fitBoxToContent = false;
   }
 };
 
@@ -132,6 +145,11 @@ export async function migrateConfigIfNeeded(): Promise<boolean> {
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       // Config file doesn't exist, no migration needed
+      return false;
+    }
+    if (error instanceof SyntaxError) {
+      // Corrupt config.json — nothing to migrate. readConfigFile recovers it
+      // (moves it aside + resets to defaults); don't crash before then (F-69).
       return false;
     }
     throw error;

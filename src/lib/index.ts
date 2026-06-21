@@ -124,4 +124,13 @@ export const helpers = {
   // Diff utilities
   globalReplace,
   showDiff,
+
+  // Intentionally curated to the high-level entry points. The lower-level
+  // building blocks behind them are NOT re-exported here on purpose:
+  //   - getReactModuleNameNonBun / getReactModuleFunctionBun → internals of getReactVar
+  //   - findRequireFunc → internal of getRequireFuncName
+  //   - clearReactVarCache / clearRequireFuncNameCache → the clearCaches umbrella
+  //     already invalidates both
+  // The package shares those internals via src/patches/index.ts; the published
+  // library surface deliberately keeps them out to avoid committing to internals.
 };

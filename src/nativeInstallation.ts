@@ -154,6 +154,10 @@ export function resolveNixBinaryWrapper(binaryPath: string): string | null {
  */
 const BUN_TRAILER = Buffer.from('\n---- Bun! ----\n');
 const BUN_BYTECODE_PREFIX = '// @bun @bytecode';
+// A `// @bun @bytecode @bun-cjs` header marks a readable CommonJS SOURCE module
+// (patchable JS), NOT compiled bytecode — so it must NOT trigger the npm-source
+// fallback. This marker distinguishes the two.
+const BUN_CJS_MARKER = '@bun-cjs';
 
 // Size constants for binary structures
 const SIZEOF_OFFSETS = 32;
@@ -392,8 +396,7 @@ function parseBunDataBlob(bunDataContent: Buffer): {
   debug(`parseBunDataBlob: Got trailer: ${trailerBytes.toString('hex')}`);
 
   if (!trailerBytes.equals(BUN_TRAILER)) {
-    debug(`Expected: ${BUN_TRAILER.toString('hex')}`);
-    debug(`Got: ${trailerBytes.toString('hex')}`);
+    // Expected/Got hex already logged just above on every call.
     throw new Error('BUN trailer bytes do not match trailer');
   }
 
@@ -847,7 +850,7 @@ function fetchNpmSource(version: string): Buffer | null {
 export function extractClaudeJsFromNativeInstallation(
   nativeInstallationPath: string,
   version?: string
-): { data: Buffer | null; clearBytecode: boolean } {
+): { data: Buffer | null; clearBytecode: boolean; error?: string } {
   try {
     LIEF.logging.disable();
     const binary = LIEF.parse(nativeInstallationPath);
@@ -885,8 +888,18 @@ export function extractClaudeJsFromNativeInstallation(
     );
 
     if (result) {
-      const head = result.subarray(0, 30).toString('utf8');
-      if (head.startsWith(BUN_BYTECODE_PREFIX)) {
+      const head = result.subarray(0, 64).toString('utf8');
+      // Only ACTUAL bytecode (no @bun-cjs source marker) should fall back to
+      // fetching npm source. Modern CC ships the claude module as readable
+      // `// @bun @bytecode @bun-cjs` SOURCE — patchable directly — so the old
+      // `startsWith` check false-matched it and ran a doomed `npm pack` on every
+      // native apply (the npm package no longer ships package/cli.js). Skipping
+      // it returns the same data with clearBytecode=false, and the patched source
+      // executes (the bytecode field is vestigial for @bun-cjs modules). (F-67)
+      if (
+        head.startsWith(BUN_BYTECODE_PREFIX) &&
+        !head.includes(BUN_CJS_MARKER)
+      ) {
         debug(
           'extractClaudeJsFromNativeInstallation: Extracted content is Bun bytecode — falling back to npm source'
         );
@@ -916,14 +929,24 @@ export function extractClaudeJsFromNativeInstallation(
       'extractClaudeJsFromNativeInstallation: claude module not found in any module'
     );
 
-    return { data: null, clearBytecode: false };
+    return {
+      data: null,
+      clearBytecode: false,
+      error: 'claude module not found in any of the binary modules',
+    };
   } catch (error) {
     debug(
       'extractClaudeJsFromNativeInstallation: Error during extraction:',
       error
     );
 
-    return { data: null, clearBytecode: false };
+    return {
+      data: null,
+      clearBytecode: false,
+      error: `extraction threw: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
   }
 }
 

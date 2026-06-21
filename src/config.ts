@@ -12,7 +12,12 @@ import {
   ThinkingVerbsConfig,
   TweakccConfig,
 } from './types';
-import { debug, expandTilde, deepMergeWithDefaults } from './utils';
+import {
+  debug,
+  expandTilde,
+  deepMergeWithDefaults,
+  readResponseTextCapped,
+} from './utils';
 import { hasUnappliedSystemPromptChanges } from './systemPromptHashIndex';
 import {
   migrateUserMessageDisplayToV320,
@@ -189,6 +194,12 @@ const normalizeConfig = (config: TweakccConfig): void => {
     delete tmpThinkingVerbs.punctuation;
   }
 
+  // userMessageDisplay's shape migration MUST run before the deep-merge below:
+  // it keys off which fields the RAW (pre-default) config has. If the merge runs
+  // first it pre-fills the new-format defaults (e.g. paddingX), making the
+  // padding-split self-skip and silently drop the user's legacy `padding`.
+  migrateUserMessageDisplayToV320(config);
+
   // Deep merge the loaded settings with defaults to fill in any missing keys (recursively)
   // This ensures all required properties exist, including nested ones like inputPatternHighlighters
   config.settings = deepMergeWithDefaults(
@@ -228,9 +239,6 @@ const normalizeConfig = (config: TweakccConfig): void => {
       theme => deepMergeWithDefaults(theme, DEFAULT_THEME) as Theme
     );
   }
-
-  // In v3.2.0 userMessageDisplay was restructured from prefix/message to a single format string.
-  migrateUserMessageDisplayToV320(config);
 
   // In 3.2.6 hideCtrlGToEditPrompt was renamed to hideCtrlGToEdit.
   migrateHideCtrlGToEditPrompt(config);
@@ -276,6 +284,23 @@ export const readConfigFile = async (): Promise<TweakccConfig> => {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return defaultConfig;
     }
+    if (error instanceof SyntaxError) {
+      // config.json is corrupt — truncated by a crash mid-write, or hand-edited
+      // into invalid JSON. Don't brick the tool on every run: move the bad file
+      // aside (so it stays recoverable) and fall back to defaults (F-69).
+      const corruptPath = `${CONFIG_FILE}.corrupt-${Date.now()}`;
+      try {
+        await fs.rename(CONFIG_FILE, corruptPath);
+        console.error(
+          `tweakcc: ${CONFIG_FILE} was not valid JSON — moved it to ${corruptPath} and reset to defaults.`
+        );
+      } catch {
+        console.error(
+          `tweakcc: ${CONFIG_FILE} was not valid JSON — falling back to defaults.`
+        );
+      }
+      return defaultConfig;
+    }
     throw error;
   }
 };
@@ -302,11 +327,21 @@ export const updateConfigFile = async (
  * Internal function to write contents to the config file.
  */
 const saveConfig = async (config: TweakccConfig): Promise<void> => {
+  config.lastModified = new Date().toISOString();
+  await ensureConfigDir();
+  // Write atomically: serialize to a sibling temp file, then rename onto the
+  // real path. rename(2) is atomic within a filesystem, so a crash mid-write can
+  // never leave a truncated config.json that bricks the next run (F-69).
+  const tmpFile = `${CONFIG_FILE}.tmp-${process.pid}`;
   try {
-    config.lastModified = new Date().toISOString();
-    await ensureConfigDir();
-    await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
+    await fs.writeFile(tmpFile, JSON.stringify(config, null, 2));
+    await fs.rename(tmpFile, CONFIG_FILE);
   } catch (error) {
+    try {
+      await fs.unlink(tmpFile);
+    } catch {
+      // best-effort temp cleanup; ignore
+    }
     console.error('Error saving config:', error);
     throw error;
   }
@@ -375,6 +410,8 @@ export const fetchConfigFromUrl = async (
         Accept: 'application/json',
         'User-Agent': 'tweakcc',
       },
+      // Cap the fetch so a hung connection fails fast instead of blocking --apply.
+      signal: AbortSignal.timeout(20_000),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -393,10 +430,12 @@ export const fetchConfigFromUrl = async (
     );
   }
 
-  // Parse JSON - the remote config contains settings fields directly
+  // Parse JSON - the remote config contains settings fields directly.
+  // Cap the body: --config-url is attacker-influenceable and a config is only
+  // KB-sized, so 8 MB is generous while preventing a multi-GB OOM payload.
   let remoteSettings: Partial<Settings>;
   try {
-    const content = await response.text();
+    const content = await readResponseTextCapped(response, 8 * 1024 * 1024);
     remoteSettings = JSON.parse(content);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
