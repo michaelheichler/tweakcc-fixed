@@ -92,6 +92,7 @@ import { writeScrollEscapeSequenceFilter } from './scrollEscapeSequenceFilter';
 import { writeWorktreeMode } from './worktreeMode';
 import { writeAllowCustomAgentModels } from './allowCustomAgentModels';
 import { writeMaxEffortDefault } from './maxEffortDefault';
+import { writeAutonomousOperationAllModels } from './autonomousOperationAllModels';
 import { writeAutoModeClassifierModel } from './autoModeClassifierModel';
 import { writeVoiceMode } from './voiceMode';
 import { writeChannelsMode } from './channelsMode';
@@ -422,6 +423,13 @@ const PATCH_DEFINITIONS = [
     group: PatchGroup.MISC_CONFIGURABLE,
     description:
       'Opus 4.7 sessions default to "max" reasoning effort instead of "xhigh" (override with /effort or CLAUDE_CODE_EFFORT_LEVEL)',
+  },
+  {
+    id: 'autonomous-operation-all-models',
+    name: 'Fable/Mythos prompt set (all models)',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'Treats your selected model as Fable/Mythos everywhere CC branches on model family (flips the zQ gate): you get the autonomous-operation prompt (proceed without asking for reversible in-scope work; finish the job before ending the turn), the "# Communicating with the user" comms block in place of "# Text output", /loop dynamic-pacing behavior, and brief-mode comms shaping. Per-model feature-flag routing also follows fable but is inert on a local install',
   },
   {
     id: 'auto-mode-classifier-model',
@@ -1047,6 +1055,10 @@ export const applyCustomization = async (
     'max-effort-default': {
       fn: c => writeMaxEffortDefault(c),
       condition: !!config.settings.misc?.maxEffortDefault,
+    },
+    'autonomous-operation-all-models': {
+      fn: c => writeAutonomousOperationAllModels(c),
+      condition: !!config.settings.misc?.autonomousOperationAllModels,
     },
     'auto-mode-classifier-model': {
       fn: c =>
