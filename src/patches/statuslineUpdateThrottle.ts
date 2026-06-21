@@ -127,6 +127,17 @@ export const writeStatuslineUpdateThrottle = (
   const call = match[6] ?? `${statuslineUpdateFn}()`;
   const argument = match[7];
 
+  // Coerce intervalMs to a safe non-negative integer before splicing it into the
+  // generated code below. The value comes from config (settings.misc.
+  // statuslineThrottleMs), which is runtime JSON reachable via untrusted
+  // --config-url; TS's `number` type is not a runtime guarantee, so a code-
+  // bearing string (e.g. "1);evil()//") would otherwise inject. (F-90.)
+  const intervalNum = Number(intervalMs);
+  const safeIntervalMs =
+    Number.isFinite(intervalNum) && intervalNum >= 0
+      ? Math.trunc(intervalNum)
+      : 300;
+
   // Build dependencies array for useCallback/useEffect
   const dependencies = argument
     ? `${statuslineUpdateFn}, ${argument}`
@@ -147,7 +158,7 @@ export const writeStatuslineUpdateThrottle = (
         `,argRef=${reactVar}.useRef(${argument})` +
         `,unused1=${reactVar}.useEffect(()=>{argRef.current=${argument};},[${argument}])` +
         `,unused2=${reactVar}.useEffect(()=>{` +
-        `const id=setInterval(()=>${statuslineUpdateFn}(argRef.current),${intervalMs});` +
+        `const id=setInterval(()=>${statuslineUpdateFn}(argRef.current),${safeIntervalMs});` +
         `return()=>clearInterval(id);` +
         `},[${intervalDependencies}]),` +
         `${callbackVar}=${reactVar}.useCallback(()=>{},[])`;
@@ -155,7 +166,7 @@ export const writeStatuslineUpdateThrottle = (
       replacement =
         firstPart +
         `,unused1=${reactVar}.useEffect(()=>{` +
-        `const id=setInterval(()=>${call},${intervalMs});` +
+        `const id=setInterval(()=>${call},${safeIntervalMs});` +
         `return()=>clearInterval(id);` +
         `},[${intervalDependencies}]),` +
         `${callbackVar}=${reactVar}.useCallback(()=>{},[])`;
@@ -167,7 +178,7 @@ export const writeStatuslineUpdateThrottle = (
       `,lastCall=${reactVar}.useRef(0),` +
       `${callbackVar}=${reactVar}.useCallback(()=>{` +
       `let now=Date.now();` +
-      `if(now-lastCall.current>=${intervalMs}){` +
+      `if(now-lastCall.current>=${safeIntervalMs}){` +
       `lastCall.current=now;` +
       `${call};` +
       `}` +

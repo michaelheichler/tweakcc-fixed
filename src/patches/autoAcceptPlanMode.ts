@@ -271,7 +271,13 @@ export const writeAutoAcceptPlanMode = (oldFile: string): string | null => {
     return patchPlanModePrompts(newFile);
   }
 
-  const absoluteStart = Math.max(0, readyIdx - 500) + returnMatch.index!;
+  // returnMatch.index is relative to `beforeReady`, which starts at
+  // returnSearchStart — so reconstruct the absolute position from THAT base, the
+  // same way the simpleReturnIdx fallback above does. (The old `readyIdx - 500`
+  // was a stale leftover from when the search window was 500 instead of 2500; it
+  // lands the insertion 2000 bytes too far and corrupts cli.js on any CC version
+  // where this returnMatch shape is present.)
+  const absoluteStart = returnSearchStart + returnMatch.index!;
   const insertion = `${acceptFuncName}("yes-accept-edits-keep-context");return null;`;
 
   const newFile =
