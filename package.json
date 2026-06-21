@@ -21,7 +21,7 @@
     "watch": "tsdown --watch --dts src/index.tsx src/lib/index.ts",
     "start": "node dist/index.mjs",
     "prelint": "node tools/generateIdentifierUnion.mjs",
-    "lint": "tsc --noEmit && eslint src",
+    "lint": "tsc --noEmit && eslint src tools",
     "test": "vitest run",
     "test:dev": "vitest",
     "pretest": "node tools/generateIdentifierUnion.mjs",
