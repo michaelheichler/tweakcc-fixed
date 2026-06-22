@@ -33,6 +33,85 @@ const WORKFLOW_SCRIPT_IDENTIFIER_MAP = {
 // semantic names for the prompt's interpolated identifiers — required when
 // override .md files reference those names (`${ATTACHMENT_OBJECT.filename}`).
 const NEW_PROMPT_ASSIGNMENTS = [
+  // 2.1.186 — five prompts were reworded/rewritten past the 100-char fuzzy
+  // fingerprint so they extract anonymous (and read-mcp-resource, after
+  // Anthropic split its directory-listing into a separate tool, shrank to a
+  // 235-char param list that the prose-quality gate dropped). Restore their
+  // existing ids so the LCC overrides rebind; the override BODIES are
+  // re-trimmed to the new pristine separately (showtime §8). No identifierMap
+  // needed: review-pr's only label is the repeated PR-number slot, and the
+  // other four are re-trimmed against the new slot order in the override pass.
+  {
+    matcher: t => t.includes("The PR's diff is the only review scope"),
+    name: 'Agent Prompt: /review-pr slash command',
+    id: 'agent-prompt-review-pr-slash-command',
+    description:
+      'System prompt for reviewing a GitHub pull request — gather the PR diff via gh pr view/diff (the PR diff is the only review scope)',
+  },
+  {
+    matcher: t =>
+      t.includes('is temporarily unavailable') &&
+      t.includes('do not require the classifier and can still be used'),
+    name: 'Data: Auto mode safety classifier unavailable',
+    id: 'data-auto-mode-safety-classifier-unavailable',
+    description:
+      'tool_result text telling the model the auto-mode safety classifier is down and to retry later or do read-only work',
+  },
+  {
+    // Anchor on the <usage> block — the sibling async-agent-launched-result
+    // prompt was reworded with the same "summary: '<5-10 word recap>'" hint, so
+    // matching that phrase alone hijacks it (assignments win over carryover).
+    matcher: t => t.includes('<usage>subagent_tokens:'),
+    name: 'System Prompt: Subagent id usage footer',
+    id: 'system-prompt-subagent-id-usage-footer',
+    description:
+      'tool_result footer giving the agentId (with a SendMessage continue hint that now carries a summary recap) plus a usage block of token/tool/duration stats',
+  },
+  {
+    matcher: t =>
+      t.includes('keep one line per entry, move detail into topic files'),
+    name: 'System Reminder: Memory index over budget — compact now',
+    id: 'system-reminder-memory-index-over-budget-compaction',
+    description:
+      'Instruction injected when a memory index exceeds its read budget; tells the model to compact it',
+  },
+  {
+    matcher: t =>
+      t.includes(
+        'Reads a specific resource from an MCP server, identified by server name and resource URI'
+      ),
+    name: 'Tool Description: Read MCP Resource',
+    id: 'tool-description-read-mcp-resource',
+    description: 'descriptionForModel for the ReadMcpResource tool',
+  },
+  {
+    // The IDE line-selection reminder's content slot changed from a bare ${}
+    // to ${k6l(e.content)} inside the 100-char fuzzy fingerprint, so it dropped
+    // to anonymous though its opening is unchanged. No override references it;
+    // restore the name/map for the no-regression bar (it is model-injected).
+    matcher: t =>
+      t.includes('The user selected the lines ') &&
+      t.includes('This may or may not be related to the current task'),
+    name: 'System Reminder: Lines selected in IDE',
+    id: 'system-reminder-lines-selected-in-ide',
+    description:
+      'Reminder injected when the user selects lines in their IDE, giving the file, line range, and selected content',
+    identifierMap: { 0: 'ATTACHMENT_OBJECT', 1: 'TRUNCATED_CONTENT' },
+  },
+  {
+    // 2.1.186 net-new: injected into the message content array (U.push(Ln({
+    // content:...}))) when the session model is switched mid-conversation. Opens
+    // with <system-reminder> so it is kept; this only assigns its name. Single
+    // slot is the new model name (appears twice).
+    matcher: t =>
+      t.includes('The model for this session has been changed to') &&
+      t.includes('You are now running as'),
+    name: 'System Reminder: Model changed this session',
+    id: 'system-reminder-model-changed-this-session',
+    description:
+      'Injected when the session model is switched mid-conversation, telling the model its new identity',
+    identifierMap: { 0: 'MODEL_NAME' },
+  },
   // 2.1.179 — the three code-review effort-tier skills grew 6 angle
   // interpolations in the MIDDLE of Phase 1 (the angles, previously inlined,
   // each became its own ${}). Fuzzy carryover kept the old names at their OLD
