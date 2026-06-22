@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   findVersionOutputLocation,
+  renderPatchListItemRow,
   writePatchesAppliedIndication,
 } from './patchesAppliedIndication';
 import { clearReactVarCache } from './helpers';
@@ -147,5 +148,25 @@ describe('writePatchesAppliedIndication', () => {
       writePatchesAppliedIndication('var x=1;function y(){}', '1.0.0', [])
     ).toBeNull();
     expect(errSpy).toHaveBeenCalled();
+  });
+});
+
+describe('renderPatchListItemRow', () => {
+  it('\\uXXXX-escapes non-ASCII in the item so it survives Latin-1 storage', () => {
+    const row = renderPatchListItemRow(
+      'R',
+      'BOX',
+      'TXT',
+      'Data: Claude API reference — C#: 554 fewer chars'
+    );
+    // The em-dash must be emitted as an escape, never spliced raw (raw multibyte
+    // UTF-8 mojibakes against CC's Latin-1 module storage on Bun-compiled CC).
+    expect(row).toContain('* Data: Claude API reference \\u2014 C#');
+    expect(row).not.toContain('—');
+  });
+
+  it('leaves a fully-ASCII item untouched', () => {
+    const row = renderPatchListItemRow('R', 'BOX', 'TXT', 'plain: 3 fewer chars');
+    expect(row).toContain('`  * plain: 3 fewer chars`');
   });
 });

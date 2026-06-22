@@ -7,6 +7,22 @@ import {
   getReactVar,
   showDiff,
 } from './index';
+import { escapeNonAscii } from '../utils';
+
+/**
+ * Renders one row of the "patches applied" startup list. The item text is
+ * `\uXXXX`-escaped so a non-ASCII char in a prompt name (e.g. an em-dash in a
+ * title) survives CC's Latin-1 module storage instead of mojibaking — the same
+ * reason the ┃/✓ glyph literals are written as `┃`/`✓`. Shared by both
+ * render sites (PATCH 3 and PATCH 5) so the escaping can't drift between them.
+ */
+export const renderPatchListItemRow = (
+  reactVar: string,
+  boxComponent: string,
+  textComponent: string,
+  item: string
+): string =>
+  `${reactVar}.createElement(${boxComponent}, null, ${reactVar}.createElement(${textComponent}, {color: "success", bold: true}, "\\u2503 "), ${reactVar}.createElement(${textComponent}, {dimColor: true}, \`  * ${escapeNonAscii(item)}\`)),`;
 
 /**
  * PATCH 1: Finds the location of the version output pattern in Claude Code's cli.js
@@ -292,7 +308,7 @@ const applyIndicatorPatchesListPatch = (
   for (let item of patchesApplies) {
     item = item.replace('CHALK_VAR', chalkVar);
     lines.push(
-      `${reactVar}.createElement(${boxComponent}, null, ${reactVar}.createElement(${textComponent}, {color: "success", bold: true}, "\\u2503 "), ${reactVar}.createElement(${textComponent}, {dimColor: true}, \`  * ${item}\`)),`
+      renderPatchListItemRow(reactVar, boxComponent, textComponent, item)
     );
   }
   lines.push('),');
@@ -577,7 +593,7 @@ export const writePatchesAppliedIndication = (
       for (let item of patchesApplies) {
         item = item.replace('CHALK_VAR', chalkVar);
         lines.push(
-          `${reactVar}.createElement(${boxComponent}, null, ${reactVar}.createElement(${textComponent}, {color: "success", bold: true}, "\\u2503 "), ${reactVar}.createElement(${textComponent}, {dimColor: true}, \`  * ${item}\`)),`
+          renderPatchListItemRow(reactVar, boxComponent, textComponent, item)
         );
       }
       lines.push('),');

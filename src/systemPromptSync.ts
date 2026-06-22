@@ -13,7 +13,7 @@ import {
 import chalk from 'chalk';
 import { SYSTEM_PROMPTS_DIR, SYSTEM_REMINDERS_DIR } from './config';
 import { REMINDER_REGISTRY } from './patches/systemReminderOverrides';
-import { debug } from './utils';
+import { debug, escapeNonAscii } from './utils';
 
 /**
  * Scan every override .md in system-prompts/ and system-reminders/ for a
@@ -1282,13 +1282,8 @@ const escapeNonAsciiForRegex = (text: string): string => {
  * double every backslash), or the escapes it emits get doubled into literal
  * `\\uXXXX` text in the binary.
  */
-export const escapeNonAsciiChars = (text: string): string => {
-  // eslint-disable-next-line no-control-regex
-  return text.replace(/[^\x00-\x7F]/g, char => {
-    const codePoint = char.charCodeAt(0);
-    return `\\u${codePoint.toString(16).padStart(4, '0')}`;
-  });
-};
+export const escapeNonAsciiChars = (text: string): string =>
+  escapeNonAscii(text);
 
 export const buildSearchRegexFromPieces = (
   pieces: string[],
