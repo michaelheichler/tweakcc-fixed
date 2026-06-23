@@ -443,7 +443,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
         id: 'swapRipgrepForFff',
         title: '[EXPERIMENTAL] fff for Bash search (grep/find/rg -> fff)',
         description:
-          "Route Claude Code's Bash search through fff. CC shadows the shell grep->embedded ugrep and find->embedded bfs (and offers rg); the agent uses grep far more than rg. This repoints all three at a per-platform fff wrapper: literal/identifier content searches -> fff (relevance-ranked, typo-tolerant); regex/multiline/case-insensitive/single-file/non-ASCII -> re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships. Transparent (no prompt-compliance reliance), CC-scoped (your own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
+          "Route Claude Code's Bash search through fff. CC shadows the shell grep->embedded ugrep and find->embedded bfs (and offers rg); the agent uses grep far more than rg. This repoints all three at a per-platform fff wrapper: literal and tool-equivalent regex content searches -> fff (relevance-ranked, typo-tolerant, warm-index daemon); anything fff can't match identically (PCRE, multiline/newline/empty regex, -i with uppercase, single-file, non-recursive grep, non-ASCII, piped stdin) -> re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships; any uncertainty falls back. Transparent (no prompt-compliance reliance), CC-scoped (your own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
         getValue: () => settings.misc?.swapRipgrepForFff ?? false,
         toggle: () => {
           updateSettings(settings => {

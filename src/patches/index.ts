@@ -475,7 +475,7 @@ const PATCH_DEFINITIONS = [
     name: '[EXPERIMENTAL] fff for Bash search (grep/find/rg → fff)',
     group: PatchGroup.FEATURES,
     description:
-      "[EXPERIMENTAL] Route Claude Code's Bash search through fff (fast file finder). CC 2.1.186 shadows the shell `grep`→embedded ugrep and `find`→embedded bfs (and offers `rg`); the agent uses grep ~136x more than rg. This repoints all three at a per-platform fff wrapper: eligible literal/identifier content searches → fff (relevance-ranked, typo-tolerant), and regex/multiline/case-insensitive/single-file/non-ASCII → re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships; nothing is removed. Transparent (no prompt-compliance reliance) and CC-scoped (the user's own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
+      "[EXPERIMENTAL] Route Claude Code's Bash search through fff (fast file finder). CC 2.1.186 shadows the shell `grep`→embedded ugrep and `find`→embedded bfs (and offers `rg`); the agent uses grep ~136x more than rg. This repoints all three at a per-platform fff wrapper: literal and (provably tool-equivalent) regex content searches → fff (relevance-ranked, typo-tolerant, warm-index daemon), and anything fff can't match identically — PCRE, multiline/newline- or empty-matching regex, case-insensitive-with-uppercase, single-file, non-recursive grep, non-ASCII, piped stdin → re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships; nothing is removed; any uncertainty falls back. Transparent (no prompt-compliance reliance) and CC-scoped (the user's own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
   },
   {
     id: 'dream-mode',

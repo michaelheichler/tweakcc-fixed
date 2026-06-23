@@ -5,20 +5,19 @@
 //! Claude Code shadows the shell `grep`/`find` with its embedded `ugrep`/`bfs`
 //! (and offers `rg` separately). We get installed in their place and dispatch on
 //! argv0:
-//!   * argv0 = ugrep | grep   -> fff content search (literal), else embedded ugrep
-//!   * argv0 = rg             -> fff content search (literal), else embedded rg
+//!   * argv0 = ugrep | grep   -> fff content search (literal + regex), else ugrep
+//!   * argv0 = rg             -> fff content search (literal + regex), else rg
 //!   * argv0 = bfs  | find    -> embedded bfs (fff find_files is a roadmap item)
 //!   * argv0 = fff            -> explicit fff content search
 //!
-//! Levers:
-//!   * `--fuzzy`            -> typo-tolerant, relevance-ranked fff (labeled approximate)
-//!   * `--no-fallback`      -> error instead of re-execing the embedded tool (CI)
-//!   * `--fff-claude-bin=P` -> claude binary for fallback (set by the rg resolver)
-//!   * `--daemon <root>`    -> run the warm-index daemon for <root> (see daemon.rs)
+//! Modes (chosen by `search_mode`, never the model): Plain (literal), Regex
+//! (regex::bytes — the same engine ripgrep uses), Fuzzy (`--fuzzy`). fff serves
+//! a query ONLY when its result is provably byte-equivalent to the real tool;
+//! every uncertainty defers via a verbatim re-exec, so correctness never depends
+//! on fff — only latency/ranking.
 //!
-//! A per-root warm-index daemon (daemon.rs) answers repeat searches without a
-//! cold scan; if it is absent or fails, we cold-scan and lazily spawn one. The
-//! daemon is purely a latency optimization — correctness never depends on it.
+//! Levers: `--fuzzy`, `--no-fallback` (CI), `--fff-claude-bin=P` (rg resolver),
+//! `--daemon <root>` (warm-index daemon, see daemon.rs).
 
 mod daemon;
 
@@ -31,8 +30,8 @@ use std::time::Duration;
 
 use fff_search::file_picker::FilePicker;
 use fff_search::{
-    AiGrepConfig, FFFMode, FilePickerOptions, GrepMode, GrepSearchOptions,
-    QueryParser, SharedFilePicker, SharedFrecency,
+    AiGrepConfig, FFFMode, FFFQuery, FilePickerOptions, FuzzyQuery, GrepMode,
+    GrepSearchOptions, QueryParser, SharedFilePicker, SharedFrecency,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -53,10 +52,9 @@ impl Tool {
             "ugrep" | "grep" => Tool::Ugrep,
             "rg" => Tool::Rg,
             "bfs" | "find" => Tool::Bfs,
-            _ => Tool::Fff, // "fff", "rg-fff", anything else
+            _ => Tool::Fff,
         }
     }
-    /// The argv0 to use when re-execing the real embedded tool.
     fn embedded_argv0(self) -> &'static str {
         match self {
             Tool::Ugrep => "ugrep",
@@ -67,39 +65,48 @@ impl Tool {
     }
 }
 
+/// Which fff content-search mode a query resolves to (None elsewhere = fall back).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    Plain,
+    Regex,
+    Fuzzy,
+}
+
 struct Opts {
     tool: Tool,
-    raw: Vec<String>, // every arg after argv0 (for verbatim fallback)
+    raw: Vec<String>,
     pattern: Option<String>,
     paths: Vec<String>,
     ignore_case: bool,
-    line_numbers: bool, // emit PATH:LINE:TEXT vs PATH:TEXT
-    files_only: bool,   // -l
-    count: bool,        // -c
-    recursive: bool,    // -r / -R (grep)
-    fuzzy: bool,        // --fuzzy (explicit, typo-tolerant ranked discovery)
-    no_fallback: bool,  // --no-fallback (error instead of embedded re-exec)
-    claude_bin: Option<String>, // --fff-claude-bin= (from the rg resolver)
-    // any flag that means "fff cannot serve this faithfully" -> fall back
+    line_numbers: bool,
+    files_only: bool,
+    count: bool,
+    recursive: bool,
+    fuzzy: bool,
+    ere: bool,    // -E / egrep / rg — extended-regex dialect (≈ RE2)
+    hidden: bool, // --hidden — search dotfiles (rg skips them by default)
+    no_fallback: bool,
+    claude_bin: Option<String>,
     force_fallback: bool,
 }
 
-/// The minimal, serializable search request shared by the cold path and the
-/// daemon (daemon.rs reconstructs this from the wire and calls format_results).
+/// The minimal, serializable request shared by the cold path and the daemon.
 pub struct SearchReq {
     pub pattern: String,
     pub dir: Option<String>,
     pub line_numbers: bool,
     pub files_only: bool,
     pub count: bool,
-    pub fuzzy: bool,
+    pub mode: Mode,
     pub ignore_case: bool,
+    pub hidden: bool,        // include dotfiles (else filtered to match the tool)
+    pub path_prefix: String, // "./" iff the tool echoes it for this path arg
 }
 
 fn main() {
     let argv: Vec<String> = std::env::args().collect();
 
-    // Daemon mode: `rg-fff --daemon <root>` (spawned detached by the client).
     if argv.get(1).map(|s| s == "--daemon").unwrap_or(false) {
         let root = argv.get(2).cloned().unwrap_or_else(|| ".".to_string());
         daemon::serve(&root);
@@ -110,31 +117,24 @@ fn main() {
     let tool = Tool::from_argv0(&a0);
     let raw: Vec<String> = argv[1..].to_vec();
 
-    // --version / -V: impersonate the real tool exactly (re-exec embedded).
     if raw.iter().any(|a| a == "--version" || a == "-V") {
         let cb = claude_bin_from(&raw);
         fallback(tool, &strip_custom(&raw), cb.as_deref());
     }
-
-    // find/bfs: fff find_files is a roadmap item; for now route to embedded bfs.
     if tool == Tool::Bfs {
         let cb = claude_bin_from(&raw);
         fallback(tool, &strip_custom(&raw), cb.as_deref());
     }
 
     let opts = parse(tool, raw);
-    if eligible(&opts) {
-        std::process::exit(run_search(&opts));
+    if let Some(mode) = search_mode(&opts) {
+        std::process::exit(run_search(&opts, mode));
     }
     if opts.no_fallback {
-        eprintln!("rg-fff: query is not fff-eligible and --no-fallback is set");
+        eprintln!("rg-fff: not fff-eligible and --no-fallback is set");
         std::process::exit(2);
     }
-    fallback(
-        opts.tool,
-        &strip_custom(&opts.raw),
-        opts.claude_bin.as_deref(),
-    );
+    fallback(opts.tool, &strip_custom(&opts.raw), opts.claude_bin.as_deref());
 }
 
 fn claude_bin_from(args: &[String]) -> Option<String> {
@@ -155,9 +155,8 @@ fn strip_custom(args: &[String]) -> Vec<String> {
         .collect()
 }
 
-/// Parse grep/ugrep/rg/fff argv into our decision struct. Conservative: anything
-/// we don't confidently understand sets force_fallback so we defer to the real
-/// tool rather than return a wrong result.
+/// Parse grep/ugrep/rg/fff argv. Conservative: anything we don't confidently
+/// understand sets force_fallback so we defer rather than return a wrong result.
 fn parse(tool: Tool, raw: Vec<String>) -> Opts {
     let mut o = Opts {
         tool,
@@ -165,12 +164,13 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
         pattern: None,
         paths: Vec::new(),
         ignore_case: false,
-        // grep emits PATH:LINE:TEXT only with -n; rg/fff default to line numbers.
         line_numbers: !matches!(tool, Tool::Ugrep),
         files_only: false,
         count: false,
         recursive: false,
         fuzzy: false,
+        ere: matches!(tool, Tool::Rg | Tool::Fff), // RE2 dialect by default
+        hidden: false,
         no_fallback: false,
         claude_bin: None,
         force_fallback: false,
@@ -187,7 +187,7 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
             "-l" | "--files-with-matches" | "-L" | "--files-without-match" => {
                 o.files_only = true;
                 if a == "-L" || a == "--files-without-match" {
-                    o.force_fallback = true; // inverse — fff can't do
+                    o.force_fallback = true;
                 }
             }
             "-c" | "--count" => o.count = true,
@@ -197,18 +197,18 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
             "-r" | "-R" | "--recursive" | "--dereference-recursive" => {
                 o.recursive = true
             }
-            // CC-injected ugrep flags — fff already honors ignores/hidden/binary.
-            "-G" | "--basic-regexp" | "--ignore-files" | "--hidden" | "-I"
-            | "--no-ignore" | "--include-dir" => {}
-            // capability gaps fff can't faithfully serve -> defer to real tool.
-            "-P" | "--perl-regexp" | "-E" | "--extended-regexp" | "-o"
-            | "--only-matching" | "-v" | "--invert-match" | "-x"
-            | "--line-regexp" | "-w" | "--word-regexp" | "-z" | "--null-data"
-            | "-U" | "--multiline" | "--multiline-dotall" | "-f" | "--file"
-            | "-A" | "--after-context" | "-B" | "--before-context" | "-C"
+            "--hidden" => o.hidden = true,
+            "-G" | "--basic-regexp" | "--ignore-files" | "-I" | "--no-ignore"
+            | "--include-dir" => {}
+            "-E" | "--extended-regexp" => o.ere = true,
+            // capability gaps fff can't faithfully serve -> defer.
+            "-P" | "--perl-regexp" | "-o" | "--only-matching" | "-v"
+            | "--invert-match" | "-x" | "--line-regexp" | "-w"
+            | "--word-regexp" | "-z" | "--null-data" | "-U" | "--multiline"
+            | "--multiline-dotall" | "-f" | "--file" | "-A"
+            | "--after-context" | "-B" | "--before-context" | "-C"
             | "--context" | "-m" | "--max-count" | "-t" | "--type" => {
                 o.force_fallback = true;
-                // value-taking ones: skip their value too
                 if matches!(
                     a.as_str(),
                     "-f" | "--file"
@@ -233,7 +233,6 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
                 }
             }
             "--exclude-dir" | "--exclude" | "--include" | "-g" | "--glob" => {
-                // value-taking; skip value. (exclude-dir is CC's VCS list, fine.)
                 if i + 1 < raw.len() {
                     i += 1;
                 }
@@ -241,22 +240,20 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
             other => {
                 if let Some(cb) = other.strip_prefix("--fff-claude-bin=") {
                     o.claude_bin = Some(cb.to_string());
-                } else if let Some(rest) = other.strip_prefix("--exclude-dir=") {
-                    let _ = rest; // CC VCS excludes — fff handles ignores
+                } else if other.strip_prefix("--exclude-dir=").is_some() {
+                    // CC VCS excludes — fff honors ignores
                 } else if other.starts_with("--exclude=")
                     || other.starts_with("--include=")
                 {
-                    o.force_fallback = true; // glob filters -> defer
+                    o.force_fallback = true;
                 } else if other.starts_with("--color=") {
-                    // cosmetic; ignore
                 } else if let Some(combined) = other.strip_prefix('-') {
                     if combined.is_empty() {
-                        positionals.push(other.to_string()); // lone "-" (stdin)
+                        positionals.push(other.to_string());
                         o.force_fallback = true;
                     } else if combined.starts_with('-') {
-                        o.force_fallback = true; // unknown long flag -> be safe
+                        o.force_fallback = true;
                     } else {
-                        // bundled short flags like -rn, -ri, -rln
                         for ch in combined.chars() {
                             match ch {
                                 'i' => o.ignore_case = true,
@@ -264,6 +261,7 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
                                 'l' => o.files_only = true,
                                 'c' => o.count = true,
                                 'r' | 'R' => o.recursive = true,
+                                'E' => o.ere = true,
                                 'H' | 'h' | 'I' | 'G' => {}
                                 _ => o.force_fallback = true,
                             }
@@ -287,74 +285,103 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
     o
 }
 
-/// fff serves a query only when its result is faithfully tool-equivalent.
-fn eligible(o: &Opts) -> bool {
+/// Decide which fff mode (if any) serves this query *faithfully tool-equivalent*.
+/// None => fall back to the real embedded tool.
+fn search_mode(o: &Opts) -> Option<Mode> {
     if o.force_fallback {
-        return false;
+        return None;
     }
     let pat = match &o.pattern {
         Some(p) if !p.is_empty() => p,
-        _ => return false,
+        _ => return None,
     };
-    // Explicit fuzzy always serves; otherwise require plain literal ASCII.
-    if !o.fuzzy {
-        if has_regex_meta(pat, o.tool) {
-            return false; // genuinely regex for this tool -> let it do it
-        }
-        if pat.chars().count() < 3 {
-            return false; // bigram prefilter unreliable on sub-3-char
-        }
-    }
     if !pat.is_ascii() {
-        return false;
+        return None;
     }
-    // fff's query DSL reinterprets these as operators (whitespace = multiple
-    // terms, '/' = path constraint, ':' = line:col location, '!' = negation),
-    // which silently diverges from a literal grep. Only DSL-safe single tokens go
-    // to fff (verified safe: foo(), kebab-case, <T>); everything else defers.
-    // Applies to fuzzy too — the fuzzy query runs through the same parser.
-    if pat.chars().any(|c| matches!(c, ' ' | '\t' | '/' | ':' | '!')) {
-        return false;
+    // -i: fff smart_case ignores case only when the pattern has no uppercase, so
+    // `-i` is byte-equivalent only for an all-lowercase pattern.
+    if o.ignore_case && pat.chars().any(|c| c.is_ascii_uppercase()) {
+        return None;
     }
-    if o.ignore_case {
-        // fff emulates case-insensitivity via smart_case, which only ignores
-        // case when the pattern has no uppercase. So `-i` is byte-equivalent to
-        // the real tool only for an all-lowercase pattern; otherwise defer.
-        if pat.chars().any(|c| c.is_ascii_uppercase()) {
-            return false;
-        }
-    }
-    // fff always searches the whole tree. grep/ugrep do that ONLY with -r/-R
-    // (without it: stdin for no path, or the top-level dir only) — so for the
-    // ugrep shadow, require -r or we'd over-match. rg/fff recurse by default, so
-    // no -r is needed there. (Fuzzy is fff-only discovery, so -r is moot.)
+    // ugrep needs -r to recurse (else stdin / top-level only); rg/fff recurse by
+    // default; fuzzy is fff-only discovery.
     if !o.fuzzy && o.tool == Tool::Ugrep && !o.recursive {
-        return false;
+        return None;
     }
-    // path target: cwd (no path) or a single dir. A single file or multiple
-    // paths -> defer (grep/ugrep handle those precisely; fff is tree-oriented).
-    match o.paths.len() {
+    // path target: cwd (no path) or a single relative directory. A file, multi-
+    // path, or absolute dir defers (grep echoes the path arg verbatim — fff is
+    // cwd-relative, so an absolute arg would format differently).
+    let path_ok = match o.paths.len() {
         0 => true,
         1 => {
             let p = &o.paths[0];
-            // The query builder turns the dir into a path constraint, so it must
-            // itself be DSL-safe ('/' is fine — it IS a path; whitespace/':'/'!'
-            // would misparse).
+            // Bare "." is fine; "./..." and absolute args are deferred (their
+            // path echoing is tool-specific/uncertain).
             Path::new(p).is_dir()
-                && !p.chars().any(|c| matches!(c, ' ' | '\t' | ':' | '!'))
+                && !p.starts_with('/')
+                && (p == "." || !p.starts_with("./"))
         }
         _ => false,
+    };
+    if !path_ok {
+        return None;
+    }
+
+    if o.fuzzy {
+        // Fuzzy & Plain run the pattern through fff's DSL (which keeps simple
+        // tokens literal), so they must avoid DSL operators.
+        if has_dsl_operator(pat) || dir_has_dsl_operator(o) {
+            return None;
+        }
+        return Some(Mode::Fuzzy);
+    }
+    if has_regex_meta(pat, o.ere) {
+        // Regex bypasses the DSL entirely (raw pattern as the needle), so DSL
+        // operators in the pattern are fine — but only serve when the tool's
+        // regex dialect maps faithfully onto fff's RE2 engine, and the dir scope
+        // (applied by post-filter) is itself sane. (A pattern whose meaning fff's
+        // grep_text() would alter is caught precisely in format_results.)
+        if regex_dialect_ok(pat, o)
+            && !dir_has_dsl_operator(o)
+            && regex_servable(pat)
+        {
+            Some(Mode::Regex)
+        } else {
+            None
+        }
+    } else {
+        // Literal/plain: routed through the DSL, so avoid its operators; needs
+        // >= 3 chars for a reliable bigram prefilter.
+        if has_dsl_operator(pat) || dir_has_dsl_operator(o) {
+            return None;
+        }
+        if pat.chars().count() < 3 {
+            return None;
+        }
+        Some(Mode::Plain)
     }
 }
 
-/// Does `t` contain a regex metacharacter *for the tool being impersonated*?
-/// ugrep runs in basic-regex mode (`-G`/BRE): only `. * [ ] ^ $ \` are special;
-/// `+ ? ( ) { } |` (and `- # & ~ _`) are LITERAL — so `foo()`, `foo-bar`,
-/// `a|b` are plain literals fff can serve identically. rg/fff use ERE where
-/// `+ ? ( ) { } |` are also special, so those defer. Matching the tool keeps
-/// fff strictly result-equivalent while serving far more real queries.
-fn has_regex_meta(t: &str, tool: Tool) -> bool {
-    let ere = matches!(tool, Tool::Rg | Tool::Fff);
+/// fff's query DSL reinterprets these as operators (whitespace = multiple terms,
+/// '/' = path constraint, ':' = location, '!' = negation) — anything routed
+/// through the parser (Plain/Fuzzy) must avoid them.
+fn has_dsl_operator(s: &str) -> bool {
+    s.chars().any(|c| matches!(c, ' ' | '\t' | '/' | ':' | '!'))
+}
+fn dir_has_dsl_operator(o: &Opts) -> bool {
+    // The dir is a path, so '/' is fine; whitespace/':'/'!' would misparse (DSL)
+    // or are pathological for the post-filter.
+    o.paths
+        .first()
+        .map(|p| p.chars().any(|c| matches!(c, ' ' | '\t' | ':' | '!')))
+        .unwrap_or(false)
+}
+
+/// Does `t` contain a regex metacharacter for the active dialect?
+/// BRE (ugrep `-G`): only `. * [ ] ^ $ \` are special. ERE (rg / `-E` / fff):
+/// also `+ ? ( ) { } |`. Determines whether a pattern is "regex" vs literal —
+/// keyed on the dialect (`o.ere`), so `ugrep -E "a|b"` is correctly seen as regex.
+fn has_regex_meta(t: &str, ere: bool) -> bool {
     t.chars().any(|c| match c {
         '\\' | '.' | '*' | '[' | ']' | '^' | '$' => true,
         '+' | '?' | '(' | ')' | '{' | '}' | '|' => ere,
@@ -362,25 +389,98 @@ fn has_regex_meta(t: &str, tool: Tool) -> bool {
     })
 }
 
+/// Can fff's regex engine serve `pat` byte-equivalently? Compile it exactly as
+/// fff does and DEFER when (a) it won't compile (fff would silently degrade to
+/// literal), (b) it can match the empty string (matches every line, where grep
+/// and RE2 disagree on zero-width line counting), or (c) it can match a newline
+/// (line-based grep/rg never see the trailing `\n`, but fff's multi_line engine
+/// can — so it matches at line-end positions the tools don't, changing WHICH
+/// lines match). General over-approximations, not case-by-case.
+fn regex_servable(pat: &str) -> bool {
+    if can_match_newline(pat) {
+        return false;
+    }
+    let p = if pat.contains("\\n") {
+        pat.replace("\\n", "\n")
+    } else {
+        pat.to_string()
+    };
+    match regex::bytes::RegexBuilder::new(&p)
+        .unicode(false)
+        .multi_line(true)
+        .build()
+    {
+        Ok(re) => !re.is_match(b""),
+        Err(_) => false,
+    }
+}
+
+/// Sound over-approximation of "this regex can match the newline character":
+/// `\s` (whitespace class includes \n), a negated class `[^…]` (matches \n), a
+/// literal `\n`/`\r`/`\v`/`\f`, dotall `(?s)`, or `[[:space:]]`.
+fn can_match_newline(pat: &str) -> bool {
+    pat.contains("\\s")
+        || pat.contains("[^")
+        || pat.contains("[[:space:]")
+        || pat.contains("\\n")
+        || pat.contains("\\r")
+        || pat.contains("\\v")
+        || pat.contains("\\f")
+        || pat.contains("(?s")
+}
+
+/// Is `pat`'s regex dialect byte-equivalent to fff's RE2 (`regex::bytes`)?
+/// fff's regex IS ripgrep's engine, so rg/fff map 1:1. grep's BRE/ERE differ in
+/// escapes and which chars are special — serve only the provably-shared subset.
+fn regex_dialect_ok(pat: &str, o: &Opts) -> bool {
+    match o.tool {
+        Tool::Rg | Tool::Fff => true, // same regex crate -> 1:1
+        Tool::Bfs => false,
+        Tool::Ugrep if o.ere => {
+            // POSIX ERE ≈ RE2 except backslash escapes (`\d`/`\w`/`\b` are literal
+            // in grep -E but classes in RE2) — defer any backslash.
+            !pat.contains('\\')
+        }
+        Tool::Ugrep => {
+            // BRE: only `. * [ ] ^ $` share semantics with RE2; `+ ? ( ) { } |`
+            // are literal in BRE but special in RE2, and `\` flips meaning.
+            !pat.chars().any(|c| {
+                matches!(c, '+' | '?' | '(' | ')' | '{' | '}' | '|' | '\\')
+            })
+        }
+    }
+}
+
 impl Opts {
-    fn to_req(&self) -> SearchReq {
+    fn to_req(&self, mode: Mode) -> SearchReq {
+        // grep prints `./` for a "." path arg; rg/grep do, ugrep does not.
+        let path_prefix = if matches!(self.tool, Tool::Rg | Tool::Fff)
+            && self.paths.first().map(|p| p == ".").unwrap_or(false)
+        {
+            "./".to_string()
+        } else {
+            String::new()
+        };
         SearchReq {
             pattern: self.pattern.clone().unwrap_or_default(),
             dir: self.paths.first().cloned(),
             line_numbers: self.line_numbers,
             files_only: self.files_only,
             count: self.count,
-            fuzzy: self.fuzzy,
+            mode,
             ignore_case: self.ignore_case,
+            hidden: self.hidden,
+            path_prefix,
         }
     }
 }
 
-/// Run an fff-eligible search: try the warm daemon first; on a miss, cold-scan
-/// and lazily spawn a daemon for next time. Returns the process exit code.
-fn run_search(o: &Opts) -> i32 {
-    let req = o.to_req();
+/// Run an fff-eligible search: warm daemon first, else cold-scan + lazily spawn
+/// a daemon. Returns the process exit code.
+fn run_search(o: &Opts, mode: Mode) -> i32 {
+    let req = o.to_req(mode);
     let daemon_enabled = std::env::var_os("RG_FFF_NO_DAEMON").is_none();
+    let debug = std::env::var_os("RG_FFF_DEBUG").is_some();
     let root = std::env::current_dir()
         .ok()
         .and_then(|c| std::fs::canonicalize(c).ok());
@@ -388,7 +488,7 @@ fn run_search(o: &Opts) -> i32 {
     if daemon_enabled {
         if let Some(root) = &root {
             if let Some((out, code)) = daemon::query(root, &req) {
-                if std::env::var_os("RG_FFF_DEBUG").is_some() {
+                if debug {
                     eprintln!("rg-fff: daemon hit");
                 }
                 let mut w = std::io::stdout().lock();
@@ -398,11 +498,7 @@ fn run_search(o: &Opts) -> i32 {
             }
         }
     }
-    if std::env::var_os("RG_FFF_DEBUG").is_some() {
-        eprintln!("rg-fff: cold scan");
-    }
 
-    // Cold scan.
     let shared = SharedFilePicker::default();
     let frecency = SharedFrecency::default();
     if FilePicker::new_with_shared_state(
@@ -435,11 +531,24 @@ fn run_search(o: &Opts) -> i32 {
                 fallback(o.tool, &strip_custom(&o.raw), o.claude_bin.as_deref())
             }
         };
-        let (out, code) = format_results(picker, &req);
+        // None => fff can't serve faithfully (e.g. a regex its engine rejects).
+        let (out, code) = match format_results(picker, &req) {
+            Some(r) => {
+                if debug {
+                    eprintln!("rg-fff: fff served (cold)");
+                }
+                r
+            }
+            None => {
+                if debug {
+                    eprintln!("rg-fff: fff defer -> fallback");
+                }
+                fallback(o.tool, &strip_custom(&o.raw), o.claude_bin.as_deref())
+            }
+        };
         let mut w = std::io::stdout().lock();
         let _ = w.write_all(out.as_bytes());
         let _ = w.flush();
-        // Warm a daemon for the next search in this root.
         if daemon_enabled {
             if let Some(root) = &root {
                 daemon::spawn_detached(root);
@@ -450,31 +559,114 @@ fn run_search(o: &Opts) -> i32 {
 }
 
 /// Grep `picker` per `req` and render tool-compatible output. Shared verbatim by
-/// the cold path and the daemon so both produce byte-identical results.
-pub fn format_results(picker: &FilePicker, req: &SearchReq) -> (String, i32) {
-    let mode = if req.fuzzy {
-        GrepMode::Fuzzy
+/// the cold path and the daemon. Returns None when fff can't serve faithfully.
+pub fn format_results(
+    picker: &FilePicker,
+    req: &SearchReq,
+) -> Option<(String, i32)> {
+    let gmode = match req.mode {
+        Mode::Plain => GrepMode::PlainText,
+        Mode::Regex => GrepMode::Regex,
+        Mode::Fuzzy => GrepMode::Fuzzy,
+    };
+    let is_fuzzy = matches!(req.mode, Mode::Fuzzy);
+    let is_regex = matches!(req.mode, Mode::Regex);
+
+    // Directory scoping + path echoing. grep prints join(pathArg, relPath); fff
+    // returns cwd-relative paths. So scope by the CANONICAL dir (leading "./" and
+    // trailing "/" stripped), and re-prepend the "./" grep emits when the path
+    // arg is "." or "./...".
+    //  * Plain/Fuzzy go through fff's DSL ("dir/ " is a path constraint, the
+    //    simple pattern stays literal).
+    //  * Regex MUST bypass the DSL (it misreads `obj.method` as a filename, drops
+    //    `|`/`^`/`\b`), so we build the query directly and scope by post-filter.
+    // Canonical dir for scoping ("." and trailing "/" -> ""); "./..."/absolute
+    // args never reach here (deferred in search_mode). out_prefix is precomputed
+    // per-tool in to_req (rg echoes "./" for a "." arg; ugrep does not).
+    let arg = req.dir.as_deref().unwrap_or("");
+    let canonical = {
+        let c = arg.trim_end_matches('/');
+        if c == "." {
+            ""
+        } else {
+            c
+        }
+    };
+    let out_prefix = req.path_prefix.as_str();
+    let dir_constraint: Option<String> = if canonical.is_empty() {
+        None
     } else {
-        GrepMode::PlainText
+        Some(format!("{canonical}/"))
+    };
+    let post_filter: Option<&str> = if is_regex {
+        dir_constraint.as_deref()
+    } else {
+        None
     };
 
-    // A dir path becomes a query constraint so emitted paths stay cwd-relative
-    // (matching `grep -r <dir>` output).
-    let mut query = String::new();
-    if let Some(dir) = &req.dir {
-        let d = dir.trim_end_matches('/');
-        if !d.is_empty() && d != "." {
-            query.push_str(d);
-            query.push('/');
-            query.push(' ');
+    let parser = QueryParser::new(AiGrepConfig);
+    let dsl_query: String = if is_regex {
+        String::new()
+    } else {
+        let mut q = String::new();
+        if let Some(p) = &dir_constraint {
+            q.push_str(p);
+            q.push(' ');
+        }
+        q.push_str(&req.pattern);
+        q
+    };
+    let parsed: FFFQuery = if is_regex {
+        FFFQuery {
+            raw_query: &req.pattern,
+            constraints: Vec::new(),
+            fuzzy_query: FuzzyQuery::Text(&req.pattern),
+            location: None,
+        }
+    } else {
+        parser.parse(&dsl_query)
+    };
+
+    let keep = |path: &str| -> bool {
+        // regex dir-scoping (plain/fuzzy already scope via the DSL constraint)
+        if let Some(p) = post_filter {
+            if !path.starts_with(p) {
+                return false;
+            }
+        }
+        // hidden-file handling: unless --hidden, skip dotfiles like the tool does
+        // — but only relative to the search root, so an explicit hidden dir arg
+        // (e.g. `grep X .github`) is still searched.
+        if req.hidden {
+            return true;
+        }
+        let rel = dir_constraint
+            .as_deref()
+            .and_then(|c| path.strip_prefix(c))
+            .unwrap_or(path);
+        !rel.split('/').any(|s| s.starts_with('.'))
+    };
+
+    if is_regex {
+        // fff's grep_text() strips a leading backslash when it reads as a
+        // constraint-escape; if that (or anything) would alter our exact regex,
+        // the search would diverge — defer precisely, only when it actually does.
+        if parsed.grep_text() != req.pattern {
+            return None;
+        }
+        // Preflight: if fff's engine can't compile the pattern it SILENTLY falls
+        // back to literal matching (regex_fallback_error set) -> defer.
+        let probe = picker.grep(
+            &parsed,
+            &grep_opts(gmode, 0, req.files_only, req.ignore_case),
+        );
+        if probe.regex_fallback_error.is_some() {
+            return None;
         }
     }
-    query.push_str(&req.pattern);
-    let parser = QueryParser::new(AiGrepConfig);
-    let parsed = parser.parse(&query);
 
     let mut out = String::new();
-    if req.fuzzy {
+    if is_fuzzy {
         let _ = writeln!(
             out,
             "# fff: approximate (fuzzy) matches, ranked by relevance — not exact"
@@ -485,11 +677,14 @@ pub fn format_results(picker: &FilePicker, req: &SearchReq) -> (String, i32) {
         let mut counts: BTreeMap<String, usize> = BTreeMap::new();
         let mut file_offset = 0usize;
         loop {
-            let opts = grep_opts(mode, file_offset, false, req.ignore_case);
+            let opts = grep_opts(gmode, file_offset, false, req.ignore_case);
             let r = picker.grep(&parsed, &opts);
             for m in &r.matches {
                 let f = r.files[m.file_index];
-                *counts.entry(f.relative_path(picker)).or_insert(0) += 1;
+                let path = f.relative_path(picker);
+                if keep(&path) {
+                    *counts.entry(path).or_insert(0) += 1;
+                }
             }
             if r.next_file_offset == 0 {
                 break;
@@ -498,50 +693,53 @@ pub fn format_results(picker: &FilePicker, req: &SearchReq) -> (String, i32) {
         }
         let any = !counts.is_empty();
         for (f, c) in &counts {
-            let _ = writeln!(out, "{f}:{c}");
+            let _ = writeln!(out, "{out_prefix}{f}:{c}");
         }
-        return (out, if any { 0 } else { 1 });
+        return Some((out, if any { 0 } else { 1 }));
     }
 
     let mut any = false;
     let mut file_offset = 0usize;
     loop {
-        let opts =
-            grep_opts(mode, file_offset, req.files_only, req.ignore_case);
+        let opts = grep_opts(gmode, file_offset, req.files_only, req.ignore_case);
         let result = picker.grep(&parsed, &opts);
         if req.files_only {
             for f in &result.files {
-                let _ = writeln!(out, "{}", f.relative_path(picker));
-                any = true;
+                let path = f.relative_path(picker);
+                if keep(&path) {
+                    let _ = writeln!(out, "{out_prefix}{path}");
+                    any = true;
+                }
             }
         } else {
             for m in &result.matches {
                 let f = result.files[m.file_index];
+                let path = f.relative_path(picker);
+                if !keep(&path) {
+                    continue;
+                }
                 if req.line_numbers {
                     let _ = writeln!(
                         out,
-                        "{}:{}:{}",
-                        f.relative_path(picker),
-                        m.line_number,
-                        m.line_content
+                        "{}{}:{}:{}",
+                        out_prefix, path, m.line_number, m.line_content
                     );
                 } else {
                     let _ = writeln!(
                         out,
-                        "{}:{}",
-                        f.relative_path(picker),
-                        m.line_content
+                        "{}{}:{}",
+                        out_prefix, path, m.line_content
                     );
                 }
                 any = true;
             }
         }
-        if req.fuzzy || result.next_file_offset == 0 {
+        if is_fuzzy || result.next_file_offset == 0 {
             break;
         }
         file_offset = result.next_file_offset;
     }
-    (out, if any { 0 } else { 1 })
+    Some((out, if any { 0 } else { 1 }))
 }
 
 fn grep_opts(
@@ -567,7 +765,6 @@ fn grep_opts(
 }
 
 /// Re-exec the real embedded tool via the claude binary (argv0 multicall).
-/// Never returns.
 fn fallback(tool: Tool, args: &[String], claude_bin: Option<&str>) -> ! {
     use std::os::unix::process::CommandExt;
 
@@ -588,7 +785,6 @@ fn fallback(tool: Tool, args: &[String], claude_bin: Option<&str>) -> ! {
     let a0 = tool.embedded_argv0();
     if let Some(bin) = claude {
         let mut cmd = Command::new(&bin);
-        // embedded ripgrep expects --no-config; ugrep/bfs take args as-is.
         if tool == Tool::Rg && !args.iter().any(|a| a == "--no-config") {
             cmd.arg("--no-config");
         }
@@ -597,7 +793,6 @@ fn fallback(tool: Tool, args: &[String], claude_bin: Option<&str>) -> ! {
         let err = cmd.exec();
         eprintln!("rg-fff: failed to exec embedded {a0}: {err}");
     }
-    // last resort: the system tool on PATH
     let sys = match tool {
         Tool::Bfs => "find",
         Tool::Ugrep => "grep",
@@ -606,4 +801,134 @@ fn fallback(tool: Tool, args: &[String], claude_bin: Option<&str>) -> ! {
     let err = Command::new(sys).args(args).exec();
     eprintln!("rg-fff: failed to exec {sys}: {err}");
     std::process::exit(2);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Build an Opts for eligibility tests. recursive defaults true (so the ugrep
+    // -r gate doesn't mask other checks); ere mirrors the real default.
+    fn opts(tool: Tool, pat: &str, paths: &[&str]) -> Opts {
+        Opts {
+            tool,
+            raw: vec![],
+            pattern: Some(pat.to_string()),
+            paths: paths.iter().map(|s| s.to_string()).collect(),
+            ignore_case: false,
+            line_numbers: false,
+            files_only: false,
+            count: false,
+            recursive: true,
+            fuzzy: false,
+            ere: matches!(tool, Tool::Rg | Tool::Fff),
+            hidden: false,
+            no_fallback: false,
+            claude_bin: None,
+            force_fallback: false,
+        }
+    }
+
+    #[test]
+    fn regex_meta_is_dialect_keyed() {
+        assert!(has_regex_meta("foo.bar", false)); // . is BRE meta
+        assert!(!has_regex_meta("a|b", false)); // | literal in BRE
+        assert!(has_regex_meta("a|b", true)); // | special in ERE
+        assert!(!has_regex_meta("foo()", false)); // () literal in BRE
+        assert!(has_regex_meta("foo()", true));
+        assert!(!has_regex_meta("plain_id", false));
+    }
+
+    #[test]
+    fn dialect_gate_matches_each_tool() {
+        // rg/fff share fff's engine -> any pattern maps 1:1
+        assert!(regex_dialect_ok("a(b|c)+\\d", &opts(Tool::Rg, "x", &[])));
+        // ugrep BRE: + ? ( ) { } | \ diverge
+        assert!(regex_dialect_ok("foo.*bar", &opts(Tool::Ugrep, "x", &[])));
+        assert!(!regex_dialect_ok("foo+", &opts(Tool::Ugrep, "x", &[])));
+        assert!(!regex_dialect_ok("a|b", &opts(Tool::Ugrep, "x", &[])));
+        assert!(!regex_dialect_ok("\\d", &opts(Tool::Ugrep, "x", &[])));
+        // ugrep -E: ERE, but POSIX escapes diverge from RE2 -> defer backslash
+        let mut e = opts(Tool::Ugrep, "x", &[]);
+        e.ere = true;
+        assert!(regex_dialect_ok("a|b(c)+", &e));
+        assert!(!regex_dialect_ok("\\d+", &e));
+    }
+
+    #[test]
+    fn newline_matchers_detected() {
+        for p in ["\\s+", "a[^x]b", "a\\nb", "(?s).", "[[:space:]]"] {
+            assert!(can_match_newline(p), "{p} should be newline-matching");
+        }
+        for p in ["\\w+", "\\d+", "foo.bar", "[A-Z][a-z]+", "import.*from"] {
+            assert!(!can_match_newline(p), "{p} should NOT match newline");
+        }
+    }
+
+    #[test]
+    fn regex_servable_defers_pathological() {
+        // empty-matchers (match every line) -> defer
+        for p in ["x?", "foo|", "a*", "(ab)?"] {
+            assert!(!regex_servable(p), "{p} matches empty -> defer");
+        }
+        // newline-matchers -> defer
+        assert!(!regex_servable("\\s+"));
+        // uncompilable -> defer
+        assert!(!regex_servable("(unclosed"));
+        assert!(!regex_servable("a["));
+        // genuinely servable
+        for p in ["foo.bar", "\\d+", "[A-Z]\\w+", "import.*from", "Grep(Match|Result)"] {
+            assert!(regex_servable(p), "{p} should be servable");
+        }
+    }
+
+    #[test]
+    fn search_mode_routes_correctly() {
+        use Mode::*;
+        // literal -> Plain; regex (dialect-ok) -> Regex; fuzzy -> Fuzzy
+        assert!(matches!(search_mode(&opts(Tool::Ugrep, "showDiff", &["src"])), Some(Plain)));
+        assert!(matches!(search_mode(&opts(Tool::Ugrep, "foo.bar", &["src"])), Some(Regex)));
+        assert!(matches!(search_mode(&opts(Tool::Rg, "a\\d+", &["src"])), Some(Regex)));
+        let mut f = opts(Tool::Ugrep, "showDiff", &["src"]);
+        f.fuzzy = true;
+        assert!(matches!(search_mode(&f), Some(Fuzzy)));
+    }
+
+    #[test]
+    fn search_mode_defers_unsafe() {
+        // BRE regex with an ERE-only metachar -> dialect defer
+        assert!(search_mode(&opts(Tool::Ugrep, "foo.bar+", &["src"])).is_none());
+        // empty-matcher / newline regex -> defer
+        assert!(search_mode(&opts(Tool::Rg, "x?", &["src"])).is_none());
+        assert!(search_mode(&opts(Tool::Rg, "a\\s+b", &["src"])).is_none());
+        // DSL operator in pattern (plain) -> defer
+        assert!(search_mode(&opts(Tool::Ugrep, "a b", &["src"])).is_none());
+        // non-ascii -> defer
+        assert!(search_mode(&opts(Tool::Ugrep, "café", &["src"])).is_none());
+        // -i with uppercase -> defer
+        let mut ic = opts(Tool::Ugrep, "Foo", &["src"]);
+        ic.ignore_case = true;
+        assert!(search_mode(&ic).is_none());
+        // ugrep without -r -> defer
+        let mut nr = opts(Tool::Ugrep, "showDiff", &["src"]);
+        nr.recursive = false;
+        assert!(search_mode(&nr).is_none());
+        // multiple paths / ./ arg / absolute arg -> defer
+        assert!(search_mode(&opts(Tool::Ugrep, "showDiff", &["src", "tools"])).is_none());
+        assert!(search_mode(&opts(Tool::Ugrep, "showDiff", &["./src"])).is_none());
+        assert!(search_mode(&opts(Tool::Ugrep, "showDiff", &["/tmp"])).is_none());
+        // force_fallback / short literal -> defer
+        let mut ff = opts(Tool::Ugrep, "showDiff", &["src"]);
+        ff.force_fallback = true;
+        assert!(search_mode(&ff).is_none());
+        assert!(search_mode(&opts(Tool::Ugrep, "ab", &["src"])).is_none());
+    }
+
+    #[test]
+    fn path_prefix_is_per_tool() {
+        // rg echoes "./" for a "." arg; ugrep does not
+        assert_eq!(opts(Tool::Rg, "x", &["."]).to_req(Mode::Regex).path_prefix, "./");
+        assert_eq!(opts(Tool::Ugrep, "x", &["."]).to_req(Mode::Plain).path_prefix, "");
+        assert_eq!(opts(Tool::Rg, "x", &["src"]).to_req(Mode::Plain).path_prefix, "");
+    }
 }

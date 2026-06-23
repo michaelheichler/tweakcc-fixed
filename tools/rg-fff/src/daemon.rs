@@ -58,15 +58,22 @@ pub fn socket_path(root: &Path) -> Option<PathBuf> {
 }
 
 fn encode_req(req: &SearchReq) -> String {
+    use crate::Mode;
     format!(
-        "v1\n{}\n{}{}{}{}\n{}\n{}\n",
-        if req.fuzzy { "fuzzy" } else { "plain" },
+        "v1\n{}\n{}{}{}{}{}\n{}\n{}\n{}\n",
+        match req.mode {
+            Mode::Plain => "plain",
+            Mode::Regex => "regex",
+            Mode::Fuzzy => "fuzzy",
+        },
         if req.files_only { "l" } else { "-" },
         if req.line_numbers { "n" } else { "-" },
         if req.count { "c" } else { "-" },
         if req.ignore_case { "i" } else { "-" },
+        if req.hidden { "h" } else { "-" },
         req.dir.as_deref().unwrap_or(""),
         req.pattern,
+        req.path_prefix,
     )
 }
 
@@ -207,8 +214,8 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         Err(_) => return,
     };
     let mut reader = BufReader::new(read_half);
-    let mut lines: Vec<String> = Vec::with_capacity(5);
-    for _ in 0..5 {
+    let mut lines: Vec<String> = Vec::with_capacity(6);
+    for _ in 0..6 {
         let mut l = String::new();
         match reader.read_line(&mut l) {
             Ok(0) => break,
@@ -217,23 +224,29 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         }
     }
     let mut out = stream;
-    if lines.len() < 5 || lines[0] != "v1" {
+    if lines.len() < 6 || lines[0] != "v1" {
         let _ = out.write_all(b"FALLBACK\n");
         return;
     }
     let flags = lines[2].as_bytes();
     let req = SearchReq {
-        fuzzy: lines[1] == "fuzzy",
+        mode: match lines[1].as_str() {
+            "regex" => crate::Mode::Regex,
+            "fuzzy" => crate::Mode::Fuzzy,
+            _ => crate::Mode::Plain,
+        },
         files_only: flags.first() == Some(&b'l'),
         line_numbers: flags.get(1) == Some(&b'n'),
         count: flags.get(2) == Some(&b'c'),
         ignore_case: flags.get(3) == Some(&b'i'),
+        hidden: flags.get(4) == Some(&b'h'),
         dir: if lines[3].is_empty() {
             None
         } else {
             Some(lines[3].clone())
         },
         pattern: lines[4].clone(),
+        path_prefix: lines[5].clone(),
     };
 
     let guard = match shared.read() {
@@ -250,7 +263,13 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
             return;
         }
     };
-    let (body, code) = format_results(picker, &req);
-    let _ = out.write_all(format!("{code}\n").as_bytes());
-    let _ = out.write_all(body.as_bytes());
+    match format_results(picker, &req) {
+        Some((body, code)) => {
+            let _ = out.write_all(format!("{code}\n").as_bytes());
+            let _ = out.write_all(body.as_bytes());
+        }
+        None => {
+            let _ = out.write_all(b"FALLBACK\n");
+        }
+    }
 }
