@@ -472,10 +472,10 @@ const PATCH_DEFINITIONS = [
   },
   {
     id: 'swap-ripgrep-for-fff',
-    name: '[EXPERIMENTAL] fff-backed Grep (ripgrep kept as fallback)',
+    name: '[EXPERIMENTAL] fff for Bash search (grep/find/rg → fff)',
     group: PatchGroup.FEATURES,
     description:
-      "[EXPERIMENTAL] Route Claude Code's Grep through fff (fast file finder) for eligible exact content searches — relevance-ranked and typo-tolerant — while KEEPING ripgrep as an automatic fallback for regex, multiline, Glob/--files enumeration, count, single-file and non-ASCII searches. Both engines ship; ripgrep is not removed. Appends fff usage guidance to the Grep tool description (on top of any edited prompts). Installs a per-platform wrapper into ~/.tweakcc/fff.",
+      "[EXPERIMENTAL] Route Claude Code's Bash search through fff (fast file finder). CC 2.1.186 shadows the shell `grep`→embedded ugrep and `find`→embedded bfs (and offers `rg`); the agent uses grep ~136x more than rg. This repoints all three at a per-platform fff wrapper: eligible literal/identifier content searches → fff (relevance-ranked, typo-tolerant), and regex/multiline/case-insensitive/single-file/non-ASCII → re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships; nothing is removed. Transparent (no prompt-compliance reliance) and CC-scoped (the user's own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
   },
   {
     id: 'dream-mode',

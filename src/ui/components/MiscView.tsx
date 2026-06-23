@@ -441,9 +441,9 @@ export function MiscView({ onSubmit }: MiscViewProps) {
       },
       {
         id: 'swapRipgrepForFff',
-        title: '[EXPERIMENTAL] fff-backed Grep (keeps ripgrep as fallback)',
+        title: '[EXPERIMENTAL] fff for Bash search (grep/find/rg -> fff)',
         description:
-          "Route Grep through fff (fast file finder) for eligible exact content searches (relevance-ranked, typo-tolerant), while KEEPING ripgrep as an automatic fallback for regex, multiline, Glob/--files enumeration, count, single-file and non-ASCII searches. Both engines ship - ripgrep is not removed. Appends fff usage guidance to the Grep tool description (on top of any edited prompts). Installs a per-platform wrapper into ~/.tweakcc/fff.",
+          "Route Claude Code's Bash search through fff. CC shadows the shell grep->embedded ugrep and find->embedded bfs (and offers rg); the agent uses grep far more than rg. This repoints all three at a per-platform fff wrapper: literal/identifier content searches -> fff (relevance-ranked, typo-tolerant); regex/multiline/case-insensitive/single-file/non-ASCII -> re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships. Transparent (no prompt-compliance reliance), CC-scoped (your own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
         getValue: () => settings.misc?.swapRipgrepForFff ?? false,
         toggle: () => {
           updateSettings(settings => {
@@ -778,8 +778,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
         title: 'Fable/Mythos prompt set (all models)',
         description:
           'Treats your selected model as Fable/Mythos everywhere CC branches on model family (flips the zQ gate). You get: the autonomous-operation prompt ("proceed without asking for reversible in-scope work, finish the job before ending your turn"); the "# Communicating with the user" comms block in place of "# Text output"; /loop dynamic-pacing turn behavior; and brief-mode comms shaping. Per-model feature-flag routing follows fable too, but is inert on a local install (those flags default off without a live gate service).',
-        getValue: () =>
-          settings.misc?.autonomousOperationAllModels ?? false,
+        getValue: () => settings.misc?.autonomousOperationAllModels ?? false,
         toggle: () => {
           updateSettings(settings => {
             ensureMisc();
