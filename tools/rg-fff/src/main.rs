@@ -88,6 +88,10 @@ struct Opts {
     hidden: bool,          // --hidden — search dotfiles (rg skips by default)
     before_context: usize, // -B / -C
     after_context: usize,  // -A / -C
+    include_exts: Vec<String>, // -g/--glob/--include "*.ext" -> keep only these
+    // extensions (e.g. ".ts"). Only simple extension include globs are served;
+    // any other glob (exclude, path glob, char class, brace, **) sets
+    // force_fallback in parse so we never silently ignore a glob.
     fff_first: bool,       // RG_FFF_FIRST: serve fff RE2 (the model's intended
     // dialect) instead of mirroring CC's shell ugrep -G BRE — captures the
     // \w/\d/+/(/| regexes the model writes. Correctness gates (servable/newline/
@@ -119,6 +123,7 @@ pub struct SearchReq {
     pub before_context: usize,   // -B / -C
     pub after_context: usize,    // -A / -C
     pub sep_between_files: bool, // rg prints `--` across files; ugrep does not
+    pub include_exts: Vec<String>, // -g/--include "*.ext" -> keep only these
     pub path_prefix: String,     // "./" iff the tool echoes it for this path arg
 }
 
@@ -222,6 +227,7 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
         hidden: false,
         before_context: 0,
         after_context: 0,
+        include_exts: Vec::new(),
         fff_first: std::env::var("RG_FFF_FIRST")
             .map(|v| v == "1")
             .unwrap_or(false),
@@ -252,8 +258,12 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
                 o.recursive = true
             }
             "--hidden" => o.hidden = true,
-            "-G" | "--basic-regexp" | "--ignore-files" | "-I" | "--no-ignore"
-            | "--include-dir" => {}
+            // No-ops for fff: -G/-E dialect handled elsewhere, --ignore-files/-I
+            // are fff defaults, --no-config only affects rg's own config file
+            // (fff reads none). NB: --no-ignore / --include-dir are NOT here — they
+            // change file inclusion in ways fff can't replicate, so they fall
+            // through to `other` -> force_fallback (defer), never silently ignored.
+            "-G" | "--basic-regexp" | "--ignore-files" | "-I" | "--no-config" => {}
             "-E" | "--extended-regexp" => o.ere = true,
             // -A/-B/-C N (space form) — context. A non-numeric value -> defer.
             "-A" | "--after-context" | "-B" | "--before-context" | "-C"
@@ -293,7 +303,22 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
                     i += 1;
                 }
             }
-            "--exclude-dir" | "--exclude" | "--include" | "-g" | "--glob" => {
+            // include globs (space form): serve simple "*.ext", defer the rest.
+            "-g" | "--glob" | "--include" => {
+                if let Some(g) = raw.get(i + 1) {
+                    classify_glob(g, &mut o);
+                    i += 1;
+                }
+            }
+            // exclude globs -> defer (can't serve byte-exactly yet).
+            "--exclude" => {
+                o.force_fallback = true;
+                if i + 1 < raw.len() {
+                    i += 1;
+                }
+            }
+            // VCS dir excludes -> no-op (fff already honors .gitignore).
+            "--exclude-dir" => {
                 if i + 1 < raw.len() {
                     i += 1;
                 }
@@ -303,10 +328,13 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
                     o.claude_bin = Some(cb.to_string());
                 } else if other.strip_prefix("--exclude-dir=").is_some() {
                     // CC VCS excludes — fff honors ignores
-                } else if other.starts_with("--exclude=")
-                    || other.starts_with("--include=")
+                } else if let Some(g) = other
+                    .strip_prefix("--include=")
+                    .or_else(|| other.strip_prefix("--glob="))
                 {
-                    o.force_fallback = true;
+                    classify_glob(g, &mut o); // include glob (= form)
+                } else if other.starts_with("--exclude=") {
+                    o.force_fallback = true; // exclude glob -> defer
                 } else if other.starts_with("--color=") {
                 } else if let Some(n) = attached_ctx(other, "-A")
                     .or_else(|| attached_ctx(other, "--after-context="))
@@ -357,6 +385,23 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
         o.paths = positionals;
     }
     o
+}
+
+/// Classify a glob arg. Only a simple include extension glob ("*.ts") is served
+/// (its extension is recorded for the post-filter, byte-identical to rg `-g`/grep
+/// `--include` on an extension); ANY other glob — exclude (`!`-prefixed), path
+/// glob (`/`), char class `[`, brace `{`, `**`, or non-`*.ext` — sets
+/// force_fallback so the search defers rather than silently ignore the glob.
+fn classify_glob(g: &str, o: &mut Opts) {
+    if let Some(ext) = g.strip_prefix("*.") {
+        if !ext.is_empty()
+            && ext.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            o.include_exts.push(format!(".{ext}"));
+            return;
+        }
+    }
+    o.force_fallback = true;
 }
 
 /// Parse an attached context value: `-A3` / `--after-context=3` -> Some(3).
@@ -590,6 +635,7 @@ impl Opts {
             before_context: if ctx { self.before_context } else { 0 },
             after_context: if ctx { self.after_context } else { 0 },
             sep_between_files: matches!(self.tool, Tool::Rg | Tool::Fff),
+            include_exts: self.include_exts.clone(),
             path_prefix,
         }
     }
@@ -754,6 +800,15 @@ pub fn format_results(
     };
 
     let keep = |path: &str| -> bool {
+        // -g/--include "*.ext" filter: keep only the requested extensions. Path
+        // ends-with is byte-identical to rg's `-g '*.ts'` (path glob) and grep's
+        // `--include=*.ts` (basename glob) for extension globs (the ext is at the
+        // path tail either way). Non-extension globs never reach here (deferred).
+        if !req.include_exts.is_empty()
+            && !req.include_exts.iter().any(|e| path.ends_with(e.as_str()))
+        {
+            return false;
+        }
         // regex dir-scoping (plain/fuzzy already scope via the DSL constraint)
         if let Some(p) = post_filter {
             if !path.starts_with(p) {
@@ -1052,6 +1107,7 @@ mod tests {
             hidden: false,
             before_context: 0,
             after_context: 0,
+            include_exts: Vec::new(),
             fff_first: false,
             no_fallback: false,
             claude_bin: None,
@@ -1156,6 +1212,46 @@ mod tests {
         // non-numeric value -> defer, pattern unconsumed by the flag
         let bad = p(Tool::Ugrep, &["-A", "foo", "src"]);
         assert!(bad.force_fallback);
+    }
+
+    #[test]
+    fn glob_parsing_serves_extensions_defers_rest() {
+        // simple extension include globs -> recorded, served
+        assert_eq!(
+            p(Tool::Rg, &["-g", "*.ts", "x", "src"]).include_exts,
+            vec![".ts"]
+        );
+        let multi = p(Tool::Rg, &["-g", "*.ts", "-g", "*.tsx", "x", "src"]);
+        assert_eq!(multi.include_exts, vec![".ts", ".tsx"]);
+        assert!(!multi.force_fallback);
+        assert_eq!(
+            p(Tool::Ugrep, &["--include=*.json", "x", "src"]).include_exts,
+            vec![".json"]
+        );
+        assert_eq!(
+            p(Tool::Rg, &["--glob=*.rs", "x", "src"]).include_exts,
+            vec![".rs"]
+        );
+        // anything beyond a simple extension glob -> defer (never silently ignore)
+        for g in ["!node_modules", "src/*.ts", "*.{ts,tsx}", "*.[jt]s", "**/*.ts", "test_*"] {
+            assert!(p(Tool::Rg, &["-g", g, "x", "src"]).force_fallback, "{g} should defer");
+        }
+        // exclude globs defer
+        assert!(p(Tool::Ugrep, &["--exclude=*.min.js", "x", "src"]).force_fallback);
+        assert!(p(Tool::Ugrep, &["--exclude", "*.min.js", "x", "src"]).force_fallback);
+    }
+
+    #[test]
+    fn ignore_flags_handled_correctly() {
+        // --no-ignore changes file inclusion fff can't replicate -> defer
+        assert!(p(Tool::Rg, &["--no-ignore", "x", "."]).force_fallback);
+        assert!(p(Tool::Ugrep, &["--include-dir", "y", "x", "src"]).force_fallback);
+        // --no-config only affects rg's own config -> no-op, still servable
+        let nc = p(Tool::Rg, &["--no-config", "showDiff", "src"]);
+        assert!(!nc.force_fallback);
+        // --exclude-dir (VCS) is a no-op (fff honors .gitignore)
+        let ed = p(Tool::Ugrep, &["--exclude-dir", ".git", "showDiff", "src"]);
+        assert!(!ed.force_fallback);
     }
 
     #[test]
