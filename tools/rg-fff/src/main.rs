@@ -109,6 +109,36 @@ pub struct SearchReq {
     pub path_prefix: String,     // "./" iff the tool echoes it for this path arg
 }
 
+/// Append a one-line decision record to `$RG_FFF_LOG` for adoption testing:
+/// `ts<TAB>tool<TAB>decision<TAB>nlines<TAB>pattern`. No-op (and error-swallowing)
+/// when the env var is unset, so it's zero-cost in normal use and can never break
+/// a search. `nlines` = served result lines, or -1 when unknown (fallback).
+fn log_decision(tool: Tool, pattern: &Option<String>, decision: &str, nlines: i64) {
+    let path = match std::env::var("RG_FFF_LOG") {
+        Ok(p) if !p.is_empty() => p,
+        _ => return,
+    };
+    let pat: String = pattern
+        .as_deref()
+        .unwrap_or("")
+        .replace(['\t', '\n', '\r'], " ")
+        .chars()
+        .take(160)
+        .collect();
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let t = tool.embedded_argv0();
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        let _ = writeln!(f, "{ts}\t{t}\t{decision}\t{nlines}\t{pat}");
+    }
+}
+
 fn main() {
     let argv: Vec<String> = std::env::args().collect();
 
@@ -135,6 +165,7 @@ fn main() {
     if let Some(mode) = search_mode(&opts) {
         std::process::exit(run_search(&opts, mode));
     }
+    log_decision(opts.tool, &opts.pattern, "fallback-ineligible", -1);
     if opts.no_fallback {
         eprintln!("rg-fff: not fff-eligible and --no-fallback is set");
         std::process::exit(2);
@@ -555,6 +586,12 @@ fn run_search(o: &Opts, mode: Mode) -> i32 {
                 if debug {
                     eprintln!("rg-fff: daemon hit");
                 }
+                log_decision(
+                    o.tool,
+                    &o.pattern,
+                    "served-daemon",
+                    out.lines().count() as i64,
+                );
                 let mut w = std::io::stdout().lock();
                 let _ = w.write_all(out.as_bytes());
                 let _ = w.flush();
@@ -601,12 +638,19 @@ fn run_search(o: &Opts, mode: Mode) -> i32 {
                 if debug {
                     eprintln!("rg-fff: fff served (cold)");
                 }
+                log_decision(
+                    o.tool,
+                    &o.pattern,
+                    "served-cold",
+                    r.0.lines().count() as i64,
+                );
                 r
             }
             None => {
                 if debug {
                     eprintln!("rg-fff: fff defer -> fallback");
                 }
+                log_decision(o.tool, &o.pattern, "fallback-defer", -1);
                 fallback(o.tool, &strip_custom(&o.raw), o.claude_bin.as_deref())
             }
         };
