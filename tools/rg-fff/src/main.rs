@@ -298,11 +298,6 @@ fn search_mode(o: &Opts) -> Option<Mode> {
     if !pat.is_ascii() {
         return None;
     }
-    // -i: fff smart_case ignores case only when the pattern has no uppercase, so
-    // `-i` is byte-equivalent only for an all-lowercase pattern.
-    if o.ignore_case && pat.chars().any(|c| c.is_ascii_uppercase()) {
-        return None;
-    }
     // ugrep needs -r to recurse (else stdin / top-level only); rg/fff recurse by
     // default; fuzzy is fff-only discovery.
     if !o.fuzzy && o.tool == Tool::Ugrep && !o.recursive {
@@ -323,42 +318,68 @@ fn search_mode(o: &Opts) -> Option<Mode> {
         }
         _ => false,
     };
-    if !path_ok {
+    if !path_ok || dir_has_dsl_operator(o) {
         return None;
     }
 
     if o.fuzzy {
-        // Fuzzy & Plain run the pattern through fff's DSL (which keeps simple
-        // tokens literal), so they must avoid DSL operators.
-        if has_dsl_operator(pat) || dir_has_dsl_operator(o) {
+        // Fuzzy runs through fff's DSL (keeps simple tokens literal) -> no DSL ops.
+        // (-i on fuzzy is handled by smart_case; fuzzy is approximate anyway.)
+        if has_dsl_operator(pat) {
             return None;
         }
         return Some(Mode::Fuzzy);
     }
-    if has_regex_meta(pat, o.ere) {
-        // Regex bypasses the DSL entirely (raw pattern as the needle), so DSL
-        // operators in the pattern are fine — but only serve when the tool's
-        // regex dialect maps faithfully onto fff's RE2 engine, and the dir scope
-        // (applied by post-filter) is itself sane. (A pattern whose meaning fff's
-        // grep_text() would alter is caught precisely in format_results.)
-        if regex_dialect_ok(pat, o)
-            && !dir_has_dsl_operator(o)
-            && regex_servable(pat)
-        {
-            Some(Mode::Regex)
-        } else {
-            None
+    let is_regex_orig = has_regex_meta(pat, o.ere);
+    if o.ignore_case || is_regex_orig {
+        // Regex mode bypasses the DSL (raw pattern as the needle), so DSL operators
+        // in the pattern are fine. -i is served here via a (?i) prefix built in
+        // effective_pattern. The dialect gate applies only to a genuine regex
+        // original — an escaped -i literal carries no dialect risk.
+        if is_regex_orig && !regex_dialect_ok(pat, o) {
+            return None;
         }
+        // An escaped -i literal still wants the bigram floor for a sound prefilter.
+        if !is_regex_orig && pat.chars().count() < 3 {
+            return None;
+        }
+        if !regex_servable(&effective_pattern(o, Mode::Regex)) {
+            return None;
+        }
+        Some(Mode::Regex)
     } else {
         // Literal/plain: routed through the DSL, so avoid its operators; needs
         // >= 3 chars for a reliable bigram prefilter.
-        if has_dsl_operator(pat) || dir_has_dsl_operator(o) {
+        if has_dsl_operator(pat) {
             return None;
         }
         if pat.chars().count() < 3 {
             return None;
         }
         Some(Mode::Plain)
+    }
+}
+
+/// The literal pattern as a case-insensitive regex: `(?i)` + the pattern (regex
+/// metacharacters escaped when the original was a literal, so it stays literal).
+fn ci_regex_pattern(o: &Opts) -> String {
+    let pat = o.pattern.clone().unwrap_or_default();
+    let body = if has_regex_meta(&pat, o.ere) {
+        pat
+    } else {
+        regex::escape(&pat)
+    };
+    format!("(?i){body}")
+}
+
+/// The actual needle fff runs for a given mode: a `(?i)` regex for case-
+/// insensitive Regex searches, otherwise the raw pattern. (Plain/Fuzzy handle
+/// `-i` via smart_case; only Regex needs the inline flag.)
+fn effective_pattern(o: &Opts, mode: Mode) -> String {
+    if matches!(mode, Mode::Regex) && o.ignore_case {
+        ci_regex_pattern(o)
+    } else {
+        o.pattern.clone().unwrap_or_default()
     }
 }
 
@@ -462,7 +483,7 @@ impl Opts {
             String::new()
         };
         SearchReq {
-            pattern: self.pattern.clone().unwrap_or_default(),
+            pattern: effective_pattern(self, mode),
             dir: self.paths.first().cloned(),
             line_numbers: self.line_numbers,
             files_only: self.files_only,
@@ -571,6 +592,9 @@ pub fn format_results(
     };
     let is_fuzzy = matches!(req.mode, Mode::Fuzzy);
     let is_regex = matches!(req.mode, Mode::Regex);
+    // -i is baked into the pattern as (?i) for Regex; Plain is case-sensitive;
+    // only Fuzzy still relies on smart_case for case-insensitivity.
+    let smart = is_fuzzy && req.ignore_case;
 
     // Directory scoping + path echoing. grep prints join(pathArg, relPath); fff
     // returns cwd-relative paths. So scope by the CANONICAL dir (leading "./" and
@@ -598,24 +622,14 @@ pub fn format_results(
     } else {
         Some(format!("{canonical}/"))
     };
-    let post_filter: Option<&str> = if is_regex {
-        dir_constraint.as_deref()
-    } else {
-        None
-    };
+    // Dir scoping is ALWAYS the anchored post-filter (relative_path starts_with
+    // "canonical/"), never fff's DSL "dir/" constraint — that matches the segment
+    // (e.g. "src") ANYWHERE in a path (tools/x/src/…), diverging from grep's
+    // root-anchored path arg. So the query carries only the pattern.
+    let post_filter: Option<&str> = dir_constraint.as_deref();
 
     let parser = QueryParser::new(AiGrepConfig);
-    let dsl_query: String = if is_regex {
-        String::new()
-    } else {
-        let mut q = String::new();
-        if let Some(p) = &dir_constraint {
-            q.push_str(p);
-            q.push(' ');
-        }
-        q.push_str(&req.pattern);
-        q
-    };
+    let dsl_query: String = req.pattern.clone();
     let parsed: FFFQuery = if is_regex {
         FFFQuery {
             raw_query: &req.pattern,
@@ -658,7 +672,7 @@ pub fn format_results(
         // back to literal matching (regex_fallback_error set) -> defer.
         let probe = picker.grep(
             &parsed,
-            &grep_opts(gmode, 0, req.files_only, req.ignore_case),
+            &grep_opts(gmode, 0, req.files_only, smart),
         );
         if probe.regex_fallback_error.is_some() {
             return None;
@@ -677,7 +691,7 @@ pub fn format_results(
         let mut counts: BTreeMap<String, usize> = BTreeMap::new();
         let mut file_offset = 0usize;
         loop {
-            let opts = grep_opts(gmode, file_offset, false, req.ignore_case);
+            let opts = grep_opts(gmode, file_offset, false, smart);
             let r = picker.grep(&parsed, &opts);
             for m in &r.matches {
                 let f = r.files[m.file_index];
@@ -701,7 +715,7 @@ pub fn format_results(
     let mut any = false;
     let mut file_offset = 0usize;
     loop {
-        let opts = grep_opts(gmode, file_offset, req.files_only, req.ignore_case);
+        let opts = grep_opts(gmode, file_offset, req.files_only, smart);
         let result = picker.grep(&parsed, &opts);
         if req.files_only {
             for f in &result.files {
@@ -892,6 +906,24 @@ mod tests {
         let mut f = opts(Tool::Ugrep, "showDiff", &["src"]);
         f.fuzzy = true;
         assert!(matches!(search_mode(&f), Some(Fuzzy)));
+        // -i (any case) routes to Regex (served via a (?i) prefix)
+        let mut lo = opts(Tool::Ugrep, "showdiff", &["src"]);
+        lo.ignore_case = true;
+        assert!(matches!(search_mode(&lo), Some(Regex)));
+        let mut up = opts(Tool::Ugrep, "ShowDiff", &["src"]);
+        up.ignore_case = true;
+        assert!(matches!(search_mode(&up), Some(Regex)));
+    }
+
+    #[test]
+    fn ci_pattern_escapes_literal_but_not_regex() {
+        // "a+b": literal in BRE (escape the +) but a regex in ERE (keep the +).
+        let mut lit = opts(Tool::Ugrep, "a+b", &["src"]);
+        lit.ignore_case = true;
+        assert_eq!(ci_regex_pattern(&lit), "(?i)a\\+b");
+        let mut re = opts(Tool::Rg, "a+b", &["src"]);
+        re.ignore_case = true;
+        assert_eq!(ci_regex_pattern(&re), "(?i)a+b");
     }
 
     #[test]
@@ -905,10 +937,6 @@ mod tests {
         assert!(search_mode(&opts(Tool::Ugrep, "a b", &["src"])).is_none());
         // non-ascii -> defer
         assert!(search_mode(&opts(Tool::Ugrep, "café", &["src"])).is_none());
-        // -i with uppercase -> defer
-        let mut ic = opts(Tool::Ugrep, "Foo", &["src"]);
-        ic.ignore_case = true;
-        assert!(search_mode(&ic).is_none());
         // ugrep without -r -> defer
         let mut nr = opts(Tool::Ugrep, "showDiff", &["src"]);
         nr.recursive = false;

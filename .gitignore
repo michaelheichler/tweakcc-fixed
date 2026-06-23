@@ -57,3 +57,4 @@ debug.log
 # Agent instructions: local/per-machine (durable record lives in memory)
 /CLAUDE.md
 /AGENTS.md
+findings.md
