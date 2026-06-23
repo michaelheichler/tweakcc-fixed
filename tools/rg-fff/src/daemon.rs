@@ -7,14 +7,19 @@
 //! anything fails, the client cold-scans (and lazily spawns a daemon for next
 //! time). Correctness never depends on the daemon — only latency.
 //!
-//! Protocol (client -> daemon), 5 newline-terminated lines:
-//!   v1
-//!   plain|fuzzy
-//!   <files_only?l:-><line_numbers?n:-><count?c:->     e.g. "-n-"
+//! Protocol (client -> daemon), 8 newline-terminated lines:
+//!   v2
+//!   plain|regex|fuzzy
+//!   flags: files_only(l) line_numbers(n) count(c) ignore_case(i) hidden(h)
+//!          sep_between_files(s) — each char or '-'    e.g. "-n--hs"
 //!   <dir or empty>
 //!   <pattern>
+//!   <path_prefix>
+//!   <before_context>
+//!   <after_context>
 //! Response (daemon -> client): first line is the exit code, or the literal
 //! "FALLBACK" (daemon can't serve -> client cold-scans); the rest is the output.
+//! The version tag ("v2") makes an older daemon reject a newer client cleanly.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::Shutdown;
@@ -60,7 +65,7 @@ pub fn socket_path(root: &Path) -> Option<PathBuf> {
 fn encode_req(req: &SearchReq) -> String {
     use crate::Mode;
     format!(
-        "v1\n{}\n{}{}{}{}{}\n{}\n{}\n{}\n",
+        "v2\n{}\n{}{}{}{}{}{}\n{}\n{}\n{}\n{}\n{}\n",
         match req.mode {
             Mode::Plain => "plain",
             Mode::Regex => "regex",
@@ -71,9 +76,12 @@ fn encode_req(req: &SearchReq) -> String {
         if req.count { "c" } else { "-" },
         if req.ignore_case { "i" } else { "-" },
         if req.hidden { "h" } else { "-" },
+        if req.sep_between_files { "s" } else { "-" },
         req.dir.as_deref().unwrap_or(""),
         req.pattern,
         req.path_prefix,
+        req.before_context,
+        req.after_context,
     )
 }
 
@@ -214,8 +222,8 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         Err(_) => return,
     };
     let mut reader = BufReader::new(read_half);
-    let mut lines: Vec<String> = Vec::with_capacity(6);
-    for _ in 0..6 {
+    let mut lines: Vec<String> = Vec::with_capacity(8);
+    for _ in 0..8 {
         let mut l = String::new();
         match reader.read_line(&mut l) {
             Ok(0) => break,
@@ -224,7 +232,7 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         }
     }
     let mut out = stream;
-    if lines.len() < 6 || lines[0] != "v1" {
+    if lines.len() < 8 || lines[0] != "v2" {
         let _ = out.write_all(b"FALLBACK\n");
         return;
     }
@@ -240,6 +248,7 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         count: flags.get(2) == Some(&b'c'),
         ignore_case: flags.get(3) == Some(&b'i'),
         hidden: flags.get(4) == Some(&b'h'),
+        sep_between_files: flags.get(5) == Some(&b's'),
         dir: if lines[3].is_empty() {
             None
         } else {
@@ -247,6 +256,8 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         },
         pattern: lines[4].clone(),
         path_prefix: lines[5].clone(),
+        before_context: lines[6].parse().unwrap_or(0),
+        after_context: lines[7].parse().unwrap_or(0),
     };
 
     let guard = match shared.read() {

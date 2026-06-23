@@ -84,8 +84,10 @@ struct Opts {
     count: bool,
     recursive: bool,
     fuzzy: bool,
-    ere: bool,    // -E / egrep / rg — extended-regex dialect (≈ RE2)
-    hidden: bool, // --hidden — search dotfiles (rg skips them by default)
+    ere: bool,             // -E / egrep / rg — extended-regex dialect (≈ RE2)
+    hidden: bool,          // --hidden — search dotfiles (rg skips by default)
+    before_context: usize, // -B / -C
+    after_context: usize,  // -A / -C
     no_fallback: bool,
     claude_bin: Option<String>,
     force_fallback: bool,
@@ -100,8 +102,11 @@ pub struct SearchReq {
     pub count: bool,
     pub mode: Mode,
     pub ignore_case: bool,
-    pub hidden: bool,        // include dotfiles (else filtered to match the tool)
-    pub path_prefix: String, // "./" iff the tool echoes it for this path arg
+    pub hidden: bool,            // include dotfiles (else filtered to match the tool)
+    pub before_context: usize,   // -B / -C
+    pub after_context: usize,    // -A / -C
+    pub sep_between_files: bool, // rg prints `--` across files; ugrep does not
+    pub path_prefix: String,     // "./" iff the tool echoes it for this path arg
 }
 
 fn main() {
@@ -171,6 +176,8 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
         fuzzy: false,
         ere: matches!(tool, Tool::Rg | Tool::Fff), // RE2 dialect by default
         hidden: false,
+        before_context: 0,
+        after_context: 0,
         no_fallback: false,
         claude_bin: None,
         force_fallback: false,
@@ -201,27 +208,34 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
             "-G" | "--basic-regexp" | "--ignore-files" | "-I" | "--no-ignore"
             | "--include-dir" => {}
             "-E" | "--extended-regexp" => o.ere = true,
+            // -A/-B/-C N (space form) — context. A non-numeric value -> defer.
+            "-A" | "--after-context" | "-B" | "--before-context" | "-C"
+            | "--context" => {
+                match raw.get(i + 1).and_then(|v| v.parse::<usize>().ok()) {
+                    Some(n) => {
+                        i += 1;
+                        if a == "-A" || a == "--after-context" {
+                            o.after_context = n;
+                        } else if a == "-B" || a == "--before-context" {
+                            o.before_context = n;
+                        } else {
+                            o.before_context = n;
+                            o.after_context = n;
+                        }
+                    }
+                    None => o.force_fallback = true,
+                }
+            }
             // capability gaps fff can't faithfully serve -> defer.
             "-P" | "--perl-regexp" | "-o" | "--only-matching" | "-v"
             | "--invert-match" | "-x" | "--line-regexp" | "-w"
             | "--word-regexp" | "-z" | "--null-data" | "-U" | "--multiline"
-            | "--multiline-dotall" | "-f" | "--file" | "-A"
-            | "--after-context" | "-B" | "--before-context" | "-C"
-            | "--context" | "-m" | "--max-count" | "-t" | "--type" => {
+            | "--multiline-dotall" | "-f" | "--file" | "-m" | "--max-count"
+            | "-t" | "--type" => {
                 o.force_fallback = true;
                 if matches!(
                     a.as_str(),
-                    "-f" | "--file"
-                        | "-A"
-                        | "--after-context"
-                        | "-B"
-                        | "--before-context"
-                        | "-C"
-                        | "--context"
-                        | "-m"
-                        | "--max-count"
-                        | "-t"
-                        | "--type"
+                    "-f" | "--file" | "-m" | "--max-count" | "-t" | "--type"
                 ) {
                     i += 1;
                 }
@@ -247,6 +261,19 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
                 {
                     o.force_fallback = true;
                 } else if other.starts_with("--color=") {
+                } else if let Some(n) = attached_ctx(other, "-A")
+                    .or_else(|| attached_ctx(other, "--after-context="))
+                {
+                    o.after_context = n; // -A3 / --after-context=3
+                } else if let Some(n) = attached_ctx(other, "-B")
+                    .or_else(|| attached_ctx(other, "--before-context="))
+                {
+                    o.before_context = n;
+                } else if let Some(n) = attached_ctx(other, "-C")
+                    .or_else(|| attached_ctx(other, "--context="))
+                {
+                    o.before_context = n;
+                    o.after_context = n;
                 } else if let Some(combined) = other.strip_prefix('-') {
                     if combined.is_empty() {
                         positionals.push(other.to_string());
@@ -283,6 +310,14 @@ fn parse(tool: Tool, raw: Vec<String>) -> Opts {
         o.paths = positionals;
     }
     o
+}
+
+/// Parse an attached context value: `-A3` / `--after-context=3` -> Some(3).
+/// Returns None when the prefix doesn't apply or the value isn't a usize.
+fn attached_ctx(s: &str, prefix: &str) -> Option<usize> {
+    s.strip_prefix(prefix)
+        .filter(|r| !r.is_empty())
+        .and_then(|r| r.parse::<usize>().ok())
 }
 
 /// Decide which fff mode (if any) serves this query *faithfully tool-equivalent*.
@@ -482,6 +517,11 @@ impl Opts {
         } else {
             String::new()
         };
+        // Context only applies to content output (not -l files-only, not -c
+        // count, not fuzzy discovery).
+        let ctx = !self.files_only
+            && !self.count
+            && !matches!(mode, Mode::Fuzzy);
         SearchReq {
             pattern: effective_pattern(self, mode),
             dir: self.paths.first().cloned(),
@@ -491,6 +531,9 @@ impl Opts {
             mode,
             ignore_case: self.ignore_case,
             hidden: self.hidden,
+            before_context: if ctx { self.before_context } else { 0 },
+            after_context: if ctx { self.after_context } else { 0 },
+            sep_between_files: matches!(self.tool, Tool::Rg | Tool::Fff),
             path_prefix,
         }
     }
@@ -712,6 +755,85 @@ pub fn format_results(
         return Some((out, if any { 0 } else { 1 }));
     }
 
+    // -A/-B/-C context: collect every (match + context) line per file, merge
+    // overlapping windows by line number, then emit with grep's separators.
+    // (to_req zeroes context for -l/-c/fuzzy, so this is content mode only.)
+    if req.before_context > 0 || req.after_context > 0 {
+        let trunc = |s: &str| s.len() >= 509 || s.contains('\u{FFFD}');
+        // path -> (line_no -> (is_match, content)); BTreeMap keeps line order.
+        let mut per_file: BTreeMap<String, BTreeMap<u64, (bool, String)>> =
+            BTreeMap::new();
+        let mut file_offset = 0usize;
+        loop {
+            let opts = GrepSearchOptions {
+                before_context: req.before_context,
+                after_context: req.after_context,
+                ..grep_opts(gmode, file_offset, false, smart)
+            };
+            let result = picker.grep(&parsed, &opts);
+            for m in &result.matches {
+                let f = result.files[m.file_index];
+                let path = f.relative_path(picker);
+                if !keep(&path) {
+                    continue;
+                }
+                // Same truncation/lossy gate as the match line, extended to
+                // every context line: any one truncated -> defer the whole query.
+                if trunc(&m.line_content)
+                    || m.context_before.iter().any(|s| trunc(s))
+                    || m.context_after.iter().any(|s| trunc(s))
+                {
+                    return None;
+                }
+                let fmap = per_file.entry(path).or_default();
+                let ln = m.line_number;
+                // fff returns only the context lines that exist, so the first
+                // before-context line sits at ln - context_before.len().
+                let blen = m.context_before.len() as u64;
+                for (i, c) in m.context_before.iter().enumerate() {
+                    fmap.entry(ln - blen + i as u64)
+                        .or_insert((false, c.clone()));
+                }
+                // The match line wins over any context tag for the same line.
+                fmap.insert(ln, (true, m.line_content.clone()));
+                for (i, c) in m.context_after.iter().enumerate() {
+                    fmap.entry(ln + 1 + i as u64)
+                        .or_insert((false, c.clone()));
+                }
+            }
+            if result.next_file_offset == 0 {
+                break;
+            }
+            file_offset = result.next_file_offset;
+        }
+        let mut any = false;
+        let mut first_group = true;
+        for (path, lines) in &per_file {
+            let mut prev: Option<u64> = None;
+            for (&ln, (is_match, content)) in lines {
+                let new_group = prev.map(|p| ln > p + 1).unwrap_or(true);
+                if new_group && !first_group {
+                    // within-file gap -> always `--`; across files -> only rg.
+                    let cross_file = prev.is_none();
+                    if !cross_file || req.sep_between_files {
+                        let _ = writeln!(out, "--");
+                    }
+                }
+                let sep = if *is_match { ':' } else { '-' };
+                if req.line_numbers {
+                    let _ =
+                        writeln!(out, "{out_prefix}{path}{sep}{ln}{sep}{content}");
+                } else {
+                    let _ = writeln!(out, "{out_prefix}{path}{sep}{content}");
+                }
+                prev = Some(ln);
+                first_group = false;
+                any = true;
+            }
+        }
+        return Some((out, if any { 0 } else { 1 }));
+    }
+
     let mut any = false;
     let mut file_offset = 0usize;
     loop {
@@ -849,6 +971,8 @@ mod tests {
             fuzzy: false,
             ere: matches!(tool, Tool::Rg | Tool::Fff),
             hidden: false,
+            before_context: 0,
+            after_context: 0,
             no_fallback: false,
             claude_bin: None,
             force_fallback: false,
@@ -925,6 +1049,57 @@ mod tests {
         let mut up = opts(Tool::Ugrep, "ShowDiff", &["src"]);
         up.ignore_case = true;
         assert!(matches!(search_mode(&up), Some(Regex)));
+    }
+
+    fn p(tool: Tool, args: &[&str]) -> Opts {
+        parse(tool, args.iter().map(|s| s.to_string()).collect())
+    }
+
+    #[test]
+    fn context_flags_parse_all_forms() {
+        // space form
+        assert_eq!(p(Tool::Ugrep, &["-A", "3", "foo", "src"]).after_context, 3);
+        assert_eq!(p(Tool::Ugrep, &["-B", "2", "foo", "src"]).before_context, 2);
+        let c = p(Tool::Ugrep, &["-C", "1", "foo", "src"]);
+        assert_eq!((c.before_context, c.after_context), (1, 1));
+        // attached + long=
+        assert_eq!(p(Tool::Ugrep, &["-A3", "foo", "src"]).after_context, 3);
+        let c2 = p(Tool::Ugrep, &["-C2", "foo", "src"]);
+        assert_eq!((c2.before_context, c2.after_context), (2, 2));
+        assert_eq!(
+            p(Tool::Ugrep, &["--after-context=4", "foo", "src"]).after_context,
+            4
+        );
+        // non-numeric value -> defer, pattern unconsumed by the flag
+        let bad = p(Tool::Ugrep, &["-A", "foo", "src"]);
+        assert!(bad.force_fallback);
+    }
+
+    #[test]
+    fn attached_ctx_only_parses_numbers() {
+        assert_eq!(attached_ctx("-A3", "-A"), Some(3));
+        assert_eq!(attached_ctx("-A", "-A"), None);
+        assert_eq!(attached_ctx("-Axyz", "-A"), None);
+        assert_eq!(attached_ctx("--context=5", "--context="), Some(5));
+    }
+
+    #[test]
+    fn context_zeroed_for_non_content_modes() {
+        let mut o = opts(Tool::Ugrep, "showDiff", &["src"]);
+        o.after_context = 3;
+        // -l files-only and -c count drop context
+        o.files_only = true;
+        assert_eq!(o.to_req(Mode::Plain).after_context, 0);
+        o.files_only = false;
+        o.count = true;
+        assert_eq!(o.to_req(Mode::Plain).after_context, 0);
+        // content mode keeps it; rg gets cross-file `--`, ugrep does not
+        o.count = false;
+        assert_eq!(o.to_req(Mode::Plain).after_context, 3);
+        assert!(!o.to_req(Mode::Plain).sep_between_files);
+        let mut r = opts(Tool::Rg, "showDiff", &["src"]);
+        r.after_context = 1;
+        assert!(r.to_req(Mode::Regex).sep_between_files);
     }
 
     #[test]
