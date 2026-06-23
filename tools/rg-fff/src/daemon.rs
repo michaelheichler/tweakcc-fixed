@@ -59,11 +59,12 @@ pub fn socket_path(root: &Path) -> Option<PathBuf> {
 
 fn encode_req(req: &SearchReq) -> String {
     format!(
-        "v1\n{}\n{}{}{}\n{}\n{}\n",
+        "v1\n{}\n{}{}{}{}\n{}\n{}\n",
         if req.fuzzy { "fuzzy" } else { "plain" },
         if req.files_only { "l" } else { "-" },
         if req.line_numbers { "n" } else { "-" },
         if req.count { "c" } else { "-" },
+        if req.ignore_case { "i" } else { "-" },
         req.dir.as_deref().unwrap_or(""),
         req.pattern,
     )
@@ -226,6 +227,7 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         files_only: flags.first() == Some(&b'l'),
         line_numbers: flags.get(1) == Some(&b'n'),
         count: flags.get(2) == Some(&b'c'),
+        ignore_case: flags.get(3) == Some(&b'i'),
         dir: if lines[3].is_empty() {
             None
         } else {

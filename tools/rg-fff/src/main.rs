@@ -93,6 +93,7 @@ pub struct SearchReq {
     pub files_only: bool,
     pub count: bool,
     pub fuzzy: bool,
+    pub ignore_case: bool,
 }
 
 fn main() {
@@ -297,8 +298,8 @@ fn eligible(o: &Opts) -> bool {
     };
     // Explicit fuzzy always serves; otherwise require plain literal ASCII.
     if !o.fuzzy {
-        if has_regex_meta(pat) {
-            return false; // regex -> the real tool does it right
+        if has_regex_meta(pat, o.tool) {
+            return false; // genuinely regex for this tool -> let it do it
         }
         if pat.chars().count() < 3 {
             return false; // bigram prefilter unreliable on sub-3-char
@@ -307,26 +308,57 @@ fn eligible(o: &Opts) -> bool {
     if !pat.is_ascii() {
         return false;
     }
-    if o.ignore_case {
-        return false; // case-insensitive -> defer (preserve exact semantics)
+    // fff's query DSL reinterprets these as operators (whitespace = multiple
+    // terms, '/' = path constraint, ':' = line:col location, '!' = negation),
+    // which silently diverges from a literal grep. Only DSL-safe single tokens go
+    // to fff (verified safe: foo(), kebab-case, <T>); everything else defers.
+    // Applies to fuzzy too — the fuzzy query runs through the same parser.
+    if pat.chars().any(|c| matches!(c, ' ' | '\t' | '/' | ':' | '!')) {
+        return false;
     }
-    // path target: default cwd, or a single dir. A single file or multiple
+    if o.ignore_case {
+        // fff emulates case-insensitivity via smart_case, which only ignores
+        // case when the pattern has no uppercase. So `-i` is byte-equivalent to
+        // the real tool only for an all-lowercase pattern; otherwise defer.
+        if pat.chars().any(|c| c.is_ascii_uppercase()) {
+            return false;
+        }
+    }
+    // fff always searches the whole tree. grep/ugrep do that ONLY with -r/-R
+    // (without it: stdin for no path, or the top-level dir only) — so for the
+    // ugrep shadow, require -r or we'd over-match. rg/fff recurse by default, so
+    // no -r is needed there. (Fuzzy is fff-only discovery, so -r is moot.)
+    if !o.fuzzy && o.tool == Tool::Ugrep && !o.recursive {
+        return false;
+    }
+    // path target: cwd (no path) or a single dir. A single file or multiple
     // paths -> defer (grep/ugrep handle those precisely; fff is tree-oriented).
     match o.paths.len() {
         0 => true,
-        1 => Path::new(&o.paths[0]).is_dir(),
+        1 => {
+            let p = &o.paths[0];
+            // The query builder turns the dir into a path constraint, so it must
+            // itself be DSL-safe ('/' is fine — it IS a path; whitespace/':'/'!'
+            // would misparse).
+            Path::new(p).is_dir()
+                && !p.chars().any(|c| matches!(c, ' ' | '\t' | ':' | '!'))
+        }
         _ => false,
     }
 }
 
-/// Regex-metacharacter test mirroring fff's `regex::escape(t) != t`.
-fn has_regex_meta(t: &str) -> bool {
-    t.chars().any(|c| {
-        matches!(
-            c,
-            '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{'
-                | '}' | '^' | '$' | '#' | '&' | '-' | '~'
-        )
+/// Does `t` contain a regex metacharacter *for the tool being impersonated*?
+/// ugrep runs in basic-regex mode (`-G`/BRE): only `. * [ ] ^ $ \` are special;
+/// `+ ? ( ) { } |` (and `- # & ~ _`) are LITERAL — so `foo()`, `foo-bar`,
+/// `a|b` are plain literals fff can serve identically. rg/fff use ERE where
+/// `+ ? ( ) { } |` are also special, so those defer. Matching the tool keeps
+/// fff strictly result-equivalent while serving far more real queries.
+fn has_regex_meta(t: &str, tool: Tool) -> bool {
+    let ere = matches!(tool, Tool::Rg | Tool::Fff);
+    t.chars().any(|c| match c {
+        '\\' | '.' | '*' | '[' | ']' | '^' | '$' => true,
+        '+' | '?' | '(' | ')' | '{' | '}' | '|' => ere,
+        _ => false,
     })
 }
 
@@ -339,6 +371,7 @@ impl Opts {
             files_only: self.files_only,
             count: self.count,
             fuzzy: self.fuzzy,
+            ignore_case: self.ignore_case,
         }
     }
 }
@@ -452,7 +485,7 @@ pub fn format_results(picker: &FilePicker, req: &SearchReq) -> (String, i32) {
         let mut counts: BTreeMap<String, usize> = BTreeMap::new();
         let mut file_offset = 0usize;
         loop {
-            let opts = grep_opts(mode, file_offset, false);
+            let opts = grep_opts(mode, file_offset, false, req.ignore_case);
             let r = picker.grep(&parsed, &opts);
             for m in &r.matches {
                 let f = r.files[m.file_index];
@@ -473,7 +506,8 @@ pub fn format_results(picker: &FilePicker, req: &SearchReq) -> (String, i32) {
     let mut any = false;
     let mut file_offset = 0usize;
     loop {
-        let opts = grep_opts(mode, file_offset, req.files_only);
+        let opts =
+            grep_opts(mode, file_offset, req.files_only, req.ignore_case);
         let result = picker.grep(&parsed, &opts);
         if req.files_only {
             for f in &result.files {
@@ -514,11 +548,12 @@ fn grep_opts(
     mode: GrepMode,
     file_offset: usize,
     files_only: bool,
+    smart_case: bool,
 ) -> GrepSearchOptions {
     GrepSearchOptions {
         max_file_size: 10 * 1024 * 1024,
         max_matches_per_file: if files_only { 1 } else { 1_000_000 },
-        smart_case: false,
+        smart_case,
         file_offset,
         page_limit: 1_000_000,
         mode,

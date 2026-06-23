@@ -55,12 +55,17 @@ describe('swapRipgrepForFff', () => {
     expect(countOf(out, 'Search backend note (fff):')).toBe(2); // concise + full
   });
 
-  it('appends fff-backed/--fuzzy guidance to both Bash description variants', () => {
+  it('appends minimal ranking/--fuzzy guidance to both Bash description variants', () => {
     const out = writeSwapRipgrepForFff(COMBINED, WRAPPER)!;
-    expect(countOf(out, 'fff-backed')).toBe(2); // both bash variants
-    expect(out).toContain('--fuzzy');
+    expect(countOf(out, 'most-relevant-first')).toBe(2); // both bash variants
+    expect(out).toContain('grep --fuzzy SomeName');
     // inserted inside the bullet, before its closing backtick (no raw backticks)
-    expect(out).toContain('Prefer the dedicated tool. Note: grep and find');
+    expect(out).toContain(
+      'Prefer the dedicated tool. grep/find results are ranked'
+    );
+    // the structured Grep tool has no --fuzzy flag, so its desc must NOT mention it
+    const grepNote = out.slice(out.indexOf('Search backend note (fff):'));
+    expect(grepNote.slice(0, 120)).not.toContain('--fuzzy');
   });
 
   it('is idempotent (no-op when already applied)', () => {

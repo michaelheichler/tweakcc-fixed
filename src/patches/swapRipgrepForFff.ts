@@ -38,27 +38,29 @@ const EMBEDDED_DESCRIPTOR =
 const EMBEDDED_RE =
   /\{mode:"embedded",command:process\.execPath,args:\[[^\]]*\],argv0:"rg"\}/;
 
-// ── 3. Grep-description guidance — best-effort (subagents w/ the Grep tool) ────
+// Guidance text is minimal by design: only what the model can't infer and that
+// changes behavior. NO backticks/quotes — these splice into a backtick template
+// literal, where a stray backtick breaks parity (the "Expected CommonJS module
+// to have a function wrapper" crash class).
+
+// ── 3. Grep-tool-description guidance — best-effort (subagents; the structured
+//      Grep tool has no --fuzzy flag, so don't advertise it here). ─────────────
 const GREP_DESC_ANCHOR = 'built on ripgrep';
 const FFF_GUIDANCE_MARKER = 'Search backend note (fff):';
 const FFF_GUIDANCE =
   '\n\n' +
   FFF_GUIDANCE_MARKER +
-  ' this tool is now powered by fff (a fast, typo-resistant file finder) for exact content searches, with ripgrep kept as an automatic fallback. For best results: prefer a single bare identifier over regex or multi-word phrases; results are relevance-ranked so read the top hit first; regex/multiline still work via ripgrep automatically.';
+  ' prefer one bare identifier over regex; results are relevance-ranked, so read the top hit first.';
 
 // ── 4. Bash-description guidance — best-effort (the MAIN agent's only search
-//      surface; it has no Grep tool). Teaches that grep/find are fff-backed and
-//      exposes the --fuzzy lever. Inserted at the end of the "Prefer the
-//      dedicated tool" bullet (both description variants), post-override. ───────
+//      surface; it has no Grep tool, so this is where the --fuzzy lever lives).
+//      Inserted at the end of the "Prefer the dedicated tool" bullet. ──────────
 const BASH_GUIDANCE_ANCHOR = 'Prefer the dedicated tool';
-const BASH_GUIDANCE_MARKER = 'fff-backed';
-// NOTE: no backticks/quotes — this is spliced into a backtick template literal,
-// and a stray backtick would break template parity (the "Expected CommonJS
-// module to have a function wrapper" crash class).
+const BASH_GUIDANCE_MARKER = 'most-relevant-first';
 const BASH_GUIDANCE =
-  ' Note: grep and find here are ' +
+  ' grep/find results are ranked ' +
   BASH_GUIDANCE_MARKER +
-  ' (fast, typo-tolerant, relevance-ranked) with ripgrep/ugrep kept as an automatic fallback; results are relevance-ranked, so read the top hit first. Add --fuzzy to a grep for approximate/typo-tolerant search (e.g. grep --fuzzy SomeIdentifier).';
+  ' (read the top hit first); add --fuzzy to a grep for typo-tolerant or partial matches, e.g. grep --fuzzy SomeName.';
 
 /** [CRITICAL] Repoint the grep→ugrep / find→bfs shadow at the wrapper. */
 const repointBashSearchShadow = (
@@ -115,33 +117,6 @@ const repointRgResolver = (file: string, wrapperPath: string): string => {
   return newFile;
 };
 
-/** [BEST-EFFORT] Append fff guidance before each Grep-description closing backtick. */
-const appendGrepGuidance = (file: string): string => {
-  if (file.includes(FFF_GUIDANCE_MARKER)) return file;
-  const inserts: number[] = [];
-  let from = 0;
-  for (;;) {
-    const a = file.indexOf(GREP_DESC_ANCHOR, from);
-    if (a === -1) break;
-    let j = a;
-    while (j < file.length && !(file[j] === '`' && file[j - 1] !== '\\')) j++;
-    if (j < file.length) inserts.push(j);
-    from = a + GREP_DESC_ANCHOR.length;
-  }
-  if (inserts.length === 0) {
-    debug(
-      'patch: swapRipgrepForFff: Grep description not found; skipping fff guidance append'
-    );
-    return file;
-  }
-  let out = file;
-  for (const pos of inserts.sort((x, y) => y - x)) {
-    out = out.slice(0, pos) + FFF_GUIDANCE + out.slice(pos);
-  }
-  showDiff(file, out, FFF_GUIDANCE, inserts[inserts.length - 1], inserts[0]);
-  return out;
-};
-
 /** [BEST-EFFORT] Append text before the unescaped closing backtick of every
  *  bullet/string that contains `anchor`. Idempotent via `marker`. */
 const appendBeforeClosingBacktick = (
@@ -194,11 +169,17 @@ export const writeSwapRipgrepForFff = (
   // 2. ripgrep resolver (rare rg + subagent Grep tool) — best-effort.
   file = repointRgResolver(file, wrapperPath);
 
-  // 3. Grep-description guidance (subagents w/ the Grep tool) — best-effort.
-  file = appendGrepGuidance(file);
+  // 3. Grep-tool-description guidance (subagents) — best-effort.
+  file = appendBeforeClosingBacktick(
+    file,
+    GREP_DESC_ANCHOR,
+    FFF_GUIDANCE,
+    FFF_GUIDANCE_MARKER,
+    'Grep description'
+  );
 
-  // 4. Bash-description guidance (main agent: grep/find are fff-backed + the
-  //    --fuzzy lever) — best-effort.
+  // 4. Bash-description guidance (main agent: ranking + the --fuzzy lever) —
+  //    best-effort.
   file = appendBeforeClosingBacktick(
     file,
     BASH_GUIDANCE_ANCHOR,
