@@ -98,6 +98,8 @@ import { writeVoiceMode } from './voiceMode';
 import { writeChannelsMode } from './channelsMode';
 import { writeClearScreen } from './clearScreen';
 import { writeReadDefaultLines } from './readDefaultLines';
+import { writeSwapRipgrepForFff } from './swapRipgrepForFff';
+import { ensureRgFffWrapper } from '../ripgrepFff';
 import {
   writeSuppressDeferredTools,
   writeStripEmptySystemReminders,
@@ -467,6 +469,13 @@ const PATCH_DEFINITIONS = [
     group: PatchGroup.FEATURES,
     description:
       'Enable session memory (auto-extraction + past session search)',
+  },
+  {
+    id: 'swap-ripgrep-for-fff',
+    name: '[EXPERIMENTAL] fff-backed Grep (ripgrep kept as fallback)',
+    group: PatchGroup.FEATURES,
+    description:
+      "[EXPERIMENTAL] Route Claude Code's Grep through fff (fast file finder) for eligible exact content searches — relevance-ranked and typo-tolerant — while KEEPING ripgrep as an automatic fallback for regex, multiline, Glob/--files enumeration, count, single-file and non-ASCII searches. Both engines ship; ripgrep is not removed. Appends fff usage guidance to the Grep tool description (on top of any edited prompts). Installs a per-platform wrapper into ~/.tweakcc/fff.",
   },
   {
     id: 'dream-mode',
@@ -853,6 +862,21 @@ export const applyCustomization = async (
   // Disabling model customizations should restore both selectors to vanilla CC behavior.
   const modelCustomizationsEnabled =
     config.settings.misc?.enableModelCustomizations ?? true;
+
+  // fff swap: install the per-platform wrapper BEFORE patching the resolver. If
+  // it can't be obtained for this platform, keep ripgrep — never point the
+  // resolver at a missing binary (that would silently disable Grep).
+  const swapRipgrepEnabled = !!config.settings.misc?.swapRipgrepForFff;
+  let rgFffWrapperPath: string | null = null;
+  if (swapRipgrepEnabled) {
+    rgFffWrapperPath = await ensureRgFffWrapper();
+    if (!rgFffWrapperPath) {
+      console.log(
+        'patch: swap-ripgrep-for-fff: no fff wrapper available for this platform — keeping ripgrep'
+      );
+    }
+  }
+
   const patchImplementations: Record<PatchId, PatchImplementation> = {
     // Always Applied
     'verbose-property': {
@@ -1093,6 +1117,10 @@ export const applyCustomization = async (
     'session-memory': {
       fn: c => writeSessionMemory(c),
       condition: !!config.settings.misc?.enableSessionMemory,
+    },
+    'swap-ripgrep-for-fff': {
+      fn: c => writeSwapRipgrepForFff(c, rgFffWrapperPath as string),
+      condition: swapRipgrepEnabled && !!rgFffWrapperPath,
     },
     'dream-mode': {
       fn: c => writeDreamMode(c),

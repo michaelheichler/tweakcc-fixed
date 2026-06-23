@@ -83,6 +83,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     suppressNativeInstallerWarning: false,
     filterScrollEscapeSequences: false,
     enableWorktreeMode: true,
+    swapRipgrepForFff: false,
     allowCustomAgentModels: false,
     enableContextLimitOverride: false,
     enableModelCustomizations: true,
@@ -435,6 +436,20 @@ export function MiscView({ onSubmit }: MiscViewProps) {
             ensureMisc();
             settings.misc!.enableWorktreeMode =
               !settings.misc!.enableWorktreeMode;
+          });
+        },
+      },
+      {
+        id: 'swapRipgrepForFff',
+        title: '[EXPERIMENTAL] fff-backed Grep (keeps ripgrep as fallback)',
+        description:
+          "Route Grep through fff (fast file finder) for eligible exact content searches (relevance-ranked, typo-tolerant), while KEEPING ripgrep as an automatic fallback for regex, multiline, Glob/--files enumeration, count, single-file and non-ASCII searches. Both engines ship - ripgrep is not removed. Appends fff usage guidance to the Grep tool description (on top of any edited prompts). Installs a per-platform wrapper into ~/.tweakcc/fff.",
+        getValue: () => settings.misc?.swapRipgrepForFff ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.swapRipgrepForFff =
+              !settings.misc!.swapRipgrepForFff;
           });
         },
       },
