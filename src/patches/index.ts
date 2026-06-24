@@ -872,7 +872,7 @@ export const applyCustomization = async (
     rgFffWrapperPath = await ensureRgFffWrapper();
     if (!rgFffWrapperPath) {
       console.log(
-        'patch: swap-ripgrep-for-fff: no fff wrapper available for this platform — keeping ripgrep'
+        'patch: swapRipgrepForFff: no fff wrapper available for this platform — keeping ripgrep'
       );
     }
   }
@@ -1119,7 +1119,9 @@ export const applyCustomization = async (
       condition: !!config.settings.misc?.enableSessionMemory,
     },
     'swap-ripgrep-for-fff': {
-      fn: c => writeSwapRipgrepForFff(c, rgFffWrapperPath as string),
+      // condition gates non-null, so the assertion is honest (vs `as string`,
+      // which would also silently accept null).
+      fn: c => writeSwapRipgrepForFff(c, rgFffWrapperPath!),
       condition: swapRipgrepEnabled && !!rgFffWrapperPath,
     },
     'dream-mode': {
