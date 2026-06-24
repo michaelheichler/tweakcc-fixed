@@ -78,11 +78,13 @@
 // reachable solely when the model's launch-pin gate is open) could it capture a
 // picker candidate. /clear re-captures a fresh baseline, recovering from both.
 //
-// -- Observability (no extra patch needed) --
-// CC's statusline-command input JSON builds `effort.level` via `sO -> eZ` (the
-// resolver we wrap: `sO(e,t)=Gfe(eZ(e,t)??"high")`), so the routed effort already
-// rides into a custom statusline's stdin - a script can read `.effort.level` to
-// render a badge. `TWEAKCC_ROUTER_DEBUG=1` also logs each decision to stderr.
+// -- Observability (automatic, no extra patch) --
+// Because the wrap rides on the effort resolver eZ, CC surfaces the routed effort
+// for free. Its working indicator renders ` with ${fet(e,t)} effort` where
+// `fet -> eZ`, so the spinner reads e.g. "thinking with max effort" for EVERY
+// user, no setup. (The statusline-command input JSON also carries it as
+// effort.level via `sO -> eZ`, for a custom always-on badge.) And
+// TWEAKCC_ROUTER_DEBUG=1 logs each decision to stderr.
 
 import { debug } from '../utils';
 import { showDiff } from './index';
