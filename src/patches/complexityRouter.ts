@@ -56,6 +56,19 @@
 // subagents (on an effort-capable model) inherit the task's effort. Side-calls
 // on Haiku-class models are unaffected (Haiku does not take effort, so XQ
 // returns at its `!FR(e)` guard, before the wrap).
+// CC's picker-internal comparators also resolve through the wrapped eZ: the
+// /effort and /model pickers call it to decide "did effort change?" (gDt) and to
+// pre-select the ultracode row (tZ). After >=1 completed turn these reflect the
+// ROUTED value rather than the raw effortValue - cosmetic only (the picker change
+// still applies and the /effort yield still works).
+//
+// -- Interaction: ultracode --
+// CC's "ultracode" mode is gated on the RESOLVED effort being exactly "xhigh"
+// (tZ: `...&&eZ(e,t)==="xhigh"`). The default tiers map to low/medium/high/max
+// (never xhigh), so while the router drives, ultracode-gated behavior (the
+// workflow usage-consent prompt, the /fast hint, the ultracode status flag) goes
+// inactive for a user whose effort baseline was xhigh. To keep ultracode
+// reachable, map a tier's effort to "xhigh" (a valid RouterEffort).
 //
 // -- Behavior --
 // pinPerTask (default true): keep the effort stable across a session. Heuristic
@@ -160,7 +173,10 @@ const buildRuntime = (
       ? `var __max=__ef.length-1,__lv;` +
         `if(__pin&&__st.level!==void 0){__lv=__st.level}` +
         `else{try{__lv=await __tweakccRouterClassifyLlm(__text,__max)}catch(__e){__lv=null}` +
-        `if(__lv==null||__lv<0||__lv>__max)__lv=__tweakccRouterScore(__text,__max)}`
+        // !Number.isInteger catches a non-conforming gB result (float/NaN): NaN
+        // passes the </> comparisons, and __ef[float] is undefined -> the router
+        // would silently yield (and pin the bad level). Fail OPEN to the heuristic.
+        `if(__lv==null||!Number.isInteger(__lv)||__lv<0||__lv>__max)__lv=__tweakccRouterScore(__text,__max)}`
       : `var __max=__ef.length-1,__lv=__tweakccRouterScore(__text,__max);` +
         `if(__pin&&__st.level!==void 0&&__lv<__st.level)__lv=__st.level;`;
 
@@ -191,12 +207,16 @@ const buildRuntime = (
     `if((__t.match(/\`\`\`/g)||[]).length>=4)__n+=1;` +
     // Decide the level: confident-trivial work (an explicit mechanical verb with
     // ZERO hard signals) routes DOWN to low (0); ambiguous work stays at the
-    // medium default (1); accumulated signals escalate up; explicit max-effort
-    // phrases jump straight to the top tier.
+    // medium default (1); a hard signal escalates to the "hard" tier (index 2);
+    // heavy accumulation OR an explicit max-effort phrase jumps to the TOP tier
+    // (__max, so it tracks the configured level count). The trivial->0 and
+    // hard->2 mappings target the default 4-tier layout (routine/standard/hard/
+    // frontier); a custom level count clamps sensibly, and llm mode gives finer
+    // per-tier control.
     `var __triv=__n===0&&/\\b(rename|fix (?:the |a )?typos?|typos?|reformat|run (?:the )?prettier|prettier|gofmt|sort (?:the )?imports|bump (?:the )?version|add (?:a )?(?:comment|docstring|jsdoc)|remove (?:the |a )?(?:comment|console\\.log|unused import|debug (?:log|statement)))\\b/.test(__s);` +
     `var __l;` +
     `if(/\\b(ultrathink|think as hard as|maximum effort|hardest possible|frontier model)/.test(__s))__l=__max;` +
-    `else if(__n>=5)__l=3;` +
+    `else if(__n>=5)__l=__max;` +
     `else if(__n>=2)__l=2;` +
     `else if(__triv)__l=0;` +
     `else __l=1;` +

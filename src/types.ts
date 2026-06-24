@@ -190,7 +190,7 @@ export type RouterClassifierMode = 'heuristic' | 'llm';
 export type RouterEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface RouterLevel {
-  id: string; // stable key (e.g. 'routine'); used for reset-to-default
+  id: string; // stable key (e.g. 'routine'); used as the React list key in the TUI
   label: string; // short display name (e.g. 'Standard')
   help: string; // one-line description of when this level applies
   effort: RouterEffort; // the reasoning-effort level this complexity tier maps to
@@ -214,7 +214,9 @@ export interface Settings {
   defaultToolset: string | null;
   planModeToolset: string | null;
   subagentModels: SubagentModelsConfig;
-  complexityRouter?: ComplexityRouterConfig;
+  // Non-optional like subagentModels (its analog): DEFAULT_SETTINGS always
+  // provides it and normalizeConfig backfills it via deepMergeWithDefaults.
+  complexityRouter: ComplexityRouterConfig;
   inputPatternHighlighters: InputPatternHighlighter[];
   inputPatternHighlightersTestText: string; // Global test text for previewing highlighters
   claudeMdAltNames: string[] | null;

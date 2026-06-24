@@ -7,6 +7,7 @@ import chalk from 'chalk';
 
 import {
   RemoteConfig,
+  RouterEffort,
   RouterLevel,
   Settings,
   Theme,
@@ -241,22 +242,38 @@ const normalizeConfig = (config: TweakccConfig): void => {
     );
   }
 
-  // Merge each complexityRouter level against the default level at its index.
-  // deepMergeWithDefaults replaces arrays wholesale, so a hand-edited or remote
-  // (--config-url) level missing `effort` would otherwise leave a null effort
-  // that silently no-ops the router; backfill it from the matching default.
-  if (config.settings.complexityRouter?.levels) {
-    const defaultLevels = DEFAULT_SETTINGS.complexityRouter!.levels;
-    config.settings.complexityRouter.levels =
-      config.settings.complexityRouter.levels.map((level, i) => {
-        const def = defaultLevels[Math.min(i, defaultLevels.length - 1)];
-        const merged = deepMergeWithDefaults(level, def) as RouterLevel;
-        // deepMerge only fills ABSENT keys, so an explicit null/empty effort
-        // (reachable via --config-url) would survive and silently no-op the
-        // router; coerce it to the default.
-        if (!merged.effort) merged.effort = def.effort;
-        return merged;
-      });
+  // Harden complexityRouter.levels against hand-edited / remote (--config-url)
+  // configs. An empty array, a non-array value, or absent levels all fall back
+  // to the defaults (matching the TUI's `length > 0` guard) so an ENABLED router
+  // never silently no-ops or crashes on `.map`. Each level is merged against the
+  // default at its index, its effort coerced to a valid RouterEffort (deepMerge
+  // only fills ABSENT keys, so a garbage or null effort would otherwise survive
+  // and either no-op the router or ship an invalid value to the wire), and a
+  // unique id synthesized for overflow levels so React list keys can't collide.
+  {
+    const cr = config.settings.complexityRouter;
+    const defaultLevels = DEFAULT_SETTINGS.complexityRouter.levels;
+    const validEfforts: RouterEffort[] = [
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max',
+    ];
+    cr.levels =
+      Array.isArray(cr.levels) && cr.levels.length > 0
+        ? cr.levels.map((level, i) => {
+            const def = defaultLevels[Math.min(i, defaultLevels.length - 1)];
+            const merged = deepMergeWithDefaults(level, def) as RouterLevel;
+            if (!(validEfforts as string[]).includes(merged.effort)) {
+              merged.effort = def.effort;
+            }
+            if (i >= defaultLevels.length) {
+              merged.id = `level-${i}`;
+            }
+            return merged;
+          })
+        : defaultLevels.map(l => ({ ...l }));
   }
 
   // In 3.2.6 hideCtrlGToEditPrompt was renamed to hideCtrlGToEdit.

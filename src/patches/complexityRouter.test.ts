@@ -377,6 +377,23 @@ describe('writeComplexityRouter', () => {
       await classify('rename the variable', 'prompt'); // trivial -> low
       expect(XQ('m', 'xhigh')).toBe('low'); // persisted xhigh overridden, routed all the way down
     });
+
+    it('captures the launch baseline on the first resolve while the router is still inactive (boot ordering)', async () => {
+      // Production order: eZ resolves (a pre-submit poll) and captures the
+      // baseline BEFORE any classify sets an effort - the inverse of the
+      // seed-effort-first shape the other precedence tests use.
+      const p = patched();
+      const XQ = extractWrappedResolver(p);
+      const classify = extractClassify(p); // shares globalThis.__tweakccRouter
+      // 1) router inactive (no effort yet): the first resolve captures baseline
+      expect(XQ('m', 'xhigh')).toBe('YIELDED'); // no router effort -> CC's own resolution
+      expect(routerState().baseline).toBe('xhigh');
+      // 2) a routine task classifies -> low
+      await classify('rename the variable', 'prompt');
+      expect(routerState().effort).toBe('low');
+      // 3) resolve again: fallback still == baseline -> the router now drives
+      expect(XQ('m', 'xhigh')).toBe('low');
+    });
   });
 
   describe('llm classifier (real injected logic, H1 regression)', () => {

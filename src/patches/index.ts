@@ -1091,12 +1091,8 @@ export const applyCustomization = async (
     },
     // Features
     'complexity-router': {
-      fn: c =>
-        writeComplexityRouter(
-          c,
-          config.settings.complexityRouter ?? DEFAULT_SETTINGS.complexityRouter!
-        ),
-      condition: !!config.settings.complexityRouter?.enabled,
+      fn: c => writeComplexityRouter(c, config.settings.complexityRouter),
+      condition: config.settings.complexityRouter.enabled,
     },
     'allow-custom-agent-models': {
       fn: c => writeAllowCustomAgentModels(c),

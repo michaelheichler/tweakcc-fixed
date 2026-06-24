@@ -27,8 +27,7 @@ const SETTING_ROWS: SettingRow[] = ['enabled', 'mode', 'pinPerTask'];
 
 type SubPicker = { levelIndex: number } | null;
 
-const defaultRouter =
-  DEFAULT_SETTINGS.complexityRouter as ComplexityRouterConfig;
+const defaultRouter = DEFAULT_SETTINGS.complexityRouter;
 
 export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
   const { settings, updateSettings } = useContext(SettingsContext);
