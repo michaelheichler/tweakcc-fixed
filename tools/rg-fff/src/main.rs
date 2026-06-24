@@ -7,14 +7,26 @@
 //! argv0:
 //!   * argv0 = ugrep | grep   -> fff content search (literal + regex), else ugrep
 //!   * argv0 = rg             -> fff content search (literal + regex), else rg
-//!   * argv0 = bfs  | find    -> embedded bfs (fff find_files is a roadmap item)
+//!   * argv0 = bfs  | find    -> embedded bfs; a pure `find -name` matching nothing
+//!                              gets fff fuzzy filename suggestions appended
 //!   * argv0 = fff            -> explicit fff content search
 //!
 //! Modes (chosen by `search_mode`, never the model): Plain (literal), Regex
-//! (regex::bytes — the same engine ripgrep uses), Fuzzy (`--fuzzy`). fff serves
-//! a query ONLY when its result is provably byte-equivalent to the real tool;
-//! every uncertainty defers via a verbatim re-exec, so correctness never depends
-//! on fff — only latency/ranking.
+//! (regex::bytes — the same engine ripgrep uses), Fuzzy (`--fuzzy`).
+//!
+//! Faithfulness contract (the core invariant): fff serves ONLY when the result is
+//! faithful to the MODEL'S INTENT, else it defers via a verbatim re-exec — so
+//! correctness never depends on fff, only latency/ranking. Two dialect modes:
+//!   * default (RG_FFF_FIRST=on): regex is served as ripgrep RE2 — the dialect the
+//!     model writes and CC's Grep tool advertises. For `ugrep -G` (BRE) this is a
+//!     DELIBERATE divergence from ugrep's literal +?(){}| (CC's shell grep is
+//!     already BRE-broken for the model's RE2). Served output == ripgrep RE2.
+//!   * RG_FFF_FIRST=0 (byte-equiv): served output is byte-identical to the ACTUAL
+//!     embedded tool (ugrep -G BRE included); a regex whose dialect would diverge
+//!     is deferred.
+//! Advisory markers ([def], [~approx], the truncation note) and the auto-fuzzy
+//! fallback on zero matches are intentional, clearly-labeled augmentations — they
+//! never change the match SET vs the real tool.
 //!
 //! Levers: `--fuzzy`, `--no-fallback` (CI), `--fff-claude-bin=P` (rg resolver),
 //! `--daemon <root>` (warm-index daemon, see daemon.rs).
@@ -892,6 +904,11 @@ fn run_search(o: &Opts, mode: Mode) -> i32 {
 /// OpenCode) cut silently; we append this so the model knows the line was cut and
 /// can Read the file for the rest. ASCII-only + parser-safe (trailing text in the
 /// `path:line:text` shape; a -c count still counts the line once, unaffected).
+/// KNOWN over-mark: fff exposes no `was_truncated` flag and truncates only when the
+/// original line > 512 B (backed up to a char boundary → a truncated line_content is
+/// 509–512 B). A *genuine* 509–512 B line is therefore indistinguishable from a
+/// truncated one and gets this marker too — at worst the model does one needless
+/// Read; the matched content is byte-correct. Accepted as API-constrained.
 const TRUNC_MARK: &str =
     " [...rg-fff: line truncated at ~512B; Read the file for the full line]";
 
@@ -983,6 +1000,17 @@ pub fn format_results(
     let is_regex = matches!(req.mode, Mode::Regex);
     // Definition hinting is meaningful only when the pattern is a literal symbol.
     let is_plain = matches!(req.mode, Mode::Plain);
+
+    // Non-git directories: fff scans with `.hidden(!is_git_repo)` (file_picker.rs:1802),
+    // so OUTSIDE a git repo it prunes dotfiles at the filesystem walk — and keep()
+    // operates only over the already-scanned index, so it can never re-add a pruned
+    // file. CC always injects `--hidden` (req.hidden=true), so in a non-git dir we
+    // would silently under-report matches inside dotfiles vs the real ugrep/rg
+    // `--hidden`. Defer so the embedded tool handles it faithfully. (In a git repo
+    // fff scans hidden, so keep() can honor --hidden correctly and we serve.)
+    if req.hidden && picker.git_root().is_none() {
+        return None;
+    }
     // -i is baked into the pattern as (?i) for Regex; Plain is case-sensitive;
     // only Fuzzy still relies on smart_case for case-insensitivity.
     let smart = is_fuzzy && req.ignore_case;
@@ -1008,7 +1036,6 @@ pub fn format_results(
     let dir_prefixes = &req.dir_prefixes;
 
     let parser = QueryParser::new(AiGrepConfig);
-    let dsl_query: String = req.pattern.clone();
     let parsed: FFFQuery = if is_regex {
         FFFQuery {
             raw_query: &req.pattern,
@@ -1017,10 +1044,22 @@ pub fn format_results(
             location: None,
         }
     } else {
-        parser.parse(&dsl_query)
+        // QueryParser::parse borrows its input; req.pattern outlives `parsed`, so
+        // borrow it directly instead of cloning into a throwaway String.
+        parser.parse(&req.pattern)
     };
 
     let keep = |path: &str| -> bool {
+        // VCS metadata dirs: CC's shadow always injects
+        // `--exclude-dir=.git/.svn/.hg/.bzr/.jj/.sl`. fff only auto-excludes .git,
+        // and in a git repo it scans the other hidden VCS dirs — so without this,
+        // matches inside a non-gitignored .svn/.hg/etc. would diverge from ugrep
+        // (which --exclude-dirs them). Mirror CC's fixed VCS set here.
+        if path.split('/').any(|s| {
+            matches!(s, ".git" | ".svn" | ".hg" | ".bzr" | ".jj" | ".sl")
+        }) {
+            return false;
+        }
         // -g/--include "*.ext" filter: keep only the requested extensions. Path
         // ends-with is byte-identical to rg's `-g '*.ts'` (path glob) and grep's
         // `--include=*.ts` (basename glob) for extension globs (the ext is at the
@@ -1324,15 +1363,14 @@ fn parse_pure_find_name(args: &[String]) -> Option<FindNameQuery> {
     let mut dir: Option<String> = None;
     let mut name: Option<String> = None;
     let mut i = 0;
-    // Leading non-flag args are search paths; keep the first as the fuzzy scope.
-    while i < args.len() && !args[i].starts_with('-') {
-        if dir.is_none() {
-            dir = Some(args[i].clone());
-        }
-        i += 1;
-    }
+    // Single pass — CC's find shadow injects `-S dfs -regextype findutils-default`
+    // BEFORE the model's args (verified in the cli.js backup), so flags can precede
+    // the path. Those two bfs presets don't affect which files -name matches, so
+    // skip them; without that, every real find returned None and the fuzzy-fallback
+    // never fired.
     while i < args.len() {
         match args[i].as_str() {
+            "-S" | "-regextype" => i += 2, // CC bfs preset (flag + value) -> skip
             "-name" | "-iname" => {
                 if name.is_some() {
                     return None; // multiple name predicates -> defer
@@ -1346,6 +1384,12 @@ fn parse_pure_find_name(args: &[String]) -> Option<FindNameQuery> {
                     return None;
                 }
                 i += 2;
+            }
+            a if !a.starts_with('-') => {
+                if dir.is_none() {
+                    dir = Some(a.to_string()); // first path = fuzzy scope
+                }
+                i += 1;
             }
             _ => return None, // any other predicate/operator -> defer
         }
@@ -1596,6 +1640,18 @@ mod tests {
         let q = parse_pure_find_name(&sv(&["app", "-name", "UserService.ts"])).unwrap();
         assert_eq!(q.dir, "app");
         assert_eq!(q.name, "UserService.ts");
+        // CC's bfs shadow injects `-S dfs -regextype findutils-default` BEFORE the
+        // model's args — must be tolerated or the find fuzzy-fallback never fires.
+        let q2 = parse_pure_find_name(&sv(&[
+            "-S", "dfs", "-regextype", "findutils-default", ".", "-name", "Missing.ts",
+        ]))
+        .unwrap();
+        assert_eq!(q2.dir, ".");
+        assert_eq!(q2.name, "Missing.ts");
+        assert!(parse_pure_find_name(&sv(&[
+            "-S", "dfs", "-regextype", "findutils-default", "src", "-type", "f", "-name", "X",
+        ]))
+        .is_some());
         // NOT eligible -> defer (exec find unchanged; never capture side effects)
         assert!(parse_pure_find_name(&sv(&[".", "-name", "X", "-exec", "rm", "{}", ";"])).is_none());
         assert!(parse_pure_find_name(&sv(&[".", "-delete"])).is_none());
