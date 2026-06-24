@@ -851,56 +851,48 @@ const APPROX_MARK: &str = " [~approx]";
 /// navigation hint). Parser-safe trailing text. Never authoritative.
 const DEF_MARK: &str = " [def]";
 
-/// High-precision heuristic for "this line introduces a definition". Refines fff's
-/// own leading-keyword check (grep.rs is_definition_line) in two ways: (1) require
-/// the keyword be followed by WHITESPACE then an identifier — which kills fff's
-/// false-positives `class="..."` (JSX) and `type:` (object key); (2) include
-/// const/let/var so the dominant TS/JS `export const NAME = () =>` def style (which
-/// fff misses) is caught. Advisory only — a hint, not a guarantee.
-fn looks_like_definition(line: &str) -> bool {
-    const MODS: &[&str] = &[
-        "export", "default", "pub", "public", "private", "protected", "async",
-        "abstract", "unsafe", "static",
-    ];
-    const KW: &[&str] = &[
-        "fn", "func", "function", "def", "struct", "enum", "trait", "impl",
-        "class", "interface", "type", "module", "object", "const", "let", "var",
-    ];
-    let mut s = line.trim_start();
-    // Strip leading visibility/modifier keywords (each must be followed by space),
-    // including Rust `pub(crate)` / `pub(super)` forms.
-    loop {
-        if let Some(rest) = s.strip_prefix("pub(") {
-            if let Some(i) = rest.find(')') {
-                s = rest[i + 1..].trim_start();
-                continue;
-            }
-        }
-        let mut advanced = false;
-        for m in MODS {
-            if let Some(rest) = s.strip_prefix(m) {
-                if rest.starts_with(char::is_whitespace) {
-                    s = rest.trim_start();
-                    advanced = true;
-                    break;
-                }
-            }
-        }
-        if !advanced {
-            break;
-        }
+#[inline]
+fn is_ident_byte(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_'
+}
+
+/// Definition keywords / bindings that introduce a symbol when they immediately
+/// precede it. `const/let/var` included for the TS/JS `export const NAME =` style
+/// that fff's own heuristic misses.
+const DEF_KEYWORDS: &[&str] = &[
+    "fn", "func", "function", "def", "struct", "enum", "trait", "impl", "class",
+    "interface", "type", "module", "object", "const", "let", "var",
+];
+
+/// Does `line` DEFINE `pattern` — i.e. is the (whole-word) searched symbol
+/// introduced here, not merely used? True iff an occurrence of `pattern` is
+/// immediately preceded (ignoring whitespace) by a definition keyword/binding.
+/// This is pattern-AWARE on purpose: `export const getUserData =` defines
+/// getUserData ([def]), but `const result = getUserData()` is a CALL SITE and is
+/// NOT marked (the line defines `result`, not the searched `getUserData`). Plain
+/// (literal) mode only — for regex/fuzzy the "searched symbol" is ill-defined.
+/// Advisory navigation hint, never authoritative.
+fn line_defines(line: &str, pattern: &str) -> bool {
+    if pattern.is_empty() {
+        return false;
     }
-    // keyword + whitespace + identifier-start (the whitespace kills class=/type:).
-    for kw in KW {
-        if let Some(rest) = s.strip_prefix(kw) {
-            if rest.starts_with(char::is_whitespace)
-                && rest
-                    .trim_start()
-                    .starts_with(|c: char| c.is_alphabetic() || c == '_')
-            {
+    let bytes = line.as_bytes();
+    let mut from = 0;
+    while let Some(rel) = line[from..].find(pattern) {
+        let at = from + rel;
+        let end = at + pattern.len();
+        // whole-word match only (so searching "User" doesn't def-tag getUserData)
+        let lhs_word = at > 0 && is_ident_byte(bytes[at - 1]);
+        let rhs_word = end < bytes.len() && is_ident_byte(bytes[end]);
+        if !lhs_word && !rhs_word {
+            // the token immediately before the symbol must be a def keyword
+            let prefix = line[..at].trim_end();
+            let last = prefix.rsplit(|c: char| c.is_whitespace()).next().unwrap_or("");
+            if DEF_KEYWORDS.contains(&last) {
                 return true;
             }
         }
+        from = end.max(at + 1);
     }
     false
 }
@@ -918,6 +910,8 @@ pub fn format_results(
     };
     let is_fuzzy = matches!(req.mode, Mode::Fuzzy);
     let is_regex = matches!(req.mode, Mode::Regex);
+    // Definition hinting is meaningful only when the pattern is a literal symbol.
+    let is_plain = matches!(req.mode, Mode::Plain);
     // -i is baked into the pattern as (?i) for Regex; Plain is case-sensitive;
     // only Fuzzy still relies on smart_case for case-insensitivity.
     let smart = is_fuzzy && req.ignore_case;
@@ -1120,8 +1114,12 @@ pub fn format_results(
                     }
                 }
                 let sep = if *is_match { ':' } else { '-' };
-                // Advisory def hint on MATCH lines only (never context lines).
-                let def = if *is_match && looks_like_definition(content) {
+                // Advisory def hint on MATCH lines only (never context lines),
+                // and only where the searched literal symbol is defined.
+                let def = if is_plain
+                    && *is_match
+                    && line_defines(content, &req.pattern)
+                {
                     DEF_MARK
                 } else {
                     ""
@@ -1181,8 +1179,11 @@ pub fn format_results(
                 // Fuzzy matches are approximate — tag every line so a copied line
                 // still reads as approximate (reinforces the header).
                 let approx = if is_fuzzy { APPROX_MARK } else { "" };
-                // Advisory definition hint (navigation), like fff-mcp's def hinting.
-                let def = if looks_like_definition(&m.line_content) {
+                // Advisory definition hint (navigation), like fff-mcp's def hinting
+                // — only where the searched literal symbol is actually defined.
+                let def = if is_plain
+                    && line_defines(&m.line_content, &req.pattern)
+                {
                     DEF_MARK
                 } else {
                     ""
@@ -1346,28 +1347,26 @@ mod tests {
     }
 
     #[test]
-    fn definition_detector_high_precision() {
-        // real definitions across languages (incl. the TS const-arrow fff misses)
-        assert!(looks_like_definition("function getUserData() {"));
-        assert!(looks_like_definition("  export const getUserData = () => {"));
-        assert!(looks_like_definition("export default class Foo {"));
-        assert!(looks_like_definition("pub fn run_search(o: &Opts) -> i32 {"));
-        assert!(looks_like_definition("pub(crate) struct GrepMatch {"));
-        assert!(looks_like_definition("interface Props {"));
-        assert!(looks_like_definition("type FFFQuery = Bar;"));
-        assert!(looks_like_definition("async function handler() {"));
-        assert!(looks_like_definition("def process(self):"));
-        assert!(looks_like_definition("  let total = compute();"));
-        // false-positives fff's word-boundary heuristic flags that we must NOT:
-        assert!(!looks_like_definition("class=\"foo\"")); // JSX/HTML attr
-        assert!(!looks_like_definition("  <div class=\"foo\">")); // mid-line
-        assert!(!looks_like_definition("  type: 'string',")); // object key
-        assert!(!looks_like_definition("const")); // bare keyword, no ident
-        assert!(!looks_like_definition("constant = 5")); // not the const keyword
-        assert!(!looks_like_definition("typeof x === 'string'"));
-        assert!(!looks_like_definition("// fn does the thing")); // comment
-        assert!(!looks_like_definition("  return getUserData();")); // call site
-        assert!(!looks_like_definition("module.exports = {}")); // assignment
+    fn line_defines_is_pattern_aware() {
+        // line DEFINES the searched symbol -> true
+        assert!(line_defines("export const getUserData = () => {}", "getUserData"));
+        assert!(line_defines("  function getUserData() {", "getUserData"));
+        assert!(line_defines("pub fn run_search(o: &Opts) -> i32 {", "run_search"));
+        assert!(line_defines("pub(crate) struct GrepMatch {", "GrepMatch"));
+        assert!(line_defines("export default class Foo {", "Foo"));
+        assert!(line_defines("type UserShape = { id: number }", "UserShape"));
+        assert!(line_defines("  let total = compute();", "total"));
+        // USES / call sites of the searched symbol -> NOT a def of it (the fix)
+        assert!(!line_defines("const result = getUserData()", "getUserData"));
+        assert!(!line_defines("  return getUserData();", "getUserData"));
+        // object key `type:` is not `type Name` -> not a def of "type"
+        assert!(!line_defines("const config = { type: 'admin' }", "type"));
+        // searching the keyword itself isn't a definition
+        assert!(!line_defines("type UserShape = Bar", "type"));
+        assert!(!line_defines("class=\"foo\"", "class"));
+        // whole-word only: a substring of a defined symbol isn't def-tagged
+        assert!(!line_defines("export const getUserData = 1", "User"));
+        assert!(!line_defines("", "x"));
     }
 
     #[test]
