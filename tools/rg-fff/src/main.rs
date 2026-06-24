@@ -728,12 +728,29 @@ fn fuzzy_fallback_block(
     if !has_match {
         return None;
     }
-    // Swap the generic fuzzy header for the "0 exact matches" fallback header.
+    // Swap the generic fuzzy header for the "0 exact matches" fallback header, and
+    // CAP the suggestions — a 0-exact fallback is a "did you mean", not a full dump.
+    // (Live testing showed an unbounded fallback emitting 215 lines; the model coped
+    // but it's token-wasteful. fff-mcp likewise surfaces only the best few hits.)
+    const MAX_SUGGESTIONS: usize = 25;
     let rest = body
         .strip_prefix(FUZZY_HDR)
         .and_then(|r| r.strip_prefix('\n'))
         .unwrap_or(&body);
-    Some(format!("{FUZZY_FALLBACK_HDR}\n{rest}"))
+    let lines: Vec<&str> = rest.lines().filter(|l| !l.trim().is_empty()).collect();
+    let shown = lines.len().min(MAX_SUGGESTIONS);
+    let mut out = format!("{FUZZY_FALLBACK_HDR}\n");
+    for l in &lines[..shown] {
+        out.push_str(l);
+        out.push('\n');
+    }
+    if lines.len() > MAX_SUGGESTIONS {
+        out.push_str(&format!(
+            "# … {} more approximate matches omitted — fix the spelling and re-search for exact results\n",
+            lines.len() - MAX_SUGGESTIONS
+        ));
+    }
+    Some(out)
 }
 
 fn run_search(o: &Opts, mode: Mode) -> i32 {
