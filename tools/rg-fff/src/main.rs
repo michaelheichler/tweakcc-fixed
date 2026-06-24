@@ -896,12 +896,13 @@ const DEF_KEYWORDS: &[&str] = &[
 
 /// Does `line` DEFINE `pattern` — i.e. is the (whole-word) searched symbol
 /// introduced here, not merely used? True iff an occurrence of `pattern` is
-/// immediately preceded (ignoring whitespace) by a definition keyword/binding.
-/// This is pattern-AWARE on purpose: `export const getUserData =` defines
-/// getUserData ([def]), but `const result = getUserData()` is a CALL SITE and is
-/// NOT marked (the line defines `result`, not the searched `getUserData`). Plain
-/// (literal) mode only — for regex/fuzzy the "searched symbol" is ill-defined.
-/// Advisory navigation hint, never authoritative.
+/// immediately preceded (ignoring whitespace) by a definition keyword/binding AND
+/// immediately followed by a definition delimiter. Pattern-AWARE on purpose:
+/// `export const getUserData =` defines getUserData ([def]), but `const result =
+/// getUserData()` is a CALL SITE and is NOT marked. The trailing-delimiter guard
+/// rejects PROSE where a def keyword is just an English word ("module import
+/// hoisting", "type checking") — there the searched term is followed by more words,
+/// not `=({:<;` etc. Plain (literal) mode only. Advisory navigation hint.
 fn line_defines(line: &str, pattern: &str) -> bool {
     if pattern.is_empty() {
         return false;
@@ -915,10 +916,16 @@ fn line_defines(line: &str, pattern: &str) -> bool {
         let lhs_word = at > 0 && is_ident_byte(bytes[at - 1]);
         let rhs_word = end < bytes.len() && is_ident_byte(bytes[end]);
         if !lhs_word && !rhs_word {
-            // the token immediately before the symbol must be a def keyword
+            // The token immediately before the symbol must be a def keyword,
             let prefix = line[..at].trim_end();
             let last = prefix.rsplit(|c: char| c.is_whitespace()).next().unwrap_or("");
-            if DEF_KEYWORDS.contains(&last) {
+            // AND the symbol must be followed by a definition delimiter (not prose).
+            let after = line[end..].trim_start();
+            let def_delim = after.is_empty()
+                || after.starts_with(|c: char| matches!(c, '=' | '(' | '{' | ':' | '<' | ';'))
+                || after.starts_with("extends")
+                || after.starts_with("implements");
+            if DEF_KEYWORDS.contains(&last) && def_delim {
                 return true;
             }
         }
@@ -1561,6 +1568,15 @@ mod tests {
         // whole-word only: a substring of a defined symbol isn't def-tagged
         assert!(!line_defines("export const getUserData = 1", "User"));
         assert!(!line_defines("", "x"));
+        // PROSE: a def keyword used as an English word (term followed by more words,
+        // not a definition delimiter) -> NOT a def (the harness-caught false positive)
+        assert!(!line_defines("// ESM module import hoisting issues", "import"));
+        assert!(!line_defines("the type checking system is slow", "checking"));
+        assert!(!line_defines("store a const value here", "value"));
+        assert!(!line_defines("a class action lawsuit", "action"));
+        // but a real def with a delimiter after the name still passes
+        assert!(line_defines("export class UserService implements Foo", "UserService"));
+        assert!(line_defines("enum Color {", "Color"));
     }
 
     #[test]
