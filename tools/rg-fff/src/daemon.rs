@@ -8,7 +8,7 @@
 //! time). Correctness never depends on the daemon — only latency.
 //!
 //! Protocol (client -> daemon), 9 newline-terminated lines:
-//!   v4
+//!   v5
 //!   plain|regex|fuzzy
 //!   flags: files_only(l) line_numbers(n) count(c) ignore_case(i) hidden(h)
 //!          sep_between_files(s) — each char or '-'    e.g. "-n--hs"
@@ -18,9 +18,12 @@
 //!   <before_context>
 //!   <after_context>
 //!   <include_exts comma-joined, e.g. ".ts,.tsx" or empty>
-//! Response (daemon -> client): first line is the exit code, or the literal
-//! "FALLBACK" (daemon can't serve -> client cold-scans); the rest is the output.
-//! The version tag ("v4") makes an older daemon reject a newer client cleanly.
+//! Response (daemon -> client): the literal "FALLBACK\n" (daemon can't serve ->
+//! client cold-scans), OR `<exit_code>\n<body_byte_len>\n<body>` — the client
+//! verifies it received exactly body_byte_len bytes, so a daemon killed mid-write
+//! is detected (short read -> cold-scan) rather than silently under-reporting.
+//! The version tag ("v5") makes an older daemon reject a newer client cleanly, and
+//! is embedded in the socket filename so versions never share a socket.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::Shutdown;
@@ -57,16 +60,24 @@ fn daemons_dir() -> Option<PathBuf> {
     Some(PathBuf::from(home).join(".tweakcc").join("fff").join("daemons"))
 }
 
+/// Wire protocol version. Bumped on any breaking change to the request/response
+/// shape. Embedded in BOTH the handshake (an old daemon rejects a newer client)
+/// AND the socket filename (so a post-upgrade binary opens its OWN socket instead
+/// of colliding with a still-running old-format daemon that holds the old name —
+/// otherwise the new daemon can't bind and the root stays cold until the old one
+/// idle-times-out).
+pub const PROTO: &str = "v5";
+
 pub fn socket_path(root: &Path) -> Option<PathBuf> {
     let dir = daemons_dir()?;
     let key = format!("{:016x}", fnv1a(&root.to_string_lossy()));
-    Some(dir.join(format!("{key}.sock")))
+    Some(dir.join(format!("{key}-{PROTO}.sock")))
 }
 
 fn encode_req(req: &SearchReq) -> String {
     use crate::Mode;
     format!(
-        "v4\n{}\n{}{}{}{}{}{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
+        "{PROTO}\n{}\n{}{}{}{}{}{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
         match req.mode {
             Mode::Plain => "plain",
             Mode::Regex => "regex",
@@ -105,12 +116,25 @@ pub fn query(root: &Path, req: &SearchReq) -> Option<(String, i32)> {
     stream.shutdown(Shutdown::Write).ok()?;
     let mut resp = String::new();
     stream.read_to_string(&mut resp).ok()?;
+    parse_daemon_response(&resp)
+}
+
+/// Parse a daemon response: `FALLBACK\n` -> None (cold-scan), or the length-framed
+/// `<exit_code>\n<byte_len>\n<body>` -> Some((body, code)). Returns None on any
+/// short/garbled read (e.g. daemon killed mid-write) so the caller cold-scans
+/// instead of serving a truncated, under-reporting result.
+fn parse_daemon_response(resp: &str) -> Option<(String, i32)> {
     let (first, rest) = resp.split_once('\n')?;
     if first == "FALLBACK" {
         return None;
     }
     let code: i32 = first.trim().parse().ok()?;
-    Some((rest.to_string(), code))
+    let (len_line, body) = rest.split_once('\n')?;
+    let expected: usize = len_line.trim().parse().ok()?;
+    if body.len() != expected {
+        return None;
+    }
+    Some((body.to_string(), code))
 }
 
 /// Client: spawn a detached daemon for `root`. Best-effort, never blocks; null
@@ -152,7 +176,12 @@ pub fn serve(root_arg: &str) {
     if let Some(parent) = sock.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    // Single daemon per root: if one already answers, step aside.
+    // Single daemon per root: if one already answers, step aside. The residual
+    // TOCTOU between this connect() and the bind() below is benign and self-healing:
+    // if two cold searches race to spawn, the last bind wins and the loser's socket
+    // is unlinked, so every client reaches the live socket or cold-scans — never a
+    // wrong result — and the orphaned daemon idle-times-out. A flock would close the
+    // window but isn't worth it for a bounded, correctness-neutral race.
     if UnixStream::connect(&sock).is_ok() {
         return;
     }
@@ -179,10 +208,15 @@ pub fn serve(root_arg: &str) {
         return;
     }
     shared.wait_for_scan(SCAN_TIMEOUT);
-    // The watcher must be READY before we serve, or file creates/edits made
-    // after startup are missed and the daemon would return staler results than a
-    // cold scan (silent wrong results). fff's watcher then keeps the index live
-    // (handle_create_or_modify), so the daemon is never staler than reality.
+    // The watcher must be READY before we serve, or file creates/edits made after
+    // startup are missed. The accept loop below is reached only AFTER this wait, so
+    // connections queued during startup are served with a ready index, and fff's
+    // watcher then keeps it live (handle_create_or_modify). CAVEAT: this wait is
+    // time-bounded — if a pathological watcher init TIMES OUT, the daemon proceeds
+    // anyway (liveness over a hung daemon), leaving a brief window where a just-made
+    // edit is missed until the watcher catches up. That is bounded and only ever
+    // costs a redundant Read, never a wrong match (the scanned index is current as
+    // of scan time, and any uncertainty falls back to a cold scan).
     shared.wait_for_watcher(WATCHER_TIMEOUT);
 
     let last = Arc::new(Mutex::new(Instant::now()));
@@ -238,7 +272,7 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
         }
     }
     let mut out = stream;
-    if lines.len() < 9 || lines[0] != "v4" {
+    if lines.len() < 9 || lines[0] != PROTO {
         let _ = out.write_all(b"FALLBACK\n");
         return;
     }
@@ -287,11 +321,60 @@ fn handle(stream: UnixStream, shared: &SharedFilePicker) {
     };
     match format_results(picker, &req) {
         Some((body, code)) => {
-            let _ = out.write_all(format!("{code}\n").as_bytes());
+            // Length-framed: `<code>\n<byte_len>\n<body>`. The client verifies it
+            // received exactly byte_len bytes — if the daemon is killed mid-write
+            // (OOM/pkill), the short read is detected and the client cold-scans
+            // instead of silently serving a truncated (under-reporting) result.
+            let _ =
+                out.write_all(format!("{code}\n{}\n", body.len()).as_bytes());
             let _ = out.write_all(body.as_bytes());
         }
         None => {
             let _ = out.write_all(b"FALLBACK\n");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn parse_response_complete_is_served() {
+        // <code>\n<len>\n<body>, len matches body byte length
+        let body = "src/a.ts:1:hit\nsrc/b.ts:2:hit\n";
+        let resp = format!("0\n{}\n{}", body.len(), body);
+        assert_eq!(parse_daemon_response(&resp), Some((body.to_string(), 0)));
+    }
+
+    #[test]
+    fn parse_response_no_match_empty_body() {
+        // exit 1, empty body, len 0 — still a valid complete response
+        assert_eq!(parse_daemon_response("1\n0\n"), Some((String::new(), 1)));
+    }
+
+    #[test]
+    fn parse_response_fallback_is_none() {
+        assert_eq!(parse_daemon_response("FALLBACK\n"), None);
+    }
+
+    #[test]
+    fn parse_response_short_read_is_none() {
+        // daemon killed mid-write: declared 100 bytes, only a few arrived ->
+        // must reject (None) so the client cold-scans, never serve truncated.
+        assert_eq!(parse_daemon_response("0\n100\nsrc/a.ts:1:hi"), None);
+        // truncated before the length line at all
+        assert_eq!(parse_daemon_response("0\n"), None);
+        // garbled code line
+        assert_eq!(parse_daemon_response("xx\n3\nabc"), None);
+    }
+
+    #[test]
+    fn socket_path_embeds_proto_version() {
+        // versions must never share a socket (post-upgrade collision guard)
+        let p = socket_path(Path::new("/tmp/some/root")).unwrap();
+        let name = p.file_name().unwrap().to_string_lossy();
+        assert!(name.ends_with(&format!("-{PROTO}.sock")), "got {name}");
     }
 }
