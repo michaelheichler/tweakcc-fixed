@@ -3,11 +3,7 @@ import { useContext, useState } from 'react';
 import { SettingsContext } from '../App';
 import Header from './Header';
 import { DEFAULT_SETTINGS } from '../../defaultSettings';
-import {
-  ComplexityRouterConfig,
-  RouterClassifierMode,
-  RouterEffort,
-} from '../../types';
+import { ComplexityRouterConfig, RouterEffort } from '../../types';
 
 interface ComplexityRouterViewProps {
   onBack: () => void;
@@ -21,11 +17,51 @@ const EFFORT_OPTIONS: { value: RouterEffort; blurb: string }[] = [
   { value: 'max', blurb: 'Maximum reasoning - slowest, priciest' },
 ];
 
+// Numeric (free-entry) settings: config key -> display + clamp range. The
+// bounds mirror config.ts normalization so the TUI can't save an out-of-range
+// value either.
+type NumericRow = 'messageCap' | 'assistantCap' | 'timeoutMs';
+const NUMERIC_ROWS: Record<
+  NumericRow,
+  { label: string; unit: string; lo: number; hi: number; hint: string }
+> = {
+  messageCap: {
+    label: 'Message cap',
+    unit: 'chars',
+    lo: 500,
+    hi: 400000,
+    hint: 'max chars of a user message fed to the classifier',
+  },
+  assistantCap: {
+    label: 'Assistant cap',
+    unit: 'chars',
+    lo: 500,
+    hi: 400000,
+    hint: 'prev assistant reply beyond this is sent as a heavy-work marker (floors to hard)',
+  },
+  timeoutMs: {
+    label: 'Haiku timeout',
+    unit: 'ms',
+    lo: 1000,
+    hi: 120000,
+    hint: 'classifier call timeout; on timeout the router fails open',
+  },
+};
+
 // Settings rows that live above the per-level list.
-type SettingRow = 'enabled' | 'mode' | 'pinPerTask';
-const SETTING_ROWS: SettingRow[] = ['enabled', 'mode', 'pinPerTask'];
+type SettingRow = 'enabled' | 'pinPerTask' | NumericRow;
+const SETTING_ROWS: SettingRow[] = [
+  'enabled',
+  'pinPerTask',
+  'messageCap',
+  'assistantCap',
+  'timeoutMs',
+];
+const isNumericRow = (row: SettingRow): row is NumericRow =>
+  row in NUMERIC_ROWS;
 
 type SubPicker = { levelIndex: number } | null;
+type Editing = { row: NumericRow; value: string } | null;
 
 const defaultRouter = DEFAULT_SETTINGS.complexityRouter;
 
@@ -49,6 +85,7 @@ export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
   const [focusIndex, setFocusIndex] = useState(0);
   const [picker, setPicker] = useState<SubPicker>(null);
   const [pickerIndex, setPickerIndex] = useState(0);
+  const [editing, setEditing] = useState<Editing>(null);
 
   const mutate = (fn: (r: ComplexityRouterConfig) => void) => {
     updateSettings(s => {
@@ -68,6 +105,37 @@ export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
   };
 
   useInput((input, key) => {
+    // ---- numeric edit mode ----
+    if (editing) {
+      if (key.escape) {
+        setEditing(null);
+        return;
+      }
+      if (key.return) {
+        const meta = NUMERIC_ROWS[editing.row];
+        const parsed = parseInt(editing.value, 10);
+        const n = Number.isFinite(parsed)
+          ? Math.min(meta.hi, Math.max(meta.lo, parsed))
+          : defaultRouter[editing.row];
+        const row = editing.row;
+        mutate(r => {
+          r[row] = n;
+        });
+        setEditing(null);
+        return;
+      }
+      if (key.backspace || key.delete) {
+        setEditing(e => (e ? { ...e, value: e.value.slice(0, -1) } : e));
+        return;
+      }
+      if (/^[0-9]$/.test(input)) {
+        setEditing(e =>
+          e && e.value.length < 7 ? { ...e, value: e.value + input } : e
+        );
+      }
+      return;
+    }
+
     // ---- effort sub-picker mode ----
     if (picker) {
       if (key.escape) {
@@ -110,13 +178,22 @@ export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
     const isSettingRow = focusIndex < SETTING_ROWS.length;
     const levelIndex = focusIndex - SETTING_ROWS.length;
 
-    // 'x' resets a focused level to its default effort.
-    if (input === 'x' && !isSettingRow) {
-      const def = defaultRouter.levels[levelIndex];
-      if (def) {
-        mutate(r => {
-          if (r.levels[levelIndex]) r.levels[levelIndex].effort = def.effort;
-        });
+    // 'x' resets a focused numeric setting OR level to its default.
+    if (input === 'x') {
+      if (isSettingRow) {
+        const row = SETTING_ROWS[focusIndex];
+        if (isNumericRow(row)) {
+          mutate(r => {
+            r[row] = defaultRouter[row];
+          });
+        }
+      } else {
+        const def = defaultRouter.levels[levelIndex];
+        if (def) {
+          mutate(r => {
+            if (r.levels[levelIndex]) r.levels[levelIndex].effort = def.effort;
+          });
+        }
       }
       return;
     }
@@ -128,16 +205,12 @@ export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
           mutate(r => {
             r.enabled = !r.enabled;
           });
-        } else if (row === 'mode') {
-          mutate(r => {
-            const next: RouterClassifierMode =
-              r.mode === 'heuristic' ? 'llm' : 'heuristic';
-            r.mode = next;
-          });
         } else if (row === 'pinPerTask') {
           mutate(r => {
             r.pinPerTask = !r.pinPerTask;
           });
+        } else {
+          setEditing({ row, value: String(router[row]) });
         }
       } else {
         const idx = EFFORT_OPTIONS.findIndex(
@@ -180,22 +253,35 @@ export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
     const isSelected = index === focusIndex;
     let label: string;
     let value: string;
+    let hint = '';
     if (row === 'enabled') {
       label = 'Enabled';
       value = router.enabled ? 'on' : 'off';
-    } else if (row === 'mode') {
-      label = 'Classifier mode';
-      value = router.mode;
-    } else {
+    } else if (row === 'pinPerTask') {
       label = 'Pin per task';
       value = router.pinPerTask ? 'on' : 'off';
+    } else {
+      const meta = NUMERIC_ROWS[row];
+      label = meta.label;
+      if (editing?.row === row) {
+        value = `${editing.value || '0'}_`;
+        hint = `type a number (${meta.lo}-${meta.hi}), enter to save · esc cancel`;
+      } else {
+        value = `${router[row]} ${meta.unit}`;
+        hint = meta.hint;
+      }
     }
     return (
-      <Box key={row}>
+      <Box key={row} flexDirection="column">
         <Text color={isSelected ? 'cyan' : undefined}>
           {isSelected ? '❯ ' : '  '}
           {label}: <Text color="green">{value}</Text>
         </Text>
+        {isSelected && hint ? (
+          <Box marginLeft={4}>
+            <Text dimColor>{hint}</Text>
+          </Box>
+        ) : null}
       </Box>
     );
   };
@@ -209,15 +295,21 @@ export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
       <Box marginBottom={1} flexDirection="column">
         <Text dimColor>
           Classifies each task by difficulty and sets the reasoning-effort
-          (thinking) level to match - low effort for routine work, max for the
-          hardest. Runs on your current model (no model switch, no prompt-cache
-          churn). Off by default.
+          (thinking) level to match - low for routine work, the top tier only
+          for genuinely frontier problems. Runs on your current model (no model
+          switch, no prompt-cache churn). Off by default.
         </Text>
         <Text dimColor>
-          heuristic mode is instant; llm mode adds a one-shot Haiku classifier
-          call at the task boundary (fails back to heuristic). pin per task
-          keeps effort stable for a session (only escalates); turn it off to
-          re-rate every prompt.
+          A one-shot Haiku side-call routes each prompt, fed a rolling TL;DR
+          summary of the session (kept in ~/.tweakcc/router-state, restored on
+          resume; reset and reseeded from the main model&apos;s summary when the
+          conversation compacts). On a Haiku error it keeps the last level, else
+          defaults high.
+        </Text>
+        <Text dimColor>
+          pin per task is a monotonic floor - effort never drops below the
+          session max (only escalates); turn it off to track each prompt up and
+          down. Reset on /clear.
         </Text>
         <Text dimColor>
           While on, the router drives effort, overriding your saved effortLevel.
@@ -230,7 +322,8 @@ export function ComplexityRouterView({ onBack }: ComplexityRouterViewProps) {
           TWEAKCC_ROUTER_DEBUG=1 also logs each decision.
         </Text>
         <Text dimColor>
-          ↑↓ navigate · enter/space change · x reset level · esc back
+          ↑↓ navigate · enter/space toggle or edit · type digits to set a number
+          · x reset · esc back
         </Text>
       </Box>
 

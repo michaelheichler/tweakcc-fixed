@@ -740,31 +740,33 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   complexityRouter: {
     enabled: false,
-    mode: 'heuristic',
     pinPerTask: true,
+    messageCap: 100000,
+    assistantCap: 100000,
+    timeoutMs: 15000,
     levels: [
       {
         id: 'routine',
         label: 'Routine',
-        help: 'Mechanical edits, renames, search/grep summarization, boilerplate',
+        help: 'Mechanical, well-scoped work: a rename, formatting, a search, a version bump, a one-line or single-file edit, or a direct factual question with a known answer',
         effort: 'low',
       },
       {
         id: 'standard',
         label: 'Standard',
-        help: 'The workhorse - standard coding/tool work; most traffic',
+        help: 'The everyday coding workflow: implement a normal feature, a localized change, a moderate bug fix, ordinary tool/file work. The default when the task is ordinary or you are unsure',
         effort: 'medium',
       },
       {
         id: 'hard',
         label: 'Hard',
-        help: 'Architecture, cross-file refactor, deep debug/review',
+        help: 'Demanding work that needs careful reasoning: architecture/design, cross-file or multi-module refactors, root-cause debugging, security/concurrency/performance review. Most genuinely hard coding lives here',
         effort: 'high',
       },
       {
         id: 'frontier',
         label: 'Frontier',
-        help: "Only the hardest; reached on explicit max-effort phrases (e.g. 'ultrathink') or when many hard signals stack up",
+        help: 'Rare. Reserve for genuinely frontier problems - the deepest reasoning where even strong effort may fall short (novel algorithm design, subtle distributed/concurrency correctness) - or an explicit max-effort request like "ultrathink". Not just because a task is hard',
         effort: 'max',
       },
     ],

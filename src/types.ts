@@ -183,7 +183,8 @@ export interface SubagentModelsConfig {
 // effort (fast, cheap), the hardest work runs at max effort. It rides on
 // whatever model the user is already on (Opus 4.8 by default), so it is a pure
 // thinking-depth dial - no model switch, no prompt-cache churn. Off by default.
-export type RouterClassifierMode = 'heuristic' | 'llm';
+// Routing is done by a one-shot Haiku side-call fed a rolling session summary;
+// there is no local heuristic mode (removed - Haiku routing only).
 
 // Claude Code's reasoning-effort levels (the `effort` API param / `/effort`).
 // Opus 4.8 supports all five; the per-level support guard downgrades an
@@ -199,8 +200,10 @@ export interface RouterLevel {
 
 export interface ComplexityRouterConfig {
   enabled: boolean;
-  mode: RouterClassifierMode; // default 'heuristic'
-  pinPerTask: boolean; // default TRUE - classify once per task, keep for the session (stable, only escalates)
+  pinPerTask: boolean; // default TRUE - monotonic floor: routed level never drops below the session max (only escalates). Off = track each message up and down.
+  messageCap: number; // max chars of a user message (new + previous) fed to the classifier
+  assistantCap: number; // max chars of the previous assistant reply fed to the classifier; beyond this it is replaced by a heavy-work marker and the level is floored to the hard tier
+  timeoutMs: number; // classifier (Haiku) call timeout in ms; on timeout the router fails open
   levels: RouterLevel[]; // ordinal complexity level -> effort map (index 0 = easiest)
 }
 

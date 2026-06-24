@@ -455,7 +455,7 @@ const PATCH_DEFINITIONS = [
     name: '[EXPERIMENTAL] Complexity effort router',
     group: PatchGroup.FEATURES,
     description:
-      'Auto-route reasoning effort (thinking depth) by task complexity: routine work runs at low effort, the hardest at max. Rides on your current model - no model switch, no prompt-cache churn. While on it drives effort, overriding your saved effortLevel default; an in-session /effort or CLAUDE_CODE_EFFORT_LEVEL still wins. Heuristic by default; optional Haiku-classifier (llm) mode fails back to the heuristic. Off by default.',
+      'Auto-route reasoning effort (thinking depth) by task complexity: routine work runs at low effort, the top tier only for genuinely frontier problems. Rides on your current model - no model switch, no prompt-cache churn. A one-shot Haiku side-call routes each prompt using a rolling TL;DR summary of the session (so terse follow-ups that continue hard work stay elevated; persisted across resume, reseeded from the main model summary on compaction). While on it drives effort, overriding your saved effortLevel default; an in-session /effort or CLAUDE_CODE_EFFORT_LEVEL still wins. Off by default.',
   },
   {
     id: 'allow-custom-agent-models',

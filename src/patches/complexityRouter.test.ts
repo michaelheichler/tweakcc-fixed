@@ -32,17 +32,34 @@ const VPT_SHAPE =
   'enablePromptCaching:o.enablePromptCaching??!1,outputFormat:n,' +
   'async getToolPermissionContext(){return WM()}}})]}))[0]}';
 
-// km agent-context builder (required by the llm classifier).
+// km agent-context builder (required by the classifier).
 const KM_SHAPE = 'function km(){return{agentType:"main",agentId:xt()}}';
 
-const FILE = `var head=1;${GB_SHAPE}${VPT_SHAPE}${KM_SHAPE}${XQ_SHAPE}${HMM_SHAPE}var tail=2;`;
+// CC's conversation-compaction return (the splice-4 anchor): summaryText is the
+// compaction summary we reseed from.
+const COMPACT_SHAPE =
+  'function doCompact(){return{ok:!0,summaryText:Sx,forkAssistantMessageCount:0,totalUsage:U,messages:[Mn({content:T1t(Sx,!0,c),isCompactSummary:!0})]}}';
+
+// CC's tool-use-summary site where the last assistant text is extracted (the
+// optional prev-assistant capture anchor).
+const ZE_SHAPE =
+  'let Qn;if(g.gates.emitToolUseSummaries&&ye.length>0){' +
+  'let Et=Te.at(-1),Ze;if(Et){let Un=Et.message.content.filter((Tt)=>Tt.type==="text");' +
+  'if(Un.length>0){let Tt=Un.at(-1);if(Tt&&"text"in Tt)Ze=Tt.text}}}';
+
+// CC's global session-id accessor (the optional persistence anchor).
+const SID_SHAPE = 'getSessionId(){return It()}';
+
+const FILE = `var head=1;${GB_SHAPE}${VPT_SHAPE}${KM_SHAPE}${ZE_SHAPE}${COMPACT_SHAPE}${XQ_SHAPE}${HMM_SHAPE}var tail=2;`;
 
 const cfg = (
   over: Partial<ComplexityRouterConfig> = {}
 ): ComplexityRouterConfig => ({
   enabled: true,
-  mode: 'heuristic',
   pinPerTask: true,
+  messageCap: 50000,
+  assistantCap: 50000,
+  timeoutMs: 15000,
   levels: [
     { id: 'routine', label: 'Routine', help: '', effort: 'low' },
     { id: 'standard', label: 'Standard', help: '', effort: 'medium' },
@@ -59,41 +76,63 @@ const assertParses = (src: string) => {
   expect(() => new AsyncFunction(src)).not.toThrow();
 };
 
-// Pull the generated heuristic scorer out and make it callable so we test the
-// REAL injected logic (not a TS re-implementation).
-const extractScorer = (
-  patched: string
-): ((t: string, max: number) => number) => {
-  const m = patched.match(/function __tweakccRouterScore[\s\S]*?return __l\}/);
-  if (!m) throw new Error('scorer not found in patched output');
-  return new Function(m[0] + ';return __tweakccRouterScore;')() as (
-    t: string,
-    max: number
-  ) => number;
+type RouterState = {
+  level?: number;
+  effort?: string;
+  baseline?: string | null;
+  summary?: string;
+  prevUser?: string;
+  prevAssistant?: string;
+  pendingCompaction?: string;
+  loaded?: boolean;
 };
 
-// Extract the whole heuristic runtime (state + scorer + classify) and return a
-// callable classify(text, mode) that reads/writes globalThis.__tweakccRouter.
+// A stub gB: queue of {level,summary} results (or the string 'throw'). Captures
+// every options arg so we can assert the assembled userPrompt / agentContext.
+type GbOpts = { userPrompt?: string; options?: Record<string, unknown> };
+type GbFn = (opts: GbOpts) => Promise<unknown>;
+type GbResult = { level?: number; summary?: string } | 'throw';
+const makeGB = (results: GbResult[]) => {
+  const captured: { userPrompt?: string; options?: Record<string, unknown> }[] =
+    [];
+  let i = 0;
+  const gb = async (opts: {
+    userPrompt?: string;
+    options?: Record<string, unknown>;
+  }) => {
+    captured.push(opts);
+    const r = results[Math.min(i, results.length - 1)];
+    i++;
+    if (r === 'throw') throw new Error('boom');
+    return {
+      message: { content: [{ type: 'text', text: JSON.stringify(r) }] },
+    };
+  };
+  return { gb, captured };
+};
+
+// Extract the whole runtime (state + helpers + classify) and return a callable
+// classify(text, mode) wired to a stub gB/km, reading/writing globalThis.
 const extractClassify = (
-  patched: string
+  patched: string,
+  gb: GbFn
 ): ((text: string, mode: string) => Promise<void>) => {
   const m = patched.match(
     /function __tweakccRouterState[\s\S]*?(?=function XQ\()/
   );
   if (!m) throw new Error('runtime not found in patched output');
-  return new Function(m[0] + ';return __tweakccRouterClassify;')() as (
-    text: string,
-    mode: string
-  ) => Promise<void>;
+  const km = () => ({ agentType: 'main', agentId: 'x' });
+  return new Function('gB', 'km', m[0] + ';return __tweakccRouterClassify;')(
+    gb,
+    km
+  ) as (text: string, mode: string) => Promise<void>;
 };
 
 const routerState = () =>
-  (
-    globalThis as unknown as Record<
-      string,
-      { level?: number; effort?: string; baseline?: string | null }
-    >
-  ).__tweakccRouter;
+  (globalThis as unknown as Record<string, RouterState>).__tweakccRouter;
+const setRouterState = (s: RouterState) => {
+  (globalThis as unknown as Record<string, unknown>).__tweakccRouter = s;
+};
 
 // Extract the runtime + the WRAPPED resolver and make XQ callable with stubbed
 // CC helpers, so we exercise the REAL precedence logic (env / baseline / guards).
@@ -120,35 +159,61 @@ const extractWrappedResolver = (
   ) as (e: string, t: unknown) => unknown;
 };
 
-const setRouterState = (s: {
-  level?: number;
-  effort?: string;
-  baseline?: string | null;
-}) => {
-  (globalThis as unknown as Record<string, unknown>).__tweakccRouter = s;
-};
-
 describe('writeComplexityRouter', () => {
-  it('wraps the effort resolver and hooks the submit handler (heuristic)', () => {
+  it('wraps the resolver, hooks the submit handler, and emits the Haiku classifier', () => {
     const out = writeComplexityRouter(FILE, cfg());
     expect(out).not.toBeNull();
     const r = out as string;
     expect(r).toContain('function __tweakccRouterClassify');
-    expect(r).toContain('function __tweakccRouterScore');
+    expect(r).toContain('async function __tweakccRouterClassifyLlm');
     expect(r).toContain('var __st=__tweakccRouterState();');
     expect(r).toContain('let __twkRE=__st.effort;');
     expect(r).toContain('if(__twkRE&&o==null&&(t==null||t===__st.baseline))');
-    expect(r).toContain('!dUe(e)');
-    expect(r).toContain('!GRe(e)');
     expect(r).toContain('await __tweakccRouterClassify(E,t);');
     expect(r).toContain('var head=1;');
     expect(r).toContain('var tail=2;');
-    expect(r).not.toContain('__tweakccRouterClassifyLlm');
+    // The heuristic scorer is gone entirely.
+    expect(r).not.toContain('__tweakccRouterScore');
+  });
+
+  it('captures the previous assistant text at the tool-summary site', () => {
+    const out = writeComplexityRouter(FILE, cfg()) as string;
+    expect(out).toContain('__twr.prevAssistant=Ze');
+  });
+
+  it('captures CC compaction summary via the comma-operator splice', () => {
+    const out = writeComplexityRouter(FILE, cfg()) as string;
+    expect(out).toContain('globalThis.__tweakccRouter.pendingCompaction=Sx');
+    expect(out).toContain('return globalThis.__tweakccRouter&&'); // comma-op; returned object untouched
+    expect(out).toContain('summaryText:Sx,'); // original return shape preserved
+  });
+
+  it('still patches when the prev-assistant capture site is absent', () => {
+    const noZe = `var head=1;${GB_SHAPE}${KM_SHAPE}${XQ_SHAPE}${HMM_SHAPE}var tail=2;`;
+    const out = writeComplexityRouter(noZe, cfg()) as string;
+    expect(out).not.toBeNull();
+    expect(out).toContain('function __tweakccRouterClassify');
+    expect(out).not.toContain('prevAssistant=Ze');
+  });
+
+  it('wires session-id persistence when the accessor is present', () => {
+    const withSid = `var head=1;${GB_SHAPE}${KM_SHAPE}class C{${SID_SHAPE}}${XQ_SHAPE}${HMM_SHAPE}var tail=2;`;
+    const out = writeComplexityRouter(withSid, cfg()) as string;
+    expect(out).toContain('return typeof __s==="string"&&__s?__s:null}'); // sid()
+    expect(out).toContain('var __s=It()'); // discovered accessor wired in
+    expect(out).toContain('function __tweakccRouterSave');
+  });
+
+  it('disables persistence (sid=null) when no accessor is found', () => {
+    const out = writeComplexityRouter(FILE, cfg()) as string;
+    expect(out).toContain('var __s=null;'); // sidExpr === 'null'
   });
 
   it('produces syntactically valid injected JS', () => {
     assertParses(writeComplexityRouter(FILE, cfg()) as string);
-    assertParses(writeComplexityRouter(FILE, cfg({ mode: 'llm' })) as string);
+    assertParses(
+      writeComplexityRouter(FILE, cfg({ pinPerTask: false })) as string
+    );
   });
 
   it('is idempotent', () => {
@@ -157,173 +222,223 @@ describe('writeComplexityRouter', () => {
   });
 
   it('introduces no non-ASCII codepoints (mojibake guard)', () => {
-    const out = writeComplexityRouter(FILE, cfg({ mode: 'llm' })) as string;
+    const out = writeComplexityRouter(FILE, cfg()) as string;
     const maxCp = out
       .split('')
       .reduce((m, ch) => Math.max(m, ch.charCodeAt(0)), 0);
     expect(maxCp).toBeLessThanOrEqual(0x7f);
   });
 
-  it('emits the llm classifier targeting gB with the full options shape', () => {
-    const out = writeComplexityRouter(FILE, cfg({ mode: 'llm' })) as string;
-    expect(out).toContain('__tweakccRouterClassifyLlm');
+  it('emits the classifier targeting gB with the full options shape (H1)', () => {
+    const out = writeComplexityRouter(FILE, cfg()) as string;
     expect(out).toContain('await gB({systemPrompt:[__sys]');
-    // H1: agentContext is REQUIRED or gB throws on every call.
+    // agentContext is REQUIRED or gB throws on every call.
     expect(out).toContain('agentContext:km()');
     expect(out).toContain('querySource:"route_complexity"');
     expect(out).not.toContain('await Vpt(');
   });
 
-  it('falls back to heuristic when llm mode finds no gB/km helpers', () => {
+  it('no-ops when the Haiku helpers (gB/km) are absent (Haiku-only, no fallback)', () => {
     const noGb = `var head=1;${XQ_SHAPE}${HMM_SHAPE}var tail=2;`;
-    const out = writeComplexityRouter(noGb, cfg({ mode: 'llm' })) as string;
-    expect(out).not.toBeNull();
-    expect(out).toContain('function __tweakccRouterClassify');
-    expect(out).not.toContain('__tweakccRouterClassifyLlm');
+    expect(writeComplexityRouter(noGb, cfg())).toBe(noGb);
   });
 
   it('no-ops gracefully when the effort resolver is absent', () => {
-    const file = 'var x=1;function y(){return 2}';
+    const file = `var x=1;${GB_SHAPE}${KM_SHAPE}function y(){return 2}`;
     expect(writeComplexityRouter(file, cfg())).toBe(file);
   });
 
   it('fails (null) when effort machinery is present but the shape drifted', () => {
-    const drifted =
-      'var x="CLAUDE_CODE_EFFORT_LEVEL";function z(){return"high"}';
+    const drifted = `var x="CLAUDE_CODE_EFFORT_LEVEL";${GB_SHAPE}${KM_SHAPE}function z(){return"high"}`;
     expect(writeComplexityRouter(drifted, cfg())).toBeNull();
   });
 
   it('reverts the whole patch (no half-patch) when the submit handler is absent', () => {
-    // XQ present but the submit-throw anchor absent: must NOT ship the wrap +
-    // runtime with no classify call to populate the global (all-or-nothing).
-    const noSubmit = `var head=1;${XQ_SHAPE}var tail=2;`;
+    // gB/km + XQ present but the submit-throw anchor absent: must NOT ship the
+    // wrap + runtime with no classify call to populate the global.
+    const noSubmit = `var head=1;${GB_SHAPE}${KM_SHAPE}${XQ_SHAPE}var tail=2;`;
     expect(noSubmit.includes('requires a string input.')).toBe(false);
     expect(writeComplexityRouter(noSubmit, cfg())).toBe(noSubmit);
   });
 
-  describe('heuristic scorer (real injected logic)', () => {
-    const score = extractScorer(writeComplexityRouter(FILE, cfg()) as string);
-
-    it('routes confidently-trivial work down to Routine (level 0)', () => {
-      expect(score('rename this variable to userCount', 3)).toBe(0);
-      expect(score('fix the typo in the readme', 3)).toBe(0);
-      expect(score('add a comment to this function', 3)).toBe(0);
-      expect(score('bump the version to 2.0.1', 3)).toBe(0);
-    });
-
-    it('keeps genuinely-ambiguous work at the Standard default (level 1)', () => {
-      expect(score('update the user profile page', 3)).toBe(1);
-      expect(score('change the button color to blue', 3)).toBe(1);
-    });
-
-    it('does not route to low once any hard signal is present', () => {
-      // a trivial verb + a hard signal must NOT drop to low
-      expect(score('rename things while fixing the race condition', 3)).toBe(2);
-    });
-
-    it('escalates one strong signal to Hard (level 2)', () => {
-      expect(score('fix the race condition in the worker pool', 3)).toBe(2);
-      expect(score('refactor the auth module across files', 3)).toBe(2);
-      expect(
-        score('there is a security vulnerability in the login flow', 3)
-      ).toBe(2);
-    });
-
-    it('jumps to the top tier on explicit max-escalation phrases', () => {
-      expect(score('ultrathink about this and solve it', 3)).toBe(3);
-    });
-
-    it('reaches the top tier on heavy signal accumulation', () => {
-      const heavy =
-        'we have a race condition and a security vulnerability; refactor ' +
-        'across modules and fix the deadlock. why is it flaky? optimize the ' +
-        'algorithm too. this is production critical.';
-      expect(score(heavy, 3)).toBe(3);
-    });
-
-    it('keeps empty/contentless input at the Standard default (no trivial verb)', () => {
-      expect(score('', 3)).toBe(1);
-      expect(score('hi', 3)).toBe(1);
-    });
-
-    it('clamps to the configured max level', () => {
-      expect(score('ultrathink hard about everything', 2)).toBe(2);
-    });
-
-    it('stays fast (linear) on long single-line pastes (ReDoS guard)', () => {
-      // Pre-fix these froze the TUI for 1-3.5s; the input cap + bounded
-      // quantifiers keep it well under a frame.
-      for (const big of [
-        'a'.repeat(60000) + 'exception:', // [\w.$]+(error|exception): prefix
-        'a'.repeat(60000), // plain run
-        'https://example.com/' + 'a'.repeat(60000), // long single token
-        'a.'.repeat(40000), // path-count [\w./-]+\.[a-z]{1,5}
-        'at x(' + '1'.repeat(60000), // stack-trace \d+:\d+ near-miss
-        '('.repeat(60000), // many open parens
-      ]) {
-        const t0 = performance.now();
-        const lvl = score(big, 3);
-        expect(performance.now() - t0).toBeLessThan(100);
-        expect(lvl).toBeGreaterThanOrEqual(1);
-      }
-    });
-  });
-
-  describe('classify entry point (real injected logic)', () => {
+  describe('classify entry point (real injected logic, stubbed Haiku)', () => {
     beforeEach(() => {
       delete (globalThis as unknown as Record<string, unknown>).__tweakccRouter;
     });
 
-    it('writes the level effort and escalates monotonically when pinned', async () => {
+    it('applies the level the classifier returns', async () => {
+      const { gb } = makeGB([{ level: 0, summary: 's' }]);
       const classify = extractClassify(
-        writeComplexityRouter(FILE, cfg()) as string
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
       );
-      await classify('rename the variable', 'prompt'); // trivial -> low
-      expect(routerState().effort).toBe('low');
-      await classify('fix the race condition', 'prompt'); // level 2 -> high
-      expect(routerState().effort).toBe('high');
-      await classify('just rename this thing', 'prompt'); // trivial, pinned -> stays high
-      expect(routerState().effort).toBe('high');
-    });
-
-    it('re-rates up AND down when pinPerTask is off', async () => {
-      const classify = extractClassify(
-        writeComplexityRouter(FILE, cfg({ pinPerTask: false })) as string
-      );
-      await classify('fix the race condition', 'prompt'); // high
-      expect(routerState().effort).toBe('high');
-      await classify('rename this thing', 'prompt'); // trivial -> low (down allowed)
+      await classify('rename the variable', 'prompt');
       expect(routerState().effort).toBe('low');
     });
 
-    it('resets the pin on /clear (incl. trailing whitespace)', async () => {
+    it('escalates monotonically when pinned (never drops)', async () => {
+      const { gb } = makeGB([
+        { level: 2, summary: 's' }, // high
+        { level: 0, summary: 's' }, // trivial, but pinned -> stays high
+      ]);
       const classify = extractClassify(
-        writeComplexityRouter(FILE, cfg()) as string
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
+      );
+      await classify('fix the race condition', 'prompt');
+      expect(routerState().effort).toBe('high');
+      await classify('just rename this', 'prompt');
+      expect(routerState().effort).toBe('high');
+    });
+
+    it('tracks up AND down when pinPerTask is off', async () => {
+      const { gb } = makeGB([
+        { level: 2, summary: 's' },
+        { level: 0, summary: 's' },
+      ]);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg({ pinPerTask: false })) as string,
+        gb
+      );
+      await classify('fix the race condition', 'prompt');
+      expect(routerState().effort).toBe('high');
+      await classify('rename this thing', 'prompt');
+      expect(routerState().effort).toBe('low'); // down allowed
+    });
+
+    it('folds the rolling summary forward into the next call', async () => {
+      const { gb, captured } = makeGB([
+        { level: 1, summary: 'SUMMARY-ONE' },
+        { level: 1, summary: 'SUMMARY-TWO' },
+      ]);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
+      );
+      await classify('first task here', 'prompt');
+      expect(routerState().summary).toBe('SUMMARY-ONE');
+      await classify('second task here', 'prompt');
+      // The prior summary + prev user message + new message are fed back.
+      expect(captured[1].userPrompt).toContain('SUMMARY-ONE');
+      expect(captured[1].userPrompt).toContain('first task here'); // prevUser
+      expect(captured[1].userPrompt).toContain('second task here'); // new message
+      expect(routerState().summary).toBe('SUMMARY-TWO');
+    });
+
+    it('does NOT cap the stored summary length (TL;DR by prompt, not truncation)', async () => {
+      const { gb } = makeGB([{ level: 1, summary: 'y'.repeat(5000) }]);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
+      );
+      await classify('a task', 'prompt');
+      expect((routerState().summary as string).length).toBe(5000);
+    });
+
+    it('middle-truncates an over-cap prev assistant turn (head+tail kept, no mechanical floor)', async () => {
+      const { gb, captured } = makeGB([{ level: 0, summary: 's' }]); // classifier says trivial
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg({ assistantCap: 4000 })) as string,
+        gb
+      );
+      setRouterState({ prevAssistant: 'A'.repeat(3000) + 'B'.repeat(3000) }); // 6000 > 4000
+      await classify('continue', 'prompt');
+      const input = captured[0].userPrompt as string;
+      expect(routerState().effort).toBe('low'); // the classifier's level, NOT floored
+      expect(input).toContain('omitted from the middle'); // size marker
+      expect(input).toContain('A'.repeat(100)); // head kept
+      expect(input).toContain('B'.repeat(100)); // tail kept
+      expect(input.includes('A'.repeat(2500))).toBe(false); // head capped at cap/2 (2000)
+    });
+
+    it('middle-truncates an over-cap new message (keeps the ask at the tail)', async () => {
+      const { gb, captured } = makeGB([{ level: 1, summary: 's' }]);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg({ messageCap: 4000 })) as string,
+        gb
+      );
+      const msg = 'HEAD-INTENT ' + 'x'.repeat(6000) + ' TAIL-ASK';
+      await classify(msg, 'prompt');
+      const input = captured[0].userPrompt as string;
+      expect(input).toContain('HEAD-INTENT'); // framing kept
+      expect(input).toContain('TAIL-ASK'); // the actual ask survives (head-only would lose it)
+      expect(input).toContain('omitted from the middle');
+    });
+
+    it('reseeds the summary from a pending compaction summary, then clears it', async () => {
+      const { gb, captured } = makeGB([{ level: 1, summary: 'fresh tldr' }]);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
+      );
+      setRouterState({
+        pendingCompaction: 'COMPACTED-SUMMARY-XYZ',
+        level: 3,
+        summary: 'old',
+        prevAssistant: 'old-assistant-text',
+      });
+      await classify('keep going', 'prompt');
+      expect(captured[0].userPrompt).toContain('COMPACTED-SUMMARY-XYZ'); // reseeded into <summary>
+      expect(captured[0].userPrompt).not.toContain('old-assistant-text'); // stale exchange dropped
+      expect(routerState().pendingCompaction).toBeUndefined(); // consumed
+      expect(routerState().summary).toBe('fresh tldr'); // Haiku re-compressed it
+    });
+
+    it('fails open to HIGH on a classifier error (cold start)', async () => {
+      const { gb } = makeGB(['throw']);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
+      );
+      await classify('do the thing', 'prompt');
+      expect(routerState().effort).toBe('high');
+    });
+
+    it('clamps an out-of-range level and keeps the summary (robust parse)', async () => {
+      const { gb } = makeGB([{ level: 99, summary: 'kept summary' }]);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
+      );
+      await classify('do the thing', 'prompt');
+      expect(routerState().level).toBe(3); // clamped to max, not fail-open
+      expect(routerState().summary).toBe('kept summary'); // summary survives a bad level
+    });
+
+    it('keeps the last level (sticky) on a classifier error mid-session', async () => {
+      const { gb } = makeGB([{ level: 1, summary: 's' }, 'throw']);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
+      );
+      await classify('a', 'prompt'); // medium
+      await classify('b', 'prompt'); // throws -> sticky 1
+      expect(routerState().effort).toBe('medium');
+      expect(routerState().summary).toBe('s'); // summary preserved on failure
+    });
+
+    it('resets state + pin on /clear (incl. trailing whitespace)', async () => {
+      const { gb } = makeGB([{ level: 2, summary: 's' }]);
+      const classify = extractClassify(
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
       );
       await classify('fix the race condition', 'prompt');
       await classify('/clear\n', 'prompt');
       expect(routerState().level).toBeUndefined();
+      expect(routerState().summary).toBeUndefined();
+      expect(routerState().baseline).toBeUndefined();
     });
 
     it('ignores other slash commands and non-prompt modes', async () => {
+      const { gb } = makeGB([{ level: 2, summary: 's' }]);
       const classify = extractClassify(
-        writeComplexityRouter(FILE, cfg()) as string
+        writeComplexityRouter(FILE, cfg()) as string,
+        gb
       );
       await classify('/theme', 'prompt');
       await classify('ls -la', 'bash');
-      expect(routerState().effort).toBeUndefined();
-    });
-
-    it('drops the captured baseline on /clear so the router resumes', async () => {
-      const classify = extractClassify(
-        writeComplexityRouter(FILE, cfg()) as string
-      );
-      await classify('fix the race condition', 'prompt');
-      routerState().baseline = 'xhigh'; // simulate the wrap having captured it
-      await classify('/clear\n', 'prompt');
-      expect(routerState().level).toBeUndefined();
-      expect(routerState().effort).toBeUndefined();
-      expect(routerState().baseline).toBeUndefined(); // re-captured fresh next resolve
+      expect(routerState()?.effort).toBeUndefined();
     });
   });
 
@@ -335,84 +450,72 @@ describe('writeComplexityRouter', () => {
     const patched = () => writeComplexityRouter(FILE, cfg()) as string;
 
     it('OVERRIDES a persisted effort baseline (the inert-router bug)', () => {
-      // User has settings.effortLevel=xhigh -> arrives as the app-state fallback.
-      // The router must win over it (deferring would make the router silently inert).
       setRouterState({ level: 1, effort: 'medium', baseline: undefined });
       const XQ = extractWrappedResolver(patched());
       expect(XQ('m', 'xhigh')).toBe('medium'); // baseline<-xhigh; t===baseline -> router drives
-      expect(XQ('m', 'xhigh')).toBe('medium'); // stays driven across turns
+      expect(XQ('m', 'xhigh')).toBe('medium');
     });
 
     it('YIELDS to an in-session /effort (fallback diverges from the launch baseline)', () => {
       setRouterState({ level: 1, effort: 'medium', baseline: undefined });
       const XQ = extractWrappedResolver(patched());
       expect(XQ('m', 'xhigh')).toBe('medium'); // launch baseline captured = xhigh
-      expect(XQ('m', 'low')).toBe('YIELDED'); // user /effort'd to low -> router steps aside
+      expect(XQ('m', 'low')).toBe('YIELDED'); // user /effort'd to low
     });
 
     it('YIELDS to the CLAUDE_CODE_EFFORT_LEVEL env pin', () => {
       setRouterState({ level: 1, effort: 'medium', baseline: undefined });
-      // env set -> o!=null -> wrap never fires; CC's own resolution returns it.
       const XQ = extractWrappedResolver(patched(), { mUe: () => 'high' });
       expect(XQ('m', 'xhigh')).toBe('high');
     });
 
-    it('drives when nothing is pinned (baseline null) and re-applies support guards', () => {
+    it('drives when nothing is pinned and re-applies support guards', () => {
       setRouterState({ level: 1, effort: 'medium', baseline: undefined });
       const XQ = extractWrappedResolver(patched());
-      expect(XQ('m', undefined)).toBe('medium'); // t unset -> baseline null -> router drives
-      // unsupported routed level downgrades to "high"
+      expect(XQ('m', undefined)).toBe('medium');
       setRouterState({ level: 3, effort: 'max', baseline: undefined });
       const XQ2 = extractWrappedResolver(patched(), { dUe: () => false });
-      expect(XQ2('m', undefined)).toBe('high');
+      expect(XQ2('m', undefined)).toBe('high'); // unsupported max -> high
     });
 
-    it('end-to-end: real classify sets the effort, the real wrap overrides a persisted baseline', async () => {
-      // Faithful full path: classify (writes the global) -> wrapped resolver
-      // (reads it) with a non-null fallback standing in for settings.effortLevel.
-      // This is the exact runtime flow the original unit tests did NOT model.
+    it('end-to-end: real classify sets the effort, the real wrap overrides a baseline', async () => {
+      const { gb } = makeGB([{ level: 0, summary: 's' }]);
       const p = patched();
-      const classify = extractClassify(p);
+      const classify = extractClassify(p, gb);
       const XQ = extractWrappedResolver(p); // shares globalThis.__tweakccRouter
-      await classify('rename the variable', 'prompt'); // trivial -> low
-      expect(XQ('m', 'xhigh')).toBe('low'); // persisted xhigh overridden, routed all the way down
+      await classify('rename the variable', 'prompt'); // -> low
+      expect(XQ('m', 'xhigh')).toBe('low'); // persisted xhigh overridden
     });
 
-    it('captures the launch baseline on the first resolve while the router is still inactive (boot ordering)', async () => {
-      // Production order: eZ resolves (a pre-submit poll) and captures the
-      // baseline BEFORE any classify sets an effort - the inverse of the
-      // seed-effort-first shape the other precedence tests use.
+    it('captures the launch baseline on the first resolve while inactive (boot ordering)', async () => {
+      const { gb } = makeGB([{ level: 0, summary: 's' }]);
       const p = patched();
       const XQ = extractWrappedResolver(p);
-      const classify = extractClassify(p); // shares globalThis.__tweakccRouter
-      // 1) router inactive (no effort yet): the first resolve captures baseline
-      expect(XQ('m', 'xhigh')).toBe('YIELDED'); // no router effort -> CC's own resolution
+      const classify = extractClassify(p, gb);
+      expect(XQ('m', 'xhigh')).toBe('YIELDED'); // no router effort yet
       expect(routerState().baseline).toBe('xhigh');
-      // 2) a routine task classifies -> low
       await classify('rename the variable', 'prompt');
       expect(routerState().effort).toBe('low');
-      // 3) resolve again: fallback still == baseline -> the router now drives
-      expect(XQ('m', 'xhigh')).toBe('low');
+      expect(XQ('m', 'xhigh')).toBe('low'); // now drives
     });
   });
 
-  describe('llm classifier (real injected logic, H1 regression)', () => {
-    // Extract the emitted llm classifier + result parser and run it against a
-    // stub gB/km so we PROVE it passes agentContext and parses the level.
+  describe('classifier call shape (H1 regression)', () => {
+    // Extract the result parser + classifier and run against a stub gB/km to
+    // PROVE it passes agentContext and parses {level, summary}.
     const buildLlm = () => {
-      const patched = writeComplexityRouter(
-        FILE,
-        cfg({ mode: 'llm' })
-      ) as string;
+      const patched = writeComplexityRouter(FILE, cfg()) as string;
       const m = patched.match(
-        /async function __tweakccRouterClassifyLlm[\s\S]*?(?=async function __tweakccRouterClassify\()/
+        /function __tweakccRouterReadResult[\s\S]*?(?=async function __tweakccRouterClassify\()/
       );
-      if (!m) throw new Error('llm classifier not found');
+      if (!m) throw new Error('classifier not found');
       let captured: { options?: Record<string, unknown> } = {};
       const stubGB = async (opts: { options?: Record<string, unknown> }) => {
         captured = opts;
         return {
-          message: { content: [{ type: 'text', text: '{"level":2}' }] },
+          message: {
+            content: [{ type: 'text', text: '{"level":2,"summary":"did x"}' }],
+          },
         };
       };
       const km = () => ({ agentType: 'main', agentId: 'x' });
@@ -424,16 +527,16 @@ describe('writeComplexityRouter', () => {
         'clearTimeout',
         m[0] + ';return __tweakccRouterClassifyLlm;'
       )(stubGB, km, AbortController, setTimeout, clearTimeout) as (
-        t: string,
+        input: string,
         max: number
-      ) => Promise<number | null>;
+      ) => Promise<{ level: number; summary?: string } | null>;
       return { fn, getCaptured: () => captured };
     };
 
-    it('passes a valid agentContext (would TypeError without it) and parses the level', async () => {
+    it('passes a valid agentContext and parses {level, summary}', async () => {
       const { fn, getCaptured } = buildLlm();
-      const level = await fn('refactor the whole auth subsystem', 3);
-      expect(level).toBe(2);
+      const res = await fn('refactor the whole auth subsystem', 3);
+      expect(res).toEqual({ level: 2, summary: 'did x' });
       const opts = getCaptured().options as Record<string, unknown>;
       expect(opts.agentContext).toEqual({ agentType: 'main', agentId: 'x' });
       expect(opts.querySource).toBe('route_complexity');

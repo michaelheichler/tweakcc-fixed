@@ -6,6 +6,7 @@ import { EOL } from 'node:os';
 import chalk from 'chalk';
 
 import {
+  ComplexityRouterConfig,
   RemoteConfig,
   RouterEffort,
   RouterLevel,
@@ -252,6 +253,25 @@ const normalizeConfig = (config: TweakccConfig): void => {
   // unique id synthesized for overflow levels so React list keys can't collide.
   {
     const cr = config.settings.complexityRouter;
+    // The classifier `mode` field was removed (Haiku routing is now the only
+    // path); drop a stale 'heuristic'/'llm' from any existing config.
+    delete (cr as ComplexityRouterConfig & { mode?: unknown }).mode;
+    // Coerce the editable numeric caps to sane integers (hand-edited / remote
+    // configs); the upper bounds keep a value from blowing the classifier's
+    // context window, the lower bounds keep it usable.
+    const crDefaults = DEFAULT_SETTINGS.complexityRouter;
+    const clampNum = (v: unknown, def: number, lo: number, hi: number) =>
+      typeof v === 'number' && Number.isFinite(v)
+        ? Math.min(hi, Math.max(lo, Math.round(v)))
+        : def;
+    cr.messageCap = clampNum(cr.messageCap, crDefaults.messageCap, 500, 400000);
+    cr.assistantCap = clampNum(
+      cr.assistantCap,
+      crDefaults.assistantCap,
+      500,
+      400000
+    );
+    cr.timeoutMs = clampNum(cr.timeoutMs, crDefaults.timeoutMs, 1000, 120000);
     const defaultLevels = DEFAULT_SETTINGS.complexityRouter.levels;
     const validEfforts: RouterEffort[] = [
       'low',
