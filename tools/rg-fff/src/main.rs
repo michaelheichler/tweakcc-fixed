@@ -228,15 +228,32 @@ fn claude_bin_from(args: &[String]) -> Option<String> {
 
 /// Remove our private flags before re-execing the real embedded tool.
 fn strip_custom(args: &[String]) -> Vec<String> {
-    args.iter()
-        .filter(|a| {
-            *a != "--fuzzy"
-                && *a != "--no-fallback"
-                && *a != "--daemon"
-                && !a.starts_with("--fff-claude-bin=")
-        })
-        .cloned()
-        .collect()
+    // CRITICAL: only strip our private flags in the FLAG region (before the POSIX
+    // `--` operand separator). A private-flag literal that is the search PATTERN —
+    // e.g. `grep -- --daemon .` — appears after `--` and MUST survive verbatim, or
+    // the re-exec runs a corrupted argv (pattern silently deleted), the exact
+    // divergence this fallback exists to prevent. (Any operand beginning with `-`
+    // requires `--` anyway — grep/rg reject a bare `--daemon` as an unknown option —
+    // so the flag region can never legitimately contain a private-flag operand.)
+    let mut out = Vec::with_capacity(args.len());
+    let mut operands = false;
+    for a in args {
+        if !operands && a == "--" {
+            operands = true;
+            out.push(a.clone());
+            continue;
+        }
+        if !operands
+            && (a == "--fuzzy"
+                || a == "--no-fallback"
+                || a == "--daemon"
+                || a.starts_with("--fff-claude-bin="))
+        {
+            continue;
+        }
+        out.push(a.clone());
+    }
+    out
 }
 
 /// Parse grep/ugrep/rg/fff argv. Conservative: anything we don't confidently
@@ -1542,6 +1559,31 @@ mod tests {
             &opts(Tool::Ugrep, "foo", &[]),
             Mode::Fuzzy
         ));
+    }
+
+    #[test]
+    fn strip_custom_respects_double_dash() {
+        let sv = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        // private flags in the flag region are stripped before re-exec
+        assert_eq!(
+            strip_custom(&sv(&["--fuzzy", "-rn", "foo", "."])),
+            sv(&["-rn", "foo", "."])
+        );
+        assert_eq!(
+            strip_custom(&sv(&["-rn", "--fff-claude-bin=/x", "foo"])),
+            sv(&["-rn", "foo"])
+        );
+        // BLOCKER: a private-flag literal that is the PATTERN (after `--`) survives
+        assert_eq!(
+            strip_custom(&sv(&["-rn", "--", "--daemon", "."])),
+            sv(&["-rn", "--", "--daemon", "."])
+        );
+        assert_eq!(strip_custom(&sv(&["--", "--fuzzy"])), sv(&["--", "--fuzzy"]));
+        // a genuine --fuzzy flag is stripped, but a --no-fallback PATTERN after `--` is kept
+        assert_eq!(
+            strip_custom(&sv(&["--fuzzy", "--", "--no-fallback"])),
+            sv(&["--", "--no-fallback"])
+        );
     }
 
     #[test]
