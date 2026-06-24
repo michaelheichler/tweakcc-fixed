@@ -7,6 +7,7 @@ import chalk from 'chalk';
 
 import {
   RemoteConfig,
+  RouterLevel,
   Settings,
   Theme,
   ThinkingVerbsConfig,
@@ -238,6 +239,24 @@ const normalizeConfig = (config: TweakccConfig): void => {
     config.settings.themes = config.settings.themes.map(
       theme => deepMergeWithDefaults(theme, DEFAULT_THEME) as Theme
     );
+  }
+
+  // Merge each complexityRouter level against the default level at its index.
+  // deepMergeWithDefaults replaces arrays wholesale, so a hand-edited or remote
+  // (--config-url) level missing `effort` would otherwise leave a null effort
+  // that silently no-ops the router; backfill it from the matching default.
+  if (config.settings.complexityRouter?.levels) {
+    const defaultLevels = DEFAULT_SETTINGS.complexityRouter!.levels;
+    config.settings.complexityRouter.levels =
+      config.settings.complexityRouter.levels.map((level, i) => {
+        const def = defaultLevels[Math.min(i, defaultLevels.length - 1)];
+        const merged = deepMergeWithDefaults(level, def) as RouterLevel;
+        // deepMerge only fills ABSENT keys, so an explicit null/empty effort
+        // (reachable via --config-url) would survive and silently no-op the
+        // router; coerce it to the default.
+        if (!merged.effort) merged.effort = def.effort;
+        return merged;
+      });
   }
 
   // In 3.2.6 hideCtrlGToEditPrompt was renamed to hideCtrlGToEdit.
