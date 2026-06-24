@@ -74,7 +74,7 @@ ok('single-file path routed to rg', norm(wrap(['-n', 'showDiff', 'patches/index.
 ok('short pattern (<3) routed to rg', eqSet(wrap(['-n', 'fn', '.'], SRC).out, rg(['-n', 'fn', '.'], SRC).out));
 ok('regex routed to rg', eqSet(wrap(['-n', 'showD.*ff', '.'], SRC).out, rg(['-n', 'showD.*ff', '.'], SRC).out));
 ok('glob *.ts translated == rg', eqSet(wrap(['-n', '--glob', '*.ts', 'PatchGroup', '.'], REPO).out, rg(['-n', '--glob', '*.ts', 'PatchGroup', '.'], REPO).out));
-ok('fuzzy typo finds the symbol', wrap(['--fff-fuzzy', '-n', 'shoDiff', '.'], SRC).out.includes('showDiff'));
+ok('fuzzy typo finds the symbol', wrap(['--fuzzy', '-n', 'shoDiff', '.'], SRC).out.includes('showDiff'));
 ok('no-match exit == 1', wrap(['-n', 'zzqqxx_no', '.'], SRC).status === 1);
 ok('--version starts "ripgrep "', (spawnSync(WRAPPER, ['--version'], { encoding: 'utf8' }).stdout || '').startsWith('ripgrep '));
 
