@@ -272,6 +272,15 @@ const normalizeConfig = (config: TweakccConfig): void => {
       400000
     );
     cr.timeoutMs = clampNum(cr.timeoutMs, crDefaults.timeoutMs, 1000, 120000);
+    // Editable classifier system prompt: keep a non-empty string, else restore
+    // the default. {LEVELS}/{MAX} substitution happens at apply time, so a user
+    // who deletes them just gets a prompt without the dynamic rubric (their call).
+    if (
+      typeof cr.systemPrompt !== 'string' ||
+      cr.systemPrompt.trim().length === 0
+    ) {
+      cr.systemPrompt = crDefaults.systemPrompt;
+    }
     const defaultLevels = DEFAULT_SETTINGS.complexityRouter.levels;
     const validEfforts: RouterEffort[] = [
       'low',

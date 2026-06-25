@@ -109,6 +109,7 @@
 import { debug, escapeNonAscii } from '../utils';
 import { showDiff, getRequireFuncName } from './index';
 import { ComplexityRouterConfig } from '../types';
+import { DEFAULT_ROUTER_SYSTEM_PROMPT } from '../defaultSettings';
 
 const ROUTER_MARKER = '__tweakccRouterClassify';
 
@@ -164,30 +165,28 @@ const buildRuntime = (
   const rubric = config.levels
     .map((l, i) => `Level ${i} (${l.label}): ${l.help}`)
     .join('\n');
-  const sysPrompt = [
-    'You are a difficulty router for an AI coding agent. Each turn you get a compact running SUMMARY of the session, the most recent exchange (the previous user message and the assistant reply), and the user NEW message. Do two things and output ONLY a JSON object with the keys level and summary - no prose, no code fence.',
-    '',
-    '# level',
-    `Pick the integer effort level (0 = least effort, ${maxIdx} = most) for the NEW message, judged IN CONTEXT of the summary and the recent exchange:`,
-    rubric,
-    '',
-    'How to judge:',
-    '- A short or vague prompt does NOT mean an easy task. A terse follow-up (now do the same, fix it, continue, keep going, ok next) inherits the difficulty of the work it continues - score it like that ongoing work, reading the summary and recent exchange to see what is actually being built, not like a fresh trivial request.',
-    '- Conversely, a genuinely new, self-contained simple request (rename a variable, fix a typo, bump a version, answer a quick question) is low even in the middle of a hard session.',
-    '- Watch for hidden complexity behind simple wording: concurrency, security, distributed state, performance or correctness constraints, cross-file or multi-module impact, niche toolchains, specialized domains.',
-    '- Errors, failed attempts, active debugging, or a very large prior assistant turn (shown by an omitted-from-the-middle marker) in the recent exchange or the summary are strong evidence the work needs careful reasoning - lean higher.',
-    `- When unsure, do NOT default to the top. Default to the standard middle level and let clear signals push it up or down. The top level (${maxIdx}) is rare - reserve it for exactly what its description says, not for ordinary hard work.`,
-    '',
-    '# summary',
-    'Output an updated running summary - a terse TL;DR of the session in the fewest words that still capture what was done and how hard it has been. Fold the most recent exchange into the prior summary as one short line (what this turn did and its complexity), then compress: keep the task or goal, key decisions, files or systems touched, unresolved threads, and difficulty signals (errors, retries, large changes); mark resolved items resolved and drop anything that will not affect future routing. It is a routing aid, not documentation - favor brevity.',
-  ].join('\n');
+  // The classifier system prompt is a user-editable template (config.systemPrompt);
+  // {LEVELS} and {MAX} are substituted with the live rubric/top-index so the prose
+  // is fully customizable while the tier list stays in sync with config.levels. An
+  // empty/missing template falls back to the shipped default.
+  const tmpl =
+    typeof config.systemPrompt === 'string' && config.systemPrompt.trim()
+      ? config.systemPrompt
+      : DEFAULT_ROUTER_SYSTEM_PROMPT;
+  const sysPrompt = tmpl
+    .replace(/\{LEVELS\}/g, rubric)
+    .replace(/\{MAX\}/g, String(maxIdx));
   // JSON.stringify gives a valid JS string literal; escapeNonAscii forces any
-  // non-ASCII in user-edited tier help to \uXXXX (mojibake-safe injection).
+  // non-ASCII in the (user-edited) prompt to \uXXXX (mojibake-safe injection).
   const sysLit = escapeNonAscii(JSON.stringify(sysPrompt));
+  // Per-tier labels, for the <context> block's "previous level (label)" line.
+  const labelsJson = escapeNonAscii(
+    JSON.stringify(config.levels.map(l => l.label))
+  );
 
   return (
     // ----- per-session state -----
-    `function __tweakccRouterState(){return globalThis.__tweakccRouter||(globalThis.__tweakccRouter={level:void 0,effort:void 0,baseline:void 0,summary:void 0,prevUser:void 0,prevAssistant:void 0,pendingCompaction:void 0,loaded:!1})}` +
+    `function __tweakccRouterState(){return globalThis.__tweakccRouter||(globalThis.__tweakccRouter={level:void 0,effort:void 0,baseline:void 0,summary:void 0,prevUser:void 0,prevAssistant:void 0,pendingCompaction:void 0,model:void 0,loaded:!1})}` +
     // Middle-truncate: keep head + tail, drop the middle (where the bulk paste /
     // logs live), with a size marker. The intent/framing (head) and the actual
     // ask or result (tail) survive, and the omitted-size marker is itself a
@@ -222,8 +221,8 @@ const buildRuntime = (
     `try{var __res=await ${helpers.gB}({systemPrompt:[__sys],userPrompt:__input,outputFormat:{type:"json_schema",schema:__schema},signal:__ac.signal,options:{querySource:"route_complexity",agents:[],isNonInteractiveSession:!1,hasAppendSystemPrompt:!1,mcpTools:[],agentContext:${helpers.km}()}});` +
     `return __tweakccRouterReadResult(__res)}finally{clearTimeout(__to)}}` +
     // ----- classify entry: called from the submit handler -----
-    `async function ${ROUTER_MARKER}(__text,__mode){try{` +
-    `var __ef=${efJson},__pin=${pin},__max=__ef.length-1;` +
+    `async function ${ROUTER_MARKER}(__text,__mode,__model){try{` +
+    `var __ef=${efJson},__pin=${pin},__max=__ef.length-1,__labels=${labelsJson};` +
     `if(!__ef||!__ef.length)return;` +
     `var __st=__tweakccRouterState();` +
     `if(typeof __text!=="string")return;` +
@@ -237,11 +236,19 @@ const buildRuntime = (
     // replaced by CC's compaction summary - reset and reseed the TL;DR from it,
     // dropping the now-stale exchange + pin floor (same session, fresh context).
     `if(typeof __st.pendingCompaction==="string"){__st.summary=__st.pendingCompaction;__st.prevUser=void 0;__st.prevAssistant=void 0;__st.level=void 0;__st.pendingCompaction=void 0}` +
+    // CONTEXT block: give the classifier memory of (a) the model it is calibrating
+    // effort FOR and whether it changed mid-session, and (b) the level it itself
+    // assigned last turn - so a continuing thread holds effort instead of being
+    // re-judged cold each turn. Captured AFTER the compaction reseed so a fresh
+    // post-compaction turn correctly reports "no previous level".
+    `var __plv=__st.level,__pmod=__st.model;` +
+    `var __mch=__pmod&&__model&&__pmod!==__model;` +
+    `var __ctx="model in use: "+(__model||"unknown")+(__mch?" (switched from "+__pmod+" this turn)":"")+"\\nlevel you assigned last turn: "+(__plv!==void 0?__plv+" ("+(__labels[__plv]||"?")+")":"none yet - this is the first routed turn");` +
     // assemble the (bounded) router input - middle-truncated at the caps
     `var __nm=__tweakccRouterTrunc(__text,${messageCap});` +
     `var __pu=__tweakccRouterTrunc(__st.prevUser,${messageCap});` +
     `var __pa=__tweakccRouterTrunc(typeof __st.prevAssistant==="string"?__st.prevAssistant:"",${assistantCap});` +
-    `var __input="<summary>\\n"+(__st.summary||"(none - first turn of the session)")+"\\n</summary>\\n<recent_exchange>\\nuser: "+(__pu||"(none)")+"\\nassistant: "+(__pa||"(none)")+"\\n</recent_exchange>\\n<new_message>\\n"+__nm+"\\n</new_message>";` +
+    `var __input="<summary>\\n"+(__st.summary||"(none - first turn of the session)")+"\\n</summary>\\n<context>\\n"+__ctx+"\\n</context>\\n<recent_exchange>\\nuser: "+(__pu||"(none)")+"\\nassistant: "+(__pa||"(none)")+"\\n</recent_exchange>\\n<new_message>\\n"+__nm+"\\n</new_message>";` +
     // classify (fail OPEN)
     `var __res=null;try{__res=await __tweakccRouterClassifyLlm(__input,__max)}catch(__e){__res=null}` +
     `var __hi=__ef.indexOf("high");if(__hi<0)__hi=Math.min(2,__max);` +
@@ -257,7 +264,7 @@ const buildRuntime = (
     // head+tail + the omitted-size marker per the prompt, not a mechanical floor)
     `if(__pin&&__st.level!==void 0&&__lv<__st.level)__lv=__st.level;` +
     `if(__lv<0)__lv=0;if(__lv>__max)__lv=__max;` +
-    `__st.level=__lv;__st.effort=__ef[__lv];__st.summary=__sm;__st.prevUser=__text;` +
+    `__st.level=__lv;__st.effort=__ef[__lv];__st.summary=__sm;__st.prevUser=__text;__st.model=__model;` +
     `__tweakccRouterSave(__st);` +
     `if(process.env.TWEAKCC_ROUTER_DEBUG)try{process.stderr.write("[tweakcc-router] level="+__lv+" effort="+__st.effort+" chars="+__text.length+"\\n")}catch(__e){}` +
     `}catch(__e){}}`
@@ -358,7 +365,16 @@ const injectSubmitHook = (file: string): string | null => {
 
   const textVar = match[1];
   const modeVar = match[2];
-  const call = `await ${ROUTER_MARKER}(${textVar},${modeVar});`;
+  // Capture the in-use model id from the enclosing query fn's `<r>.options
+  // .mainLoopModel` (assigned just above the throw, e.g. `k=Sg(r.options
+  // .mainLoopModel)`), so the classifier knows what it is calibrating effort for.
+  // Optional: absent -> the <context> block just reports "unknown".
+  const before = file.slice(Math.max(0, match.index - 4000), match.index);
+  const modelMatch = before.match(/([$\w]+)\.options\.mainLoopModel/);
+  const modelExpr = modelMatch
+    ? `${modelMatch[1]}.options.mainLoopModel`
+    : 'void 0';
+  const call = `await ${ROUTER_MARKER}(${textVar},${modeVar},${modelExpr});`;
 
   const insertAt = match.index + match[0].length;
   const newFile = file.slice(0, insertAt) + call + file.slice(insertAt);

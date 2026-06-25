@@ -11,7 +11,7 @@ const XQ_SHAPE =
 
 // hMm submit handler (trimmed): the throw-guard is the stable hook anchor.
 const HMM_SHAPE =
-  'async function hMm(e,t,n,r){let E=null,k=e;if(typeof e==="string")E=e;' +
+  'async function hMm(e,t,n,r){let E=null,k=Sg(r.options.mainLoopModel),w=e;if(typeof e==="string")E=e;' +
   'if(E===null&&t!=="prompt")throw Error(`Mode: ${t} requires a string input.`);' +
   'return cZn(aVl(E,k),[])}';
 
@@ -61,6 +61,7 @@ const cfg = (
   messageCap: 50000,
   assistantCap: 50000,
   timeoutMs: 15000,
+  systemPrompt: 'You route. Levels:\n{LEVELS}\nTop is {MAX}.',
   levels: [
     { id: 'routine', label: 'Routine', help: '', effort: 'low' },
     { id: 'standard', label: 'Standard', help: '', effort: 'medium' },
@@ -170,11 +171,45 @@ describe('writeComplexityRouter', () => {
     expect(r).toContain('var __st=__tweakccRouterState();');
     expect(r).toContain('let __twkRE=__st.effort;');
     expect(r).toContain('if(__twkRE&&o==null&&(t==null||t===__st.baseline))');
-    expect(r).toContain('await __tweakccRouterClassify(E,t);');
+    // The submit hook threads the in-use model (captured from r.options
+    // .mainLoopModel above the throw) into the classifier for the <context> block.
+    expect(r).toContain(
+      'await __tweakccRouterClassify(E,t,r.options.mainLoopModel);'
+    );
     expect(r).toContain('var head=1;');
     expect(r).toContain('var tail=2;');
     // The heuristic scorer is gone entirely.
     expect(r).not.toContain('__tweakccRouterScore');
+  });
+
+  it('substitutes {LEVELS}/{MAX} into the editable system prompt and emits a <context> block (model + prev level)', () => {
+    const out = writeComplexityRouter(FILE, cfg()) as string;
+    // template substitution: {MAX} -> top index (3), {LEVELS} -> the rubric
+    expect(out).toContain('Top is 3.');
+    expect(out).toContain('Level 0 (Routine)');
+    expect(out).toContain('Level 3 (Frontier)');
+    expect(out).not.toContain('{LEVELS}');
+    expect(out).not.toContain('{MAX}');
+    // the classifier entry takes a model arg and builds the <context> block
+    expect(out).toContain(
+      'async function __tweakccRouterClassify(__text,__mode,__model)'
+    );
+    expect(out).toContain('<context>');
+    expect(out).toContain('model in use: ');
+    expect(out).toContain('level you assigned last turn: ');
+    // model is captured into state for next-turn change detection
+    expect(out).toContain('__st.model=__model;');
+  });
+
+  it('falls back to the default system prompt when the config template is blank', () => {
+    const out = writeComplexityRouter(
+      FILE,
+      cfg({ systemPrompt: '   ' })
+    ) as string;
+    // the shipped default opens with this line
+    expect(out).toContain(
+      'You are a difficulty router for an AI coding agent.'
+    );
   });
 
   it('captures the previous assistant text at the tool-summary site', () => {

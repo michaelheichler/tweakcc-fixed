@@ -204,7 +204,8 @@ export interface ComplexityRouterConfig {
   messageCap: number; // max chars of a user message (new + previous) fed to the classifier
   assistantCap: number; // max chars of the previous assistant reply fed to the classifier; beyond this it is middle-truncated (head + tail + an omitted-size marker), which the classifier weighs in context (no mechanical floor)
   timeoutMs: number; // classifier (Haiku) call timeout in ms; on timeout the router fails open
-  levels: RouterLevel[]; // ordinal complexity level -> effort map (index 0 = easiest)
+  systemPrompt: string; // the classifier (Haiku) system prompt - fully user-editable; {LEVELS} and {MAX} are substituted at apply time (see DEFAULT_ROUTER_SYSTEM_PROMPT)
+  levels: RouterLevel[]; // ordinal complexity level -> effort map (index 0 = easiest); label/help/effort all user-editable
 }
 
 export interface Settings {
