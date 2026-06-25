@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/);
 this fork uses its own `2.x` line (npm package `tweakcc-fixed`) and is a strict
 superset of upstream. Pre-fork upstream history lives in Piebald's releases.
 
-## [Unreleased]
+## [2.3.0] - 2026-06-25
 
 Complexity effort router — memory, true rewind, and full customizability.
 
