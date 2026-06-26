@@ -7085,5 +7085,57 @@
   "421588abcb95349d73587b1f8badb8d8c0139d78": { "facing": "internal" },
   "f29c5f84f0b6bac929718c9c04038b05d8e86107": { "facing": "internal" },
   "84d2d533b490de307e2e679635b5f9e9428e3824": { "facing": "internal" },
-  "0e95b0dbdb151e391d054631b8722fd6bf75e5ef": { "facing": "internal" }
+  "0e95b0dbdb151e391d054631b8722fd6bf75e5ef": { "facing": "internal" },
+  "b55abd1fba8f13e5f2e29e7bf6c943c662a113f8": { "facing": "ui" },
+  "40582a03b104dbd0d1c252f905466d1bde81ea24": { "facing": "internal" },
+  "27654cb00d8100445550b9a5b0238bd27b7e4016": { "facing": "ui" },
+  "a5ebdc0891f2713950df3e72513b29a1e02c86bd": { "facing": "ui" },
+  "c4e88fa1ba162139863e8ad2cd9d5def690be742": { "facing": "ui" },
+  "bd53b4894f8c500eb34161128ee9254d116b589b": { "facing": "internal" },
+  "735fafb22f62d1ea32cba401a44456053cb3b369": {
+    "facing": "model",
+    "id": "tool-result-async-agent-launched-briefly-tell-user",
+    "name": "Tool Result: Async Agent Launched (briefly tell user)",
+    "desc": "tool_result fragment in the async/background agent launch path (no readable output file) instructing the model to briefly tell the user what it launched, noting agent results will arrive in a subsequent message"
+  },
+  "7119cf2d251e1100377be5f557fdd1a9638f7f": { "facing": "ui" },
+  "4522cbaed53932f5313844ee4018a21ea8f5dbea": { "facing": "internal" },
+  "d784063667d6e4e22868dd9f435bb05af266199a": {
+    "facing": "model",
+    "id": "tool-result-file-not-found-did-you-mean",
+    "name": "Tool Result: File Not Found, Did You Mean",
+    "desc": "File/Artifact tool error result telling the agent the path was not found and suggesting a corrected path it likely meant."
+  },
+  "8ad3be8323aabe1a18c3fb2c583100c318f539ba": {
+    "facing": "model",
+    "id": "tool-result-teammate-not-found-did-you-mean",
+    "name": "Tool Result: Teammate Not Found, Did You Mean",
+    "desc": "Result returned when the agent messages a non-existent teammate, suggesting the closest valid teammate name (or recovery via spawning one)."
+  },
+  "b89904f8d49409bbfb27cf3990dbd56896f7eb4a": { "facing": "internal" },
+  "2ba8b9c0ce1d81045557e6539263749ed37d4aa9": { "facing": "ui" },
+  "fac42d9157642d93b94f8a3f7827990340f7f270": {
+    "facing": "model",
+    "id": "tool-result-permission-updated-input-invalid",
+    "name": "Tool Result: Permission Handler updatedInput Invalid",
+    "desc": "tool_use_error tool_result injected to the model when the permission handler/canUseTool/PermissionRequest hook returned updatedInput that fails the tool's input schema."
+  },
+  "2192ae3321d529b7601abdf5d0c6727b53be98ee": { "facing": "ui" },
+  "c53fb74ab19a0ca89efbf915e4e5de5af5beaadf": { "facing": "ui" },
+  "10e72dc55d31cd1ba1b9dc4a4c260978824fcbcb": { "facing": "internal" },
+  "a5fdaf53a338983f6c112a34c4805b773a45f3bb": {
+    "facing": "model",
+    "id": "tool-result-web-search-isolation-blocked",
+    "name": "Tool Result: Web Search Isolation Blocked",
+    "desc": "tool_use_error tool_result telling the model web search/fetch/browser tools are unavailable under the org's web search/connector isolation policy; do not reach external URLs; start a new session."
+  },
+  "c0bf669caa75522288a4dbb2b0680f6209674bca": { "facing": "internal" },
+  "fbf2558a4419f40933617bd93d009d829a7480ec": { "facing": "internal" },
+  "69daa4b0b75a879c4e51f5ef9c5808093a620db7": {
+    "facing": "model",
+    "id": "agent-prompt-review-pr-scope-narrowing",
+    "name": "Agent Prompt: Review PR Scope Narrowing",
+    "desc": "Model-facing agent prompt that narrows the scope of three generic coding tasks using a repo's recently merged PRs."
+  },
+  "7119ed1c2d251e1100377be5f557fdd1a9638f7f": { "facing": "ui" }
 }

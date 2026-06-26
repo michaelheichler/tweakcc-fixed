@@ -34,6 +34,18 @@ const WORKFLOW_SCRIPT_IDENTIFIER_MAP = {
 // override .md files reference those names (`${ATTACHMENT_OBJECT.filename}`).
 const NEW_PROMPT_ASSIGNMENTS = [
   {
+    matcher: t => t.includes("Do not duplicate this agent's work"),
+    name: "System Reminder: Async agent launched",
+    id: "system-reminder-async-agent-launched",
+    description: "Model-facing reminder warning the model not to duplicate an asynchronously launched agent's work (same files/topics) and to take non-overlapping tasks. 2.1.193 reworded the opening (fuzzy-miss restore).",
+  },
+  {
+    matcher: t => t.includes("human-readable name for this version"),
+    name: "Artifact version label parameter",
+    id: "tool-parameter-artifact-version-label",
+    description: "Model-facing Artifact tool `label` input-schema param description (short human-readable version name shown in the version picker). 2.1.193 reworded the opening (fuzzy-miss restore).",
+  },
+  {
     matcher: t => t.includes("File unchanged since last read"),
     name: "Read File-Unchanged Result",
     id: "tool-result-read-file-unchanged",
