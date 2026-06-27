@@ -76,6 +76,32 @@ export const writeAutoModeClassifierModel = (
   const pattern177 =
     /function\s+([$\w]+)\s*\(\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\)\s*,\s*([$\w]+)\s*=\s*[$\w]+\s*\(\s*"tengu_auto_mode_config"\s*,\s*\{\s*\}\s*\)\s*,\s*([$\w]+)\s*=\s*\3\s*\?\.\s*modelByMainModel\s*;\s*if\s*\(\s*\4\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*`[^`]*`\s*\]\s*;\s*if\s*\(\s*\6\s*\)\s*return\s+\6\s*\}\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*\5\s*\]\s*;\s*if\s*\(\s*\7\s*\)\s*return\s+\7\s*\}\s*if\s*\(\s*\3\s*\?\.\s*model\s*\)\s*return\s+\3\s*\.\s*model\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\|\|\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*return\s+[$\w]+\s*\(\s*\2\s*\)\s*;\s*return\s+\2\s*\}/;
 
+  // CC 2.1.195 shape: same control flow as 2.1.177 but every branch now returns
+  // a tagged object `{value:MODEL,src:"gb"|"default"}` instead of a bare model
+  // string (a sibling wrapper `function W(){return RESOLVER().value}` unwraps
+  // it). So the replacement must preserve the object shape:
+  //   function NAME(){let H=MAIN(),_=R("tengu_auto_mode_config",{}),q=_?.modelByMainModel;if(q){let K=NORM(STRIP(H));if(IS1M(H)){let s=q[`${K}[1m]`];if(s)return{value:s,src:"gb"}}let o=q[K];if(o)return{value:o,src:"gb"}}if(_?.model)return{value:_.model,src:"gb"};if(ISFABLE(H)||ISMYTHOS(H))return{value:RESOLVE(H),src:"default"};return{value:H,src:"default"}}
+  const pattern195 =
+    /function\s+([$\w]+)\s*\(\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\)\s*,\s*([$\w]+)\s*=\s*[$\w]+\s*\(\s*"tengu_auto_mode_config"\s*,\s*\{\s*\}\s*\)\s*,\s*([$\w]+)\s*=\s*\3\s*\?\.\s*modelByMainModel\s*;\s*if\s*\(\s*\4\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*`[^`]*`\s*\]\s*;\s*if\s*\(\s*\6\s*\)\s*return\s*\{\s*value\s*:\s*\6\s*,\s*src\s*:\s*"gb"\s*\}\s*\}\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*\5\s*\]\s*;\s*if\s*\(\s*\7\s*\)\s*return\s*\{\s*value\s*:\s*\7\s*,\s*src\s*:\s*"gb"\s*\}\s*\}\s*if\s*\(\s*\3\s*\?\.\s*model\s*\)\s*return\s*\{\s*value\s*:\s*\3\s*\.\s*model\s*,\s*src\s*:\s*"gb"\s*\}\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\|\|\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*return\s*\{\s*value\s*:\s*[$\w]+\s*\(\s*\2\s*\)\s*,\s*src\s*:\s*"default"\s*\}\s*;\s*return\s*\{\s*value\s*:\s*\2\s*,\s*src\s*:\s*"default"\s*\}\s*\}/;
+
+  const match195 = oldFile.match(pattern195);
+  if (match195 && match195.index !== undefined) {
+    const [fullMatch, fnName] = match195;
+    const replacement = `function ${fnName}(){return{value:"${modelId}",src:"default"}}`;
+    const newFile =
+      oldFile.slice(0, match195.index) +
+      replacement +
+      oldFile.slice(match195.index + fullMatch.length);
+    showDiff(
+      oldFile,
+      newFile,
+      replacement,
+      match195.index,
+      match195.index + fullMatch.length
+    );
+    return newFile;
+  }
+
   const match =
     oldFile.match(pattern177) ||
     oldFile.match(pattern172) ||
@@ -105,6 +131,9 @@ export const writeAutoModeClassifierModel = (
   // with no `let` / no `tengu_auto_mode_config` reference inside its body.
   if (
     /function\s+[$\w]+\s*\(\s*\)\s*\{\s*return\s*"claude-(opus|sonnet|haiku)-[0-9a-z-]+"\s*\}/.test(
+      oldFile
+    ) ||
+    /function\s+[$\w]+\s*\(\s*\)\s*\{\s*return\s*\{\s*value\s*:\s*"claude-(opus|sonnet|haiku)-[0-9a-z-]+"\s*,\s*src\s*:\s*"default"\s*\}\s*\}/.test(
       oldFile
     )
   ) {

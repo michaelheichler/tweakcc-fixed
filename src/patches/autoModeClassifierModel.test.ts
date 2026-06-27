@@ -45,6 +45,27 @@ describe('writeAutoModeClassifierModel', () => {
     expect(result).toContain('function Sr1(){return "claude-haiku-4-5"}');
   });
 
+  it('rewrites the 2.1.195 resolver (tagged {value,src} object returns)', () => {
+    const SHAPE_2_1_195 =
+      'function vol(){let e=Es(),t=at("tengu_auto_mode_config",{}),n=t?.modelByMainModel;' +
+      'if(n){let r=_a(fo(e));if(S_(e)){let s=n[`${r}[1m]`];if(s)return{value:s,src:"gb"}}let o=n[r];if(o)return{value:o,src:"gb"}}' +
+      'if(t?.model)return{value:t.model,src:"gb"};' +
+      'if(nA(e)||BOt(e))return{value:UOt(e),src:"default"};' +
+      'return{value:e,src:"default"}}';
+    const file = `function col(){return vol().value}${SHAPE_2_1_195}var B=2;`;
+    const result = writeAutoModeClassifierModel(file, 'haiku');
+    expect(result).toContain(
+      'function vol(){return{value:"claude-haiku-4-5",src:"default"}}'
+    );
+    expect(result).not.toContain('tengu_auto_mode_config');
+    expect(result).toContain('function col(){return vol().value}');
+    expect(result).toContain('var B=2;');
+    // idempotent
+    expect(writeAutoModeClassifierModel(result as string, 'haiku')).toBe(
+      result
+    );
+  });
+
   it('is a no-op for choice=default', () => {
     const file = `var A=1;${SHAPE_2_1_170}`;
     expect(writeAutoModeClassifierModel(file, 'default')).toBe(file);
