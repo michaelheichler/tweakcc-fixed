@@ -439,7 +439,7 @@ const PATCH_DEFINITIONS = [
     name: 'Invoke every /skill you type',
     group: PatchGroup.MISC_CONFIGURABLE,
     description:
-      'When you type multiple /skill commands in one message ("/skill-1 /skill-2 do X"), let the model run all of them, not just the leading one. The skill-mention gate (Ocl) skips the skill-format message that carries the typed args, so a disable-model-invocation skill named after the leading command hits "cannot be used with Skill tool". This scans the <command-args> the user typed so those skills are honored. Off by default.',
+      'When you type multiple /skill commands in one message ("/skill-1 /skill-2 do X"), invoke all of them directly as user invocations, not just the leading one. CC parses only the first command and treats the rest as its args; this dispatches each additional typed /skill through the same executor so its body is injected into the turn — no model Skill-tool call, no disable-model-invocation gate. Only user-invocable prompt/skill commands the user actually typed are run. Off by default.',
     modelFacing: true,
   },
   {

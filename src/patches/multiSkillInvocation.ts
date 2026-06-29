@@ -1,95 +1,97 @@
 // Please see the note about writing patches in ./index
 //
-// Multi-skill invocation: honor every `/skill` a user types in one message.
+// Multi-skill invocation: when you type several `/skill` commands in one
+// message, invoke ALL of them directly — as user invocations, not via the model.
 //
-// When you type `/skill-1 /skill-2 do XYZ`, only `/skill-1` (the leading token)
-// is parsed as a command; the rest becomes its args. CC records that turn's
-// user message as a skill-format string built by `_cl`:
+// CC's input parser only ever dispatches ONE command — the leading token. In
+// `/skill-1 /skill-2 do X`, only `/skill-1` is run; `/skill-2 do X` becomes
+// skill-1's argument string. The extra `/skill-2` is never invoked as a command.
+// (The model could invoke it via the Skill tool, but for a
+// `disable-model-invocation` skill that path is gated — and routing through the
+// model isn't a user invocation anyway.)
 //
-//     <command-message>skill-1</command-message>
-//     <command-name>/skill-1</command-name>
-//     <command-args>/skill-2 do XYZ</command-args>
+// This patch makes every typed `/skill` a real user invocation. The command
+// executor's `case"prompt"` runs the leading skill via `bcl(cmd, args, ctx, …)`,
+// which returns that skill's full message set (its `<command-message>` user
+// line, the injected skill body, and its tool-permissions). We hook the point
+// right after that call: parse the leading skill's argument string for further
+// `/name` tokens, resolve each against the command registry, run it through the
+// same `bcl`, and concatenate its messages onto the result. Each skill's body is
+// injected directly into the one turn — no Skill-tool call, no
+// disable-model-invocation gate, deterministic.
 //
-// The gate that decides whether a `disable-model-invocation` skill may run when
-// the model calls the Skill tool is `Ocl`. It tests `(?<!\S)/<name>(?=$|\s)`
-// against the turn's user messages — but it SKIPS any message containing the
-// `<command-message>` tag. So the typed `/skill-2` (sitting inside
-// `<command-args>`) is invisible to it, the gate returns false, and the model
-// gets: "Skill skill-2 cannot be used with Skill tool due to
-// disable-model-invocation". Result: only skill-1 ever runs.
+// Scope + safety:
+// - Only user-invocable, enabled, prompt-type commands are dispatched (skills and
+//   bundled prompt-commands) — `userInvocable:false` and non-prompt (local/jsx)
+//   commands are skipped, exactly as direct typing would behave.
+// - `disable-model-invocation` is irrelevant here: these are USER invocations,
+//   which that flag never restricted. A skill the user did not type is never
+//   dispatched.
+// - The whole sibling pass is wrapped in try/catch: if anything fails (registry
+//   shape drift, a throwing skill loader, …) it degrades to the current
+//   leading-command-only behavior. It can never break the main input path.
 //
-// Verified live on 2.1.195: forcing the model to call Skill(skill-2) under a
-// leading `/skill-1` hard-blocks with that exact error; the same `/skill-2` in a
-// plain (non-skill-format) message is permitted and runs. So the cause is the
-// wholesale skip, not model behavior. Once the gate can see the second `/name`,
-// the model invokes the extra skills on its own (no prompt nudge needed).
-//
-// The fix: instead of skipping skill-format messages outright, extract their
-// `<command-args>…</command-args>` content — which is exactly the text the user
-// typed after the leading command — and run the same `/name` test against it.
-// Everything else in `Ocl` is left untouched, so a `/name` the user did NOT type
-// still can't satisfy the gate.
-//
-// Self-conditioning: `Ocl` is an idempotent permission check, not an invoker. If
-// a future CC makes the second `/name` visible some other way (e.g. records the
-// raw input as a plain message), our extra scan returns true in the same cases
-// the native code already does — no double-invocation, no harm. When CC isn't
-// affected, the branch is simply never entered.
-//
-// Stock `Ocl` (2.1.195), names churn but the shape is stable:
-//
-//     function Ocl(e,t){if(t.agentId!==void 0)return!1;let n=new RegExp(`(?<!\\S)/${xk(e)}(?=$|\\s)`);for(let r=t.messages.length-1;r>=t.turnStartIndex;r--){let o=t.messages[r];if(o.type!=="user"||o.isMeta)continue;let s=o.message.content;if(typeof s==="string"){if(s.includes(`<${zw}>`))continue}else if(s.some((i)=>i.type==="tool_result"))continue;if(n.test(NM(o)??""))return!0}return!1}
+// Stock seam (2.1.195), inside the executor's `case"prompt":`:
+//     let p=await bcl(c,t,r,o,s,l,d.hookMessages);return ke(u),p
+// `bcl` is the prompt/skill executor; `mE` resolves a name against
+// `r.options.commands`; `HH` is the is-enabled check; `myt` is node:crypto.
 
-import { debug } from '../utils';
 import { showDiff } from './index';
 
 export const writeMultiSkillInvocation = (oldFile: string): string | null => {
-  // Idempotency: our injected local is uniquely named.
-  if (oldFile.includes('__tcMsiArgs')) {
-    debug('patch: multiSkillInvocation: already patched — skipping');
+  // Idempotency: our injected token-list local is uniquely named.
+  if (oldFile.includes('__tcMsiTok')) {
     return oldFile;
   }
 
-  // Match the gate `Ocl`, anchored on its unique `(?<!\S)/…(?=$|\s)` RegExp and
-  // the `typeof <s>==="string"` skip of skill-format messages. Captures:
-  //   1: the full `let <n>=new RegExp(`…`);` declaration (re-emitted as-is)
-  //   2: the regex var <n>
-  //   3: the loop preamble up to `let <s>=…content;` (re-emitted as-is)
-  //   4: `if(typeof <s>==="string"){if(<s>.includes(`<…>`))` (re-emitted as-is)
-  //   5: the message-content var <s>
+  // Match the leading-skill dispatch in the executor's prompt case. Captures the
+  // result var (1), command (2), args (3), ctx (4), the remaining bcl args (5-8),
+  // and the cleanup call (9-10) — all re-emitted verbatim so only the splice is new.
   const pattern =
-    /(let ([$\w]+)=new RegExp\(`[^`]*`\);)([\s\S]{0,400}?)(if\(typeof ([$\w]+)==="string"\)\{if\(\5\.includes\(`[^`]*`\)\))continue\}/;
+    /let ([$\w]+)=await bcl\(([$\w]+),([$\w]+),([$\w]+),([$\w]+),([$\w]+),([$\w]+),([$\w]+)\.hookMessages\);return ([$\w]+)\(([$\w]+)\),\1/;
   const match = oldFile.match(pattern);
 
   if (!match || match.index === undefined) {
     console.error(
-      'patch: multiSkillInvocation: failed to find the skill-invocation gate (Ocl)'
+      'patch: multiSkillInvocation: failed to find the leading-skill dispatch (bcl call site)'
     );
     return null;
   }
 
-  const [fullMatch, regexDecl, regexVar, preamble, skipHead, contentVar] =
-    match;
+  const [full, p, c, t, r, o, s, l, d, ke, u] = match;
 
-  // Replace the bare `continue}` skip with: scan the user-typed args carried in
-  // `<command-args>…</command-args>` and permit if the `/name` test matches.
+  const siblingPass =
+    `try{` +
+    `let __tcMsiTok=[],__tcMsiRe=/(?:^|\\s)\\/([a-zA-Z0-9:_-]+)(?=\\s|$)/g,__tcMsiM;` +
+    `while((__tcMsiM=__tcMsiRe.exec(${t}))!==null)__tcMsiTok.push([__tcMsiM[1],__tcMsiRe.lastIndex,__tcMsiM.index]);` +
+    `let __tcMsiSeen=new Set([${c}.name]);` +
+    `for(let __tcMsiK=0;__tcMsiK<__tcMsiTok.length&&__tcMsiK<16;__tcMsiK++){` +
+    `let __tcMsiN=__tcMsiTok[__tcMsiK][0];` +
+    `if(__tcMsiSeen.has(__tcMsiN))continue;__tcMsiSeen.add(__tcMsiN);` +
+    `let __tcMsiC=mE(__tcMsiN,${r}.options.commands);` +
+    `if(!__tcMsiC||__tcMsiC.type!=="prompt"||__tcMsiC.userInvocable===!1||!HH(__tcMsiC))continue;` +
+    `let __tcMsiA=${t}.slice(__tcMsiTok[__tcMsiK][1],__tcMsiK+1<__tcMsiTok.length?__tcMsiTok[__tcMsiK+1][2]:${t}.length).trim(),` +
+    `__tcMsiR=await bcl(__tcMsiC,__tcMsiA,${r},[],[],myt.randomUUID(),[]);` +
+    `if(__tcMsiR&&__tcMsiR.messages&&__tcMsiR.messages.length)${p}={...${p},messages:[...${p}.messages,...__tcMsiR.messages]}` +
+    `}` +
+    `}catch(__tcMsiE){}`;
+
   const replacement =
-    regexDecl +
-    preamble +
-    skipHead +
-    `{let __tcMsiArgs=${contentVar}.match(/<command-args>([\\s\\S]*?)<\\/command-args>/);if(__tcMsiArgs&&${regexVar}.test(__tcMsiArgs[1]))return!0;continue}}`;
+    `let ${p}=await bcl(${c},${t},${r},${o},${s},${l},${d}.hookMessages);` +
+    siblingPass +
+    `return ${ke}(${u}),${p}`;
 
   const newFile =
     oldFile.slice(0, match.index) +
     replacement +
-    oldFile.slice(match.index + fullMatch.length);
+    oldFile.slice(match.index + full.length);
 
   showDiff(
     oldFile,
     newFile,
     replacement,
     match.index,
-    match.index + fullMatch.length
+    match.index + full.length
   );
 
   return newFile;

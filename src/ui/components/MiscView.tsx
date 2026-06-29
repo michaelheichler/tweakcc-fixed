@@ -777,7 +777,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
         id: 'multiSkillInvocation',
         title: 'Invoke every /skill you type',
         description:
-          'When you type multiple /skill commands in one message ("/skill-1 /skill-2 do X"), run all of them instead of just the leading one. Skills marked disable-model-invocation that you name after the leading command otherwise hit "cannot be used with Skill tool" because the gate skips the message carrying the typed args. This scans the <command-args> you typed so those skills are honored.',
+          'When you type multiple /skill commands in one message ("/skill-1 /skill-2 do X"), invoke all of them directly instead of just the leading one. CC parses only the first command and treats the rest as its args; this dispatches each additional typed /skill through the same executor, so its body is injected into the turn — a real user invocation, no model Skill-tool call and no disable-model-invocation gate. Only user-invocable commands you actually typed are run.',
         getValue: () => settings.misc?.multiSkillInvocation ?? false,
         toggle: () => {
           updateSettings(settings => {

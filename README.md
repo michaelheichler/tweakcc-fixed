@@ -96,7 +96,7 @@ Each patch is tagged with how it behaves on `--apply`: **`[default on]`** applie
 - `strip-empty-system-reminders` **`[always]`** — drop the empty `<system-reminder>` blocks left after empty tool output
 - `read-default-lines` **`[always]`** — an env-gated cap on the default `Read` line count
 - `suppress-deferred-tools` **`[opt-in]`** — drop the deferred-tools announcement
-- `multi-skill-invocation` **`[opt-in]`** — run every `/skill` you type in one message ("`/a /b do X`"), not just the leading one
+- `multi-skill-invocation` **`[opt-in]`** — invoke every `/skill` you type in one message ("`/a /b do X`") directly, not just the leading one (real user invocations, no model round-trip)
 
 **Models & prompts**
 
