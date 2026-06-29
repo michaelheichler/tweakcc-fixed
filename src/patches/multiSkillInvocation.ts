@@ -72,7 +72,10 @@ export const writeMultiSkillInvocation = (oldFile: string): string | null => {
     `if(!__tcMsiC||__tcMsiC.type!=="prompt"||__tcMsiC.userInvocable===!1||!HH(__tcMsiC))continue;` +
     `let __tcMsiA=${t}.slice(__tcMsiTok[__tcMsiK][1],__tcMsiK+1<__tcMsiTok.length?__tcMsiTok[__tcMsiK+1][2]:${t}.length).trim(),` +
     `__tcMsiR=await bcl(__tcMsiC,__tcMsiA,${r},[],[],myt.randomUUID(),[]);` +
-    `if(__tcMsiR&&__tcMsiR.messages&&__tcMsiR.messages.length)${p}={...${p},messages:[...${p}.messages,...__tcMsiR.messages]}` +
+    // Drop the sibling's leading <command-message> entry (bcl emits it first) so
+    // it doesn't render a duplicate command box in the TUI — keep only its
+    // injected body + tool-permissions. The user sees one box (what they typed).
+    `if(__tcMsiR&&Array.isArray(__tcMsiR.messages))${p}={...${p},messages:[...${p}.messages,...__tcMsiR.messages.slice(1)]}` +
     `}` +
     `}catch(__tcMsiE){}`;
 

@@ -23,8 +23,9 @@ describe('multiSkillInvocation', () => {
     expect(result).toContain(
       'await bcl(__tcMsiC,__tcMsiA,r,[],[],myt.randomUUID(),[])'
     );
+    // .slice(1) drops the sibling's command-message box, keeping body + perms.
     expect(result).toContain(
-      'p={...p,messages:[...p.messages,...__tcMsiR.messages]}'
+      'p={...p,messages:[...p.messages,...__tcMsiR.messages.slice(1)]}'
     );
     expect(result).toContain('}catch(__tcMsiE){}');
     // Only user-invocable, enabled, prompt-type siblings are dispatched.
@@ -48,7 +49,7 @@ describe('multiSkillInvocation', () => {
       'await bcl(__tcMsiC,__tcMsiA,$x,[],[],myt.randomUUID(),[])'
     );
     expect(result).toContain(
-      '$p={...$p,messages:[...$p.messages,...__tcMsiR.messages]}'
+      '$p={...$p,messages:[...$p.messages,...__tcMsiR.messages.slice(1)]}'
     );
     expect(result).toContain('return $k($u),$p}');
   });
