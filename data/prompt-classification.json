@@ -7204,5 +7204,133 @@
     "id": "system-reminder-interrupted-response-continuation",
     "name": "System Reminder: Interrupted Response Continuation",
     "desc": "Reminder injected after a mid-generation interruption telling the model to continue from its partial output."
+  },
+  "9d07caa922f8e959d7e9b1e4208f0e3429226de0": { "facing": "ui" },
+  "336bb6e0aae2ea4c065e0f1c406ab98f55ac1beb": { "facing": "ui" },
+  "565697ca77fa327b6b86e038956741a564c942d0": { "facing": "internal" },
+  "dc6db3346b20ad4a882fd3bb3d7260061ca6b885": {
+    "facing": "model",
+    "id": "skill-code-review-output-report-findings",
+    "name": "Code Review: ReportFindings Output Instructions",
+    "desc": "Code-review output section telling the model to call the ReportFindings tool once with {level, findings}."
+  },
+  "5a0b897c743ff0721b560a87dca2d1b0457be0e9": {
+    "facing": "model",
+    "id": "tool-result-code-review-command-output",
+    "name": "Tool Result: Code review command output assembly",
+    "desc": "Assembled /code-review command text block returned as {type:text} — prefix + review-target preamble + per-effort-level instructions + optional --comment and --fix addenda, delivered to the model"
+  },
+  "af565cd1b7e8871ecee59d9d0219c5705da0f2b4": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-line",
+    "name": "Tool Param: ReportFindings line",
+    "desc": "ReportFindings tool input-schema description for the finding's 1-indexed line number."
+  },
+  "0cbbe50be0a697058b19ff2b482f42e8b7372b28": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-failure-scenario",
+    "name": "Tool Param: ReportFindings failure_scenario",
+    "desc": "ReportFindings tool input-schema description for the finding's failure scenario."
+  },
+  "ff4b087e852c5c7d2da7f9e4a5a46b379ab70059": { "facing": "internal" },
+  "e2be7c2b46a25819aee7da2d5652a85db9c6d379": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-level",
+    "name": "ReportFindings Tool: Effort Level Param",
+    "desc": "Describes the optional `level` enum (low/medium/high/xhigh/max) parameter of the ReportFindings tool input."
+  },
+  "d730b5d9493daacb24f4aa44105faa5a335ed858": { "facing": "internal" },
+  "18118102dd00d06ec3e5c8af895196315c04ada5": {
+    "facing": "model",
+    "id": "system-prompt-fast-mode-environment-note",
+    "name": "System Prompt: Fast Mode Environment Note",
+    "desc": "Environment-section system-prompt fragment describing Fast mode (/fast) using Opus with faster output on Opus 4.8/4.7."
+  },
+  "0c870148979d4cac4d32b49143abe8aba27ab6c2": { "facing": "internal" },
+  "1ba0328d9052648b8774e903b523e289994fa168": {
+    "facing": "model",
+    "id": "tool-parameter-senduserfile-display",
+    "name": "SendUserFile Tool: Display Param",
+    "desc": "Describes the optional `display` enum (render/attach) parameter controlling whether a sent file previews inline in the side panel or shows a download card."
+  },
+  "5e44aa55f8a7f707080f6a88e6bd38a7971cd344": { "facing": "internal" },
+  "6811114f410ed352cef9765bf3eebb23d1d3e3c4": {
+    "facing": "model",
+    "id": "tool-description-invoke-skill",
+    "name": "Tool Description: Invoke skill",
+    "desc": "Tool description for invoking available skills, including skill name selection, optional arguments, scoped skill names, and avoiding duplicate invocation when a skill is already loaded"
+  },
+  "5a7f36c96c1850543864de2927e41ef4649573ec": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-count",
+    "name": "Tool Parameter: ReportFindings count",
+    "desc": "Describe() for the count input-schema parameter of the ReportFindings tool (number of findings reported)"
+  },
+  "a3b5cc18e8d768b7d6d901ce5700e8d42b36a9c7": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-summary",
+    "name": "Tool Parameter: ReportFindings finding summary",
+    "desc": "Describe() for the per-finding summary field in the ReportFindings tool input schema (one-sentence statement of the defect)"
+  },
+  "ba732ee48ef9e9c78b0c093a9085f6341fcd9762": {
+    "facing": "model",
+    "id": "tool-parameter-artifact-description",
+    "name": "Tool Parameter: Artifact description",
+    "desc": "Describe() for the optional description (gallery-card subtitle) parameter of the Artifact tool input schema"
+  },
+  "7f0dabd05163e4e8007d9558520efe1df5d5512b": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-file",
+    "name": "Tool Parameter: ReportFindings finding file",
+    "desc": "Describe() for the per-finding file field in the ReportFindings tool input schema (repo-relative path of the file the finding is in)"
+  },
+  "6a65bd92f82861496d2563d326ec5fc068f31a25": {
+    "facing": "model",
+    "id": "tool-description-report-code-review-findings",
+    "name": "Tool Description: Report code-review findings",
+    "desc": "Tool description for reporting verified code-review findings as a typed list for host UI rendering"
+  },
+  "1b2c27e91786a12fd6e488560f873befe856ced0": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-outcome",
+    "name": "Tool Parameter: ReportFindings finding outcome",
+    "desc": "Describe() for the optional per-finding outcome enum in the ReportFindings tool input schema (what happened to the finding after applying fixes)"
+  },
+  "6a073615478c0d97fc52fd1bf2bd3d9f45e9c8e4": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-verdict",
+    "name": "Tool Parameter: ReportFindings finding verdict",
+    "desc": "Describes the optional CONFIRMED/PLAUSIBLE verdict field on a ReportFindings finding object."
+  },
+  "c87b0b3c5076ddbb9bad4fb2ce2597971ef886e6": {
+    "facing": "model",
+    "id": "system-reminder-mcp-servers-need-auth",
+    "name": "System Reminder: MCP servers need authentication",
+    "desc": "Meta message telling Claude that listed MCP servers require auth before their tools work and to instruct the user to authorize them."
+  },
+  "67813228fa56a3dbc326257e1449ebc3a2b801a3": {
+    "facing": "model",
+    "id": "system-prompt-current-claude-models",
+    "name": "System Prompt: Current Claude models",
+    "desc": "Lists the current Claude model family IDs and recommends using the latest capable Claude models for AI applications."
+  },
+  "557f36330ecf4fc6ad39f4dd05cb19d060f7be7b": {
+    "facing": "model",
+    "id": "system-reminder-coordinator-task-direction-authority",
+    "name": "System Reminder: Coordinator task-direction authority limits",
+    "desc": "Guardrail injected with a coordinator message clarifying it is actionable task direction but cannot grant escalation or stand in for the user's own approval."
+  },
+  "af3173517f819eaa5ab1db759bc9d385f0f960d0": { "facing": "internal" },
+  "b3defbd6d44e2006c327ec45fc8d4a65abf3959a": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-findings",
+    "name": "Tool Parameter: ReportFindings findings array",
+    "desc": "Describes the `findings` array input of the ReportFindings tool (verified findings, most-severe first, empty if none survived)."
+  },
+  "5d8c4e4ce1b9268c9f67e81047032c33d30aca70": {
+    "facing": "model",
+    "id": "system-prompt-coordinator-comms-tool-only-channel",
+    "name": "System Prompt: Coordinator comms-tool-only channel",
+    "desc": "Coordinator-mode fragment telling Claude that bare assistant text does not reach the user and every turn must end in a comms-tool call."
   }
 }

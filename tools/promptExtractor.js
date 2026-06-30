@@ -3197,6 +3197,14 @@ if (require.main === module) {
         .replace(/[^A-Za-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .toUpperCase() || 'PROMPT';
+    // A content change can add interpolation slots: the fresh `identifiers`
+    // array picks them up but a carried-over `identifierMap` won't, leaving
+    // those labels with no entry -> applyIdentifierMapping's UNKNOWN_<slot>
+    // fallback. Seed every label used in `identifiers` so the fill below names
+    // it (seen 2.1.196: code-review-routing slots 10/11, review-pr slot 3).
+    for (const lbl of p.identifiers || []) {
+      if (!(lbl in p.identifierMap)) p.identifierMap[lbl] = '';
+    }
     for (const k of Object.keys(p.identifierMap)) {
       if (!p.identifierMap[k]) {
         p.identifierMap[k] = `${slug}_VAR_${k}`;
