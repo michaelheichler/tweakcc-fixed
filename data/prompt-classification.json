@@ -7353,5 +7353,359 @@
     "id": "data-model-description-sonnet-5-1m",
     "name": "Data: Sonnet 5 1M model description for model",
     "desc": "descriptionForModel string presented to the model for the new Sonnet 5 1M-context model option (2.1.197)."
+  },
+  "b1f757ba477a6f483c667b08d607f88c372c4c32": {
+    "facing": "model",
+    "id": "skill-code-review-publish-artifact",
+    "name": "Code Review: Publish shareable artifact",
+    "desc": "Instructions appended to the code-review flow telling the reviewer agent to publish its findings as a shareable HTML artifact via the artifact skill/tool."
+  },
+  "1db9ab8651052ef40f37960234848d8b2fb03021": {
+    "facing": "model",
+    "id": "system-prompt-worktree-shipping-commit-push-pr",
+    "name": "Worktree shipping — commit, push, draft PR",
+    "desc": "System-prompt fragment instructing an agent isolated in a worktree to commit, push, and open a draft PR without asking, with the guardrails around it."
+  },
+  "4c438d8a6109ce14f62854de1c235b6f47799bea": {
+    "facing": "model",
+    "id": "tool-description-powershell-msvc-toolchain-exception",
+    "name": "PowerShell tool description — MSVC toolchain exception",
+    "desc": "Windows-only fragment of the PowerShell Bash tool description noting the MSVC toolchain is only on PATH inside a Visual Studio developer shell."
+  },
+  "85067628612696a9a7add0a2f8c0d09dfdcc3ff9": {
+    "facing": "model",
+    "id": "tool-description-agent-subagents-background-default",
+    "name": "Agent tool description — subagents run in background",
+    "desc": "Fragment of the agent/Task tool description noting subagents run in the background by default unless run_in_background:false is passed."
+  },
+  "758d899887b8d55aada3af92e0e4a2e40dba683a": {
+    "facing": "model",
+    "id": "tool-description-powershell-verified-dev-tools",
+    "name": "PowerShell tool description — verified dev tools on PATH",
+    "desc": "Fragment of the PowerShell Bash tool description listing developer tools verified on this machine's PATH and how to probe for unlisted ones."
+  },
+  "304b6cfd4cf29552af1ea35136dfb65d91002df2": { "facing": "ui" },
+  "d94f0779c1c6a7e542af71faa3b25b6d455c4376": {
+    "facing": "model",
+    "id": "skill-data-visualization",
+    "name": "Skill: Data Visualization",
+    "desc": "SKILL.md body for the built-in Data Visualization skill, loaded into the model's context when the skill is invoked."
+  },
+  "707a35c21598cdcecac7090c49b151c054453639": {
+    "facing": "model",
+    "id": "tool-result-send-message-ambiguous-agent-ref",
+    "name": "Tool result — ambiguous/unknown agent reference",
+    "desc": "SendMessage tool-result message returned to the model when the target agent ref matches no agent or is ambiguous, listing candidate refs."
+  },
+  "ed4168cda80f3bd7f08d99f69faef51c1e7112ae": { "facing": "ui" },
+  "0239420f7d5abec8f644f41ca9d6914b49ecd92c": { "facing": "internal" },
+  "19c0e5af495bc4149ad1ca122a48128484f1c1c0": {
+    "facing": "model",
+    "id": "skill-dataviz-anti-patterns",
+    "name": "Skill Reference: Data-viz Anti-patterns",
+    "desc": "Data-viz skill reference file (references/anti-patterns.md) cataloguing chart anti-patterns to check output against before shipping"
+  },
+  "bf8d8852e4f12bccbdd7c24e72fe311362ec1c9f": {
+    "facing": "model",
+    "id": "agent-prompt-auto-mode-setup-slash-command",
+    "name": "Command Prompt: Auto-mode Setup & Customisation",
+    "desc": "Prompt body for the /auto-mode-setup command that guides the model through configuring auto-mode environment and rules in settings.json"
+  },
+  "fdc9d3eeb0c70663d2abbc7e9ba91deab365cd4f": {
+    "facing": "model",
+    "id": "skill-dataviz-choosing-a-form",
+    "name": "Skill Reference: Data-viz Choosing a Form",
+    "desc": "Data-viz skill reference file (references/choosing-a-form.md) on picking the right chart form for the data's job"
+  },
+  "0a17a2339abbad9aab479a58537236609aa8aed6": {
+    "facing": "model",
+    "id": "skill-dataviz-color-formula",
+    "name": "Skill Reference: Data-viz Color Formula",
+    "desc": "Data-viz skill reference file (references/color-formula.md) defining the four color jobs and six palette-validation checks"
+  },
+  "9ef7398d463c6ec957fc43a4166a12398e035b20": {
+    "facing": "model",
+    "id": "skill-dataviz-components",
+    "name": "Skill Reference: Data-viz Components",
+    "desc": "Data-viz skill reference file (references/components.md) listing the component pieces a chart is assembled from"
+  },
+  "83f43007a39785be5549e68f684e25dd3547d46b": {
+    "facing": "model",
+    "id": "agent-prompt-eval-authoring-interview",
+    "name": "Agent Prompt: Eval-authoring Interview",
+    "desc": "System prompt for `claude plugin eval init` that runs the interactive eval-suite authoring interview"
+  },
+  "a7e2de7c34ceff92755c18460abbf403e14d902b": {
+    "facing": "model",
+    "id": "skill-dataviz-interaction",
+    "name": "Skill Reference: Data-viz Interaction",
+    "desc": "Data-viz skill reference file (references/interaction.md) on tooltip and filter interaction design"
+  },
+  "ea681afee633acfa42067f3971928fec0fd2ab8f": {
+    "facing": "model",
+    "id": "skill-dataviz-marks-and-anatomy",
+    "name": "Skill Reference: Data-viz Marks & Anatomy",
+    "desc": "Data-viz skill reference file (references/marks-and-anatomy.md) on mark specs, spacing, labels and figures"
+  },
+  "3a1538bdca2f26ae4ea53c9f0cf44428a40e7912": {
+    "facing": "model",
+    "id": "skill-dataviz-palette",
+    "name": "Skill Reference: Data-viz Reference Palette",
+    "desc": "Data-viz skill reference file (references/palette.md) — the reference-instance palette with validated default hex values"
+  },
+  "6220786db9ba2334e6d2fbf0612bf476553e4ec5": {
+    "facing": "model",
+    "id": "skill-dataviz-validate-palette-script",
+    "name": "Skill Script: Data-viz validate_palette.py",
+    "desc": "Data-viz skill bundled script (scripts/validate_palette.py) that validates a categorical chart palette against the computable data-viz checks"
+  },
+  "a4118c9744475daa82ed0e38f47c03316f2bde44": {
+    "facing": "model",
+    "id": "agent-prompt-security-monitor-for-autonomous-agent-actions-second-part",
+    "name": "Agent Prompt: Security Monitor Environment (Part 2)",
+    "desc": "Environment/trust-slot section of the autonomous-agent security monitor system prompt (now three slot kinds: context, trust, sensitivity, with the user_environment_to_replace / user_allow_rules_to_replace blocks)."
+  },
+  "5008304c809425e0e8721c59132216b5febaf040": {
+    "facing": "model",
+    "id": "system-reminder-plan-mode-phase-1-understanding-solo",
+    "name": "System Reminder: Plan mode Phase 1 (solo, no subagents)",
+    "desc": "False-branch (o=iAt() disabled) Phase 1 Initial Understanding text for the 5-phase plan-mode reminder; instructs reading/exploring files directly without subagents."
+  },
+  "8756ae3d08f091e4bf3edef16455cb6c2ae631a0": {
+    "facing": "model",
+    "id": "system-reminder-plan-mode-phase-1-understanding-parallel-agents",
+    "name": "System Reminder: Plan mode Phase 1 (parallel subagents)",
+    "desc": "True-branch Phase 1 Initial Understanding text for the 5-phase plan-mode reminder; instructs launching up to N agentType subagents in parallel to explore the codebase."
+  },
+  "2341ee0868bcd01e218e3cc4f9f6c87f3fbcc9b6": {
+    "facing": "model",
+    "id": "system-reminder-plan-mode-phase-2-design-solo",
+    "name": "System Reminder: Plan mode Phase 2 Design (solo)",
+    "desc": "False-branch Phase 2 Design text for the 5-phase plan-mode reminder; directs producing the implementation plan directly with background context, constraints, and a detailed plan."
+  },
+  "e84fbdd354bc2d9745877c3e6a9a145440575927": {
+    "facing": "model",
+    "id": "system-reminder-plan-mode-phase-2-design-multi-agent",
+    "name": "System Reminder: Plan mode Phase 2 Design (multi-agent)",
+    "desc": "True-branch Phase 2 Design text for the 5-phase plan-mode reminder; directs launching up to N Plan agents in parallel with guidelines/examples for when to use multiple agents."
+  },
+  "2bba5e2e7f7981f8ad0636c55197e399aad6f82d": {
+    "facing": "model",
+    "id": "skill-plan-artifact-html-template",
+    "name": "Skill: plan-artifact HTML template",
+    "desc": "Bundled templates/artifact-plan.html shell for the plan-artifact skill (registered as SKILL_FILES + PLAN_TEMPLATE) - the title/eyebrow/summary + section-run HTML/CSS scaffold the SKILL.md tells the model to copy and fill by hand, and that the auto-publish path fills mechanically."
+  },
+  "3b63d6a1460166078798bfa868f792fc6907dfef": {
+    "facing": "model",
+    "id": "tool-description-schedulewakeup-noop-flag-guidance",
+    "name": "Tool Description: ScheduleWakeup noop-flag guidance",
+    "desc": "noop:true/false guidance spliced by Gda() into the ScheduleWakeup/snooze loop-dynamic tool prompt at the '## Picking delaySeconds' insertion point; explains when to set noop and that consecutive noop ticks fold into one context entry."
+  },
+  "2484751c3a1097097b376aedf9952cc05e0a6c28": { "facing": "ui" },
+  "ef6a3c13a5ea85d1299179feee73c2f726d097f7": {
+    "facing": "model",
+    "id": "system-reminder-plan-mode-is-active-5-phase",
+    "name": "System Reminder: Plan mode is active (5-phase)",
+    "desc": "Outer shell of the 5-phase plan-mode workflow reminder (Plan File Info, Plan Workflow, Phase 3 Review, Phase 5 Call) with the Phase 1/2 bodies now split into shared constants and interpolated as ${s}/${i}; injected via Cp([In({content:a,isMeta:!0})])."
+  },
+  "9e38be9364122e79c80aa12743f766cea061031f": {
+    "facing": "model",
+    "id": "tool-description-schedulewakeup-noop-flag-guidance",
+    "name": "Tool Description: ScheduleWakeup noop-flag guidance",
+    "desc": "Fallback-branch (n===-1) form of the noop:true/false guidance appended by Gda() to the full ScheduleWakeup/snooze loop-dynamic prompt; identical guidance to the split-site variant."
+  },
+  "b5a168ce03cc54909c93161e3f4afdaafd9388f6": {
+    "facing": "model",
+    "id": "system-prompt-code-review-inline-command-assembly",
+    "name": "Code Review Inline Command Assembly",
+    "desc": "Assembled {type:'text',text:...} cell for the inline (non-workflow) /code-review command: concatenates the effort/context header, review-target prefix, main review instructions body, and the comment/fix/ultra addenda into the prompt sent to the model."
+  },
+  "146ce51d38cd010f767a0f39ac68080757cdfb66": {
+    "facing": "model",
+    "id": "system-prompt-pr-walkthrough-artifact-command",
+    "name": "PR Walkthrough Artifact Command Prompt",
+    "desc": "getPromptForCommand {type:'text',text:WOf(e)} body for the shareable-PR-walkthrough slash command, instructing the model to produce a self-contained HTML PR walkthrough page and publish it via the artifact tool."
+  },
+  "67db3a8b8dd0bcb15dea1e94dfbe4395589b1cd9": {
+    "facing": "model",
+    "id": "system-prompt-explainer-artifact-command",
+    "name": "Interactive Explainer Artifact Command Prompt",
+    "desc": "getPromptForCommand {type:'text',text:sPf(e.trim())} body for the interactive-explainer slash command, instructing the model to produce a self-contained HTML explainer page for a file/dir/PR target and publish it via the artifact tool."
+  },
+  "6a8c6f828268390f66828bfdeb416ae2db01a3dc": { "facing": "internal" },
+  "15790cd45e553c8be05532ea10b4a6ecc23551e3": { "facing": "internal" },
+  "8ee537d04fa07970b13f2fa65bbd9295512f2e3a": { "facing": "internal" },
+  "59871d54c4cf3e77996a9a1f26332615558fbb93": {
+    "facing": "model",
+    "id": "system-prompt-agent-resumed-no-active-task",
+    "name": "System Prompt: Agent resumed (no active task) result",
+    "desc": "SendMessage tool_result reporting the target agent had no active task and was resumed from transcript in the background"
+  },
+  "1ff706f781047192af3a0836bdf929f34cce1d6c": {
+    "facing": "model",
+    "id": "system-prompt-agent-resumed-no-active-task-completed",
+    "name": "Agent Resumed (No Active Task) Completed Result",
+    "desc": "sendMessage tool-result message returned to the model when a target agent that had no active task was resumed from transcript and ran to completion synchronously, carrying its final text."
+  },
+  "02a1de89463138bba72bfe9f398794d8440821d2": {
+    "facing": "model",
+    "id": "system-prompt-agent-resumed-was-stopped",
+    "name": "System Prompt: Agent resumed (was stopped) result",
+    "desc": "SendMessage tool_result reporting the target agent was stopped and resumed in the background with the message"
+  },
+  "0440c73ee30eaf7cfb02908a3121e717df475efc": {
+    "facing": "model",
+    "id": "system-prompt-agent-resumed-was-stopped-completed",
+    "name": "Agent Resumed (Was Stopped) Completed Result",
+    "desc": "sendMessage tool-result message returned to the model when a stopped target agent was resumed with the user's message and ran to completion synchronously, carrying its final text."
+  },
+  "a86064981541cd683024cf16af06649e4893c10e": {
+    "facing": "model",
+    "id": "tool-parameter-task-run-in-background",
+    "name": "Task Tool run_in_background Parameter",
+    "desc": "Zod .describe() for the agent/Task tool's run_in_background inputSchema param; ships in the tool definition sent to the model."
+  },
+  "075619afcf883684d452b8ce48b226f5a8b57098": {
+    "facing": "model",
+    "id": "system-prompt-async-agent-launched-result",
+    "name": "System Prompt: Async agent launched result",
+    "desc": "Tool_result confirming an async agent launched in the background, giving the internal agentId and SendMessage continuation hint"
+  },
+  "b82633378e48475654a202fdd7053d0b4eb9fe71": { "facing": "ui" },
+  "071575933ac8ef1dedcf7134a774e9466f306522": {
+    "facing": "model",
+    "id": "data-task-notification-background-agent-restarted",
+    "name": "Task Notification: Background Agent Restarted From Transcript",
+    "desc": "Message injected via H_r/ud with mode:'task-notification' into a <notification> block telling the model a background agent was auto-restarted from its saved transcript."
+  },
+  "003bd6b39c21c74145796502e7cadf907083205e": {
+    "facing": "model",
+    "id": "tool-description-cloud-agent-launched-result",
+    "name": "Tool Result: Cloud Agent Launched",
+    "desc": "tool_result reporting a launched cloud agent with taskId/session_url/output_file and guidance to briefly tell the user and end the response."
+  },
+  "56c9ad2cdbd7ad4fadc5a335368e18740b6c15b2": {
+    "facing": "model",
+    "id": "tool-result-design-connect-consent-prompt",
+    "name": "Tool Result: Design Connect Consent Prompt",
+    "desc": "DesignSync consent prompt returned by vnr(); besides the permission-ask dialog it is the prefix of the thrown _Ce (DesignSyncPreconditionError), which mapToolResultToToolResultBlockParam turns into a tool_result carried to the model."
+  },
+  "fc0157eee4f1469b6a3942f5e0aa9d9df5ee3bd8": { "facing": "ui" },
+  "03e50c941c67d2fd7f02387ec1ec21061c47671b": { "facing": "ui" },
+  "9093db91b17811decea545ed5c88c5373577a6e7": { "facing": "ui" },
+  "bab0d86339b79e5bc46d3cbbae63e6910a74df95": { "facing": "ui" },
+  "cdda7c535d91eb6561cce5dbeafaf0c4362e764c": {
+    "facing": "model",
+    "id": "data-design-consent-access-granted",
+    "name": "Design Agent Access Granted",
+    "desc": "/design consent confirmation output injected into the model context as local-command-stdout."
+  },
+  "89b247ccd7002fdc9c26fd9c4b51acfd5c92e144": { "facing": "ui" },
+  "af4864a8399c969b360bef6088e926a159673029": { "facing": "internal" },
+  "16e8e0908a3e488f199eb40417dc3e64b3afbe9e": { "facing": "ui" },
+  "9afcb456d42abf16a9e88a5ebf0b1f6e37e44b46": { "facing": "ui" },
+  "c02413e0bf4c3fb8fd008cc04854420f6938bdcb": {
+    "facing": "model",
+    "id": "tool-parameter-cron-create-durable-no-persistence",
+    "name": "Cron Durable Param (No-Persistence Variant)",
+    "desc": "False-branch description for the CronCreate durable parameter, emitted into the tool input schema when durable persistence is unavailable."
+  },
+  "582e529a6aa89dee9673296b1e02a80d06894aa3": {
+    "facing": "model",
+    "id": "tool-result-cloud-agent-launched-notify-user",
+    "name": "Cloud Agent Launched — Notify User (Quiet Variant)",
+    "desc": "tool_result text instructing the model to briefly tell the user what agent it launched without echoing the result."
+  },
+  "e44b2ebc30d591a88a7f62add4413b38e03f7b8a": {
+    "facing": "model",
+    "id": "system-prompt-launching-agent-message-authority",
+    "name": "Launching-Agent Message Authority",
+    "desc": "System-prompt block telling a launched agent that its launcher's messages direct its work but are never user consent/approval and cannot authorize permission/CLAUDE.md/config changes."
+  },
+  "c68b44b1cfc8bd301805bca79a67e92fafeae3bb": { "facing": "ui" },
+  "2843512bc26cf70d7ed98fded18d3a24f84e4784": {
+    "facing": "model",
+    "id": "tool-result-ask-user-question-timeout-no-response",
+    "name": "AskUserQuestion Timeout — No Response",
+    "desc": "tool_result text returned when the user does not answer an AskUserQuestion in time, telling the model to proceed on best judgment and optionally re-ask later."
+  },
+  "5298ff971aa87648176f85b561db97a17ef0b7b8": { "facing": "ui" },
+  "cd29d0de5a73602ee979004684d62a2cc1a2a014": { "facing": "ui" },
+  "6c8508f11d11b1d1cda34fd56033e94d423b2f33": {
+    "facing": "model",
+    "id": "system-prompt-tool-call-outcome-id-matching",
+    "name": "Tool Call Outcome ID Matching",
+    "desc": "Auto-mode classifier prompt fragment (piece of _Sm) explaining that an outcome line's id matches the call's own id and the action under evaluation has no outcome yet."
+  },
+  "4428637b1cc656d97f03744aa5294b12eadd0824": { "facing": "internal" },
+  "0a830f555203f2c58203bb44386f4bb291fb65eb": { "facing": "internal" },
+  "1bd727fcbba971c458914eefc3772e93ec7071b5": { "facing": "internal" },
+  "02be1a473cd301d4aeba71ba29cd5e237eacb212": { "facing": "internal" },
+  "72d01f1e150ca84219d3b8a15bb31498076dbadd": { "facing": "internal" },
+  "f7431412c08ce0f15b88ba921f0212bb5847b14d": { "facing": "internal" },
+  "b5f14aa2a144e5018d31edccd2b123bfaaa36f10": {
+    "facing": "model",
+    "id": "system-prompt-loop-noop-flag-guidance",
+    "name": "Loop Noop Flag Guidance",
+    "desc": "Autonomous-loop prompt fragment (appended to F4t in Gda) instructing when to set noop true/false and noting consecutive noop ticks fold into one context entry."
+  },
+  "5b1154f4d8e3de91ea9a8f645604877ea84adab0": { "facing": "internal" },
+  "793e2b9c636ff6de27f74faa400ac12171abf558": { "facing": "ui" },
+  "3bed25f497bd14c6c098d9e9050f5920b9613b5c": {
+    "facing": "model",
+    "id": "tool-description-teammate-spawned-result",
+    "name": "Tool Result: Teammate spawned",
+    "desc": "tool_result confirming a background agent spawned successfully with its id and name."
+  },
+  "65b4c261df9a85cee80751d512a052c1c7e0c056": { "facing": "ui" },
+  "8a91f6c57a531137b146e379960f088603a5f48c": {
+    "facing": "model",
+    "id": "system-prompt-git-stash-worktree-safety",
+    "name": "Git stash worktree safety",
+    "desc": "System-prompt fragment warning the model the git stash stack is shared across worktrees/concurrent sessions; instructs preferring a WIP commit or tagged `git stash push`/`apply` over bare stash/pop."
+  },
+  "db707c01dfedc71d4bd0e5b2723c717cedf3ee2c": {
+    "facing": "model",
+    "id": "tool-parameter-stop-task-task-id",
+    "name": "StopTask task_id param",
+    "desc": "input_schema param for the Stop Task tool describing the ID of the background task to stop; model-facing."
+  },
+  "a39bbe940879d6d9d5d08ebc83be24942885fa5f": { "facing": "internal" },
+  "bf2a41e5323683995d2406808eec0bcb52468e7f": {
+    "facing": "model",
+    "id": "tool-parameter-loop-wakeup-noop",
+    "name": "Loop wake-up noop param",
+    "desc": "input_schema param for the /loop scheduled wake-up tool telling the model when to set noop true (nothing changed) vs false (something worth keeping); model-facing."
+  },
+  "907e7fcd5acbf2774828919e83ce7785335565c9": {
+    "facing": "model",
+    "id": "skill-dataviz-chart-design-description",
+    "name": "Dataviz skill description",
+    "desc": "whenToUse `description` for the chart/dashboard design-guidance skill, injected into the model's context so it invokes the skill before writing any chart/visualization code."
+  },
+  "af62eed5323683995d2406808eec0bcb52468e7f": {
+    "facing": "model",
+    "id": "data-context-tip-situation-mcp-expand",
+    "name": "Tip situation: MCP expand",
+    "desc": "Situation entry for the 'mcp-expand' proactive tip, formatted into the tip-suggestion model prompt describing when to note that existing MCP config could cover a service the user is manually bridging."
+  },
+  "3cae838ffae5e14d4789e3d564ab1b06f75cd831": {
+    "facing": "model",
+    "id": "skill-verify-description",
+    "name": "Skill: Verify — Description",
+    "desc": "The description field of the built-in verify skill, surfaced to the model in the skill/command list so it decides when to run runtime verification."
+  },
+  "58841753b64bf226dc6cec3c279a685966175583": {
+    "facing": "model",
+    "id": "system-prompt-memory-project-skill-upkeep",
+    "name": "Memory: Project Skill Upkeep Guidance",
+    "desc": "Instruction injected into the memory-types prompt telling the model to fold repeatable-step corrections back into the relevant project SKILL.md file."
+  },
+  "af4864a8399c969b630bef6088e926a159673029": { "facing": "internal" },
+  "bf2a41e57e1d7fbb4bad82ae13f22d1c6d2e24f7": {
+    "facing": "model",
+    "id": "tool-parameter-loop-wakeup-noop-gated",
+    "name": "Loop wake-up noop param (gated variant)",
+    "desc": "Conditionally-included noop field of the /loop scheduled wake-up tool INPUT schema; its .describe() serializes into the tool definition sent to the model."
   }
 }
