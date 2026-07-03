@@ -7707,5 +7707,276 @@
     "id": "tool-parameter-loop-wakeup-noop-gated",
     "name": "Loop wake-up noop param (gated variant)",
     "desc": "Conditionally-included noop field of the /loop scheduled wake-up tool INPUT schema; its .describe() serializes into the tool definition sent to the model."
+  },
+  "1087f10dfbecc7ff5d60eccff4e4ff9a6d82c2f0": {
+    "facing": "model",
+    "id": "slash-command-design-mcp-tool-fallback",
+    "name": "Slash command prompt: /design MCP tool fallback",
+    "desc": "Model-facing fragment of the /design command prompt (returned by getPromptForCommand as text) telling the model to fall back to the mcp__*__* Claude Design tools, or run /design login and stop if none are available."
+  },
+  "fe9e1335bdb8fad0f3189ad5e567e9d191b82eb8": {
+    "facing": "model",
+    "id": "slash-command-design-hub-description",
+    "name": "Slash command description: /design hub",
+    "desc": "Model-facing description of the /design command (installed via oPe getter, surfaced to the model in command listings such as the claude-code-guide agent's 'Available custom skills') explaining it routes sync/login and maps import/export/status to the Claude Design tools."
+  },
+  "57e6fdaf3c08213849965009b5670420797baa79": {
+    "facing": "model",
+    "id": "slash-command-design-load-operations",
+    "name": "Slash command prompt: /design load operations",
+    "desc": "Model-facing fragment of the /design command prompt instructing the model to first call the design tool to load available Claude Design operations and their argument schemas."
+  },
+  "6bb23acd9f954de198dc4e8491d22357d77f290e": {
+    "facing": "model",
+    "id": "tool-result-claude-design-truncated",
+    "name": "Tool result: Claude Design result truncated",
+    "desc": "Model-facing tool_result text block appended by kBm when ClaudeDesign result blocks exceed the aggregate char cap and are omitted."
+  },
+  "132d4397b255d5ae23e32ed7290551eb68d75d7f": { "facing": "internal" },
+  "9fdc9b85176b372f5a43262e9e199f8112384b9d": {
+    "facing": "model",
+    "id": "tool-result-render-preview-image-omitted",
+    "name": "Tool result: render_preview image omitted",
+    "desc": "Model-facing tool_result text block substituted by wBm for a ClaudeDesign render_preview image that exceeds the KB cap."
+  },
+  "65d1fda3b17a31a02be5f2e035ae7f50bf7faf82": { "facing": "internal" },
+  "133d85645c89cb3ebea195e5a9ce7857bbb51eeb": {
+    "facing": "model",
+    "id": "skill-setup-cowork",
+    "name": "Skill: Setup Cowork",
+    "desc": "Guided Cowork setup flow that helps the user pick a role, install a matching plugin, try a skill, connect tools, and wrap up"
+  },
+  "181a3536d82666d58864e03bdc8c5698bf53e7ad": {
+    "facing": "model",
+    "id": "skill-setup-cowork-role-selection",
+    "name": "Skill: Setup Cowork role selection",
+    "desc": "First step of the setup-cowork skill that explains Cowork, asks for the user's role, calls ShowOnboardingRolePicker, or falls back to a plain-text role list"
+  },
+  "81bf37ecb4a05655b0ff795c4a89b341eadedb5d": {
+    "facing": "model",
+    "id": "system-reminder-file-already-in-context",
+    "name": "System reminder: File already in context",
+    "desc": "Model-facing <system-reminder> injected by the Read tool when a file is already present in context, telling the model to reuse the earlier tool_result"
+  },
+  "04295cc8bf9594b7b6ffd6f505c02e9461b9d0a4": {
+    "facing": "model",
+    "id": "system-prompt-design-command-consent-revoke-row",
+    "name": "System prompt: /design command consent/revoke dispatch row",
+    "desc": "Model-facing row of the /design slash-command instruction table telling the model to refuse consent/revoke in-session and stop"
+  },
+  "7a55b66899877f2a473e8888044527d4d8e0e7d6": { "facing": "ui" },
+  "dcbb2accd068fa5c901e340ddc304d174e8337f2": { "facing": "internal" },
+  "f9ed3e8695e7d81b6b03806b41eef03923b3dea8": {
+    "facing": "model",
+    "id": "tool-parameter-design-action-arguments",
+    "name": "Tool parameter: Claude Design action arguments",
+    "desc": "Model-facing inputSchema description of the `arguments` parameter of the Claude Design agent tool (var ABm, tool RBm)"
+  },
+  "a7d32f934ed9c94c4b629d60bb406bec9420a6fd": { "facing": "internal" },
+  "9211a0e7d22bb9ffa0a601e9f741a2d6b1a35544": {
+    "facing": "model",
+    "id": "tool-parameter-design-action-operation",
+    "name": "Tool parameter: Claude Design action operation",
+    "desc": "Model-facing inputSchema description of the `operation` parameter of the Claude Design agent tool (var ABm, tool RBm)"
+  },
+  "366c7a8891c0c7489a3dc751a5d678d5403de3a6": {
+    "facing": "model",
+    "id": "tool-result-design-wrong-provider",
+    "name": "Tool result: Claude Design wrong provider",
+    "desc": "Model-facing error surfaced as a Design tool_result (thrown via new mo(LBm(...)) in the design tool call, wrong_provider case) telling Claude that Claude Design needs claude.ai auth and is unsupported on Bedrock/Vertex/third-party providers."
+  },
+  "2fa5d93d7ecb7223f95b561eb7c301ca657b4cd5": {
+    "facing": "model",
+    "id": "tool-result-team-roster-unreadable",
+    "name": "Tool result: Team roster unreadable",
+    "desc": "Model-facing team-messaging tool_result (return{data:{success:!1,message}}) telling Claude the team roster couldn't be read so the message wasn't sent."
+  },
+  "a3ac5cef53b039a5c19db4e44210d27cb3c0fca4": {
+    "facing": "model",
+    "id": "tool-parameter-resolve-connectors-uuids",
+    "name": "Tool parameter: Resolve connectors uuids",
+    "desc": "Model-facing inputSchema param description (.describe on the uuids array in a strictObject) for the directoryUuid/server_id values to resolve."
+  },
+  "facf9dccce802375d1b8dc05d6ea24186a6b79f1": {
+    "facing": "model",
+    "id": "tool-parameter-sandbox-env-vars-protect",
+    "name": "Tool parameter: Sandbox protected env vars",
+    "desc": "Model-facing inputSchema param description (.describe on envVars) explaining deny/mask handling of environment variables for sandboxed commands."
+  },
+  "080e27d2b3924b173bcc663da251261fb282f6b6": {
+    "facing": "model",
+    "id": "tool-parameter-sandbox-credential-inject-hosts",
+    "name": "Tool parameter: Sandbox credential inject hosts",
+    "desc": "Model-facing inputSchema param description fragment (.describe on injectHosts) about where the proxy injects the credential relative to network.allowedDomains."
+  },
+  "c830192e5b649b00e8586f959f33f0e07721151f": { "facing": "ui" },
+  "cc38c25724792975b9cd248bf56d0dc0ff2af607": { "facing": "ui" },
+  "c5c1b92130731f594509a6e5277b7aaf1500fcef": {
+    "facing": "model",
+    "id": "tool-parameter-search-keywords-intent",
+    "name": "Tool parameter: Search keywords intent",
+    "desc": "Model-facing inputSchema param description (.describe on the keywords array) for keyword phrases describing the user's intent or a named product."
+  },
+  "9f1412d808db26267de948cc402702729cb1275d": {
+    "facing": "model",
+    "id": "tool-parameter-searchplugins-keywords-intent",
+    "name": "Tool parameter: SearchPlugins keywords",
+    "desc": "Model-facing inputSchema keywords-array param description for the SearchPlugins tool (zod .describe on ONl, used by LUm/SearchPlugins)."
+  },
+  "e238d2b089b260bcda5845f9eabfc373e6e8709a": {
+    "facing": "model",
+    "id": "tool-description-listconnectors",
+    "name": "Tool Description: ListConnectors",
+    "desc": "Describes the ListConnectors tool for listing installed claude.ai MCP connectors, filtering by keyword, and interpreting org-level connection and chat-enabled status"
+  },
+  "4e5e687f0107bf38e7a4eee70f4320e635f2b29b": {
+    "facing": "model",
+    "id": "tool-description-listplugins",
+    "name": "Tool Description: ListPlugins",
+    "desc": "Model-facing prompt/description of the ListPlugins tool that lists the user's enabled claude.ai plugins and points to SearchPlugins/SuggestPluginInstall."
+  },
+  "6aff8a9ed74dc0cd687f4071b08bbf2944e009e2": {
+    "facing": "model",
+    "id": "tool-description-listskills",
+    "name": "Tool Description: ListSkills",
+    "desc": "Model-facing prompt/description of the ListSkills tool that lists the user's enabled claude.ai skills and points to SuggestSkills."
+  },
+  "7ff3e825d0e3e371e1a2da1419c4a2ac3f049d82": {
+    "facing": "model",
+    "id": "tool-description-listagents",
+    "name": "Tool Description: ListAgents",
+    "desc": "Model-facing description of the ListAgents tool listing addressable subagents/local/remote sessions and how to send messages to them."
+  },
+  "b66be1743a73a155bf4072976524a304fcf2fcac": {
+    "facing": "model",
+    "id": "tool-result-memory-sync-foreign-partition",
+    "name": "Tool result: Memory sync disabled (foreign partition)",
+    "desc": "Model-facing memory-sync warning returned by iSo() as PostToolUse additionalContext after a memory write, telling the model the write was saved locally but not synced due to a foreign-partition mount."
+  },
+  "5d455c8616af9dceb2936776b8999dc7b67c0c20": {
+    "facing": "model",
+    "id": "tool-parameter-list-keywords-filter",
+    "name": "Tool parameter: List* keywords filter",
+    "desc": "Model-facing inputSchema keywords-param description shared by the ListConnectors and ListPlugins tools ('Optional filter; omit to list everything.')."
+  },
+  "4c59ec6244ef08014f8f743acaf68c282db0e01e": { "facing": "internal" },
+  "fef752fb530c813ee9576e5cdb83a9ac74feb0dc": {
+    "facing": "model",
+    "id": "tool-parameter-suggestplugininstall-plugins",
+    "name": "Tool parameter: SuggestPluginInstall plugins",
+    "desc": "Model-facing zod .describe() on the SuggestPluginInstall inputSchema `plugins` array parameter, instructing that plugins be sourced from SearchPlugins results."
+  },
+  "c03670440fd2ed4fedcfaf4ff6c3f691849efc1f": {
+    "facing": "model",
+    "id": "tool-description-suggestskills",
+    "name": "Tool description: SuggestSkills",
+    "desc": "Model-facing prompt of the SuggestSkills tool describing when to render a card of addable standalone (org/shared/Anthropic) skills not yet enabled."
+  },
+  "f194fdf5424d6d55285e2cc9317a887a42c77b0b": {
+    "facing": "model",
+    "id": "tool-description-suggestplugininstall",
+    "name": "Tool description: SuggestPluginInstall",
+    "desc": "Model-facing prompt of the SuggestPluginInstall tool describing when to render an inline plugin install card from SearchPlugins results."
+  },
+  "932ef58b2696df55ed5a9969ba8039a8c25b54bf": {
+    "facing": "model",
+    "id": "tool-description-suggestconnectors",
+    "name": "Tool Description: SuggestConnectors",
+    "desc": "Describes the SuggestConnectors tool for resolving SearchMcpRegistry directoryUuid values into full connector payloads and install-state guidance"
+  },
+  "d59dd6259d19158da105a306c07be52bc15628df": { "facing": "ui" },
+  "353dfab9c4ed46c000b6708260431c4a7a9bb849": {
+    "facing": "model",
+    "id": "tool-description-searchmcpregistry",
+    "name": "Tool Description: SearchMcpRegistry",
+    "desc": "Describes the SearchMcpRegistry tool for discovering MCP connectors by keyword, including named-product and intent-based examples and install-state guidance"
+  },
+  "f1da527cc52d5d0719260cd16dd9b3b8e3be384f": {
+    "facing": "model",
+    "id": "tool-description-searchplugins-short",
+    "name": "Tool description: SearchPlugins (short)",
+    "desc": "Model-facing short `description` field of the SearchPlugins tool (keyword search of the claude.ai plugin catalog)."
+  },
+  "fd2f66560aad8d43554830b2a02fc79306a997ea": {
+    "facing": "model",
+    "id": "tool-description-searchplugins",
+    "name": "Tool Description: SearchPlugins",
+    "desc": "Describes the SearchPlugins tool for finding relevant claude.ai org catalog plugins by keyword and suggesting install cards when results fit"
+  },
+  "47a9dcbdc9f1b153479f3fd380bb853bac011da0": {
+    "facing": "model",
+    "id": "tool-description-searchskills-summary",
+    "name": "Tool Description: SearchSkills (short summary)",
+    "desc": "Model-facing one-line description field of the SearchSkills tool, emitted from the UNl/Ts tool factory's description getter and sent in the tool definition."
+  },
+  "47700f85e48eea8f651cce86d5ed9bfa092edffb": {
+    "facing": "model",
+    "id": "tool-description-searchskills",
+    "name": "Tool Description: SearchSkills",
+    "desc": "Describes the SearchSkills tool for finding relevant claude.ai skills by keyword and suggesting add cards when results fit"
+  },
+  "53184bafb325f12963b895670c9e56518879b854": { "facing": "ui" },
+  "ec1460ebd142a08152ed1bf57620629cc4afc09b": { "facing": "internal" },
+  "e85b33abfab7cc30c73762028fb819eba29793b4": {
+    "facing": "model",
+    "id": "tool-parameter-suggest-plugin-install-context-label",
+    "name": "Tool Parameter: SuggestPluginInstall contextLabel",
+    "desc": "Model-facing inputSchema description for the contextLabel parameter of the SuggestPluginInstall tool."
+  },
+  "3cf4880e4c2faa70c4494a5570514d68de677af0": {
+    "facing": "model",
+    "id": "tool-parameter-report-findings-category",
+    "name": "Tool Parameter: ReportFindings category",
+    "desc": "Model-facing inputSchema description for the optional category parameter of the ReportFindings code-review tool."
+  },
+  "07460b3b3bf9ea31be9c2051b678ea814d1fab5b": {
+    "facing": "model",
+    "id": "tool-result-send-message-member-left-team",
+    "name": "Tool Result: Send message recipient left team",
+    "desc": "Model-facing tool_result returned by the team SendMessage (team-context) path when the resolved recipient has left the team, prompting an explicit re-pick."
+  },
+  "4b1b78cf098ffe5e7986c0daa945d742efa3e2a7": {
+    "facing": "model",
+    "id": "tool-result-send-message-duplicate-roster-member",
+    "name": "Tool Result: Duplicate roster member on send",
+    "desc": "Model-facing tool_result returned when the team roster lists the resolved recipient more than once, so the message was not sent."
+  },
+  "e620fd0598026c5c7e39c8045723b698984141f6": {
+    "facing": "model",
+    "id": "tool-parameter-search-plugins-keywords",
+    "name": "Tool parameter: SearchPlugins keywords",
+    "desc": "Model-facing inputSchema parameter description for the `keywords` field of the plugin-search tool (schema UUm, exposed via get inputSchema())."
+  },
+  "3beb5f86814aa79864734775fb1ff35da2696dc5": { "facing": "internal" },
+  "36674bfcd578eb886d71c2cf4b75b56623d18c78": {
+    "facing": "model",
+    "id": "tool-result-unknown-claude-design-operation",
+    "name": "Tool result: Unknown Claude Design operation",
+    "desc": "Model-facing tool_result text returned by the ClaudeDesign tool for an unrecognized operation, telling the model to list available operations."
+  },
+  "479934802fe7ac9cab8164496c746c5cae447891": {
+    "facing": "model",
+    "id": "data-context-tip-situation-artifact-pr-explainer",
+    "name": "Context tip situation: Artifact PR explainer",
+    "desc": "Model-facing situation-matcher description for the PR-explainer artifact tip, formatted by JSm and embedded into the emit_context_tip classifier prompt (XSm)."
+  },
+  "b341d9ebaba85a528a8f0d7a67c56026313e1af2": {
+    "facing": "model",
+    "id": "data-context-tip-situation-rewind-past-clear",
+    "name": "Context tip situation: Rewind past clear",
+    "desc": "Model-facing situation-matcher description for the rewind-past-/clear tip, formatted by JSm and embedded into the emit_context_tip classifier prompt (XSm)."
+  },
+  "7d826ba1967d5b4310bae87854e34096c0867e24": {
+    "facing": "model",
+    "id": "tool-description-claudedesign",
+    "name": "Tool Description: ClaudeDesign",
+    "desc": "Describes the ClaudeDesign tool for working with claude.ai/design projects, including project and file operations, previews, plan tokens, and live design output conventions"
+  },
+  "50a144c46b05df42bdb4b87c14b8cd414f04e8fb": { "facing": "ui" },
+  "70ace3fd67d129c2640fe180a936bcf311acd5fa": {
+    "facing": "model",
+    "id": "tool-result-shared-memory-concurrent-write-conflict",
+    "name": "Tool result: Shared memory concurrent-write conflict",
+    "desc": "Model-facing post-tool-use notice returned when a memory-file write loses to a concurrent update, instructing the model to re-read and re-apply its change."
   }
 }

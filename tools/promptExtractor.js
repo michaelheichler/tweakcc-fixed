@@ -33,6 +33,18 @@ const WORKFLOW_SCRIPT_IDENTIFIER_MAP = {
 // semantic names for the prompt's interpolated identifiers — required when
 // override .md files reference those names (`${ATTACHMENT_OBJECT.filename}`).
 const NEW_PROMPT_ASSIGNMENTS = [
+  // 2.1.199 — the Opus-4.8-1M model-catalog descriptionForModel was refactored
+  // from the literal "Opus 4.8 with 1M context - ..." to an interpolated
+  // "${o} with 1M context - ..." (the model display name is now a variable), a
+  // fuzzy-miss that dropped the name. Restore it (pristine stub, model-facing).
+  {
+    matcher: t =>
+      t.includes("with 1M context - best for everyday, complex tasks"),
+    name: "Data: Model Catalog Opus 4.8 1M",
+    id: "data-model-catalog-opus-48-1m-description",
+    description:
+      "descriptionForModel for Opus 4.8 with 1M context: best for everyday, complex tasks. 2.1.199 interpolated the model display name (fuzzy-miss restore).",
+  },
   {
     matcher: t => t.includes("Do not duplicate this agent's work"),
     name: "System Reminder: Async agent launched",
