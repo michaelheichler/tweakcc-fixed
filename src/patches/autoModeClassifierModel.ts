@@ -84,6 +84,31 @@ export const writeAutoModeClassifierModel = (
   const pattern195 =
     /function\s+([$\w]+)\s*\(\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\)\s*,\s*([$\w]+)\s*=\s*[$\w]+\s*\(\s*"tengu_auto_mode_config"\s*,\s*\{\s*\}\s*\)\s*,\s*([$\w]+)\s*=\s*\3\s*\?\.\s*modelByMainModel\s*;\s*if\s*\(\s*\4\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*`[^`]*`\s*\]\s*;\s*if\s*\(\s*\6\s*\)\s*return\s*\{\s*value\s*:\s*\6\s*,\s*src\s*:\s*"gb"\s*\}\s*\}\s*let\s+([$\w]+)\s*=\s*\4\s*\[\s*\5\s*\]\s*;\s*if\s*\(\s*\7\s*\)\s*return\s*\{\s*value\s*:\s*\7\s*,\s*src\s*:\s*"gb"\s*\}\s*\}\s*if\s*\(\s*\3\s*\?\.\s*model\s*\)\s*return\s*\{\s*value\s*:\s*\3\s*\.\s*model\s*,\s*src\s*:\s*"gb"\s*\}\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\|\|\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*return\s*\{\s*value\s*:\s*[$\w]+\s*\(\s*\2\s*\)\s*,\s*src\s*:\s*"default"\s*\}\s*;\s*return\s*\{\s*value\s*:\s*\2\s*,\s*src\s*:\s*"default"\s*\}\s*\}/;
 
+  // CC 2.1.201 shape: same tagged-object return as 2.1.195, but the
+  // `modelByMainModel` lookup (the inline `if(q){...}` block) was extracted into
+  // a sibling helper, collapsing the resolver to a linear chain:
+  //   function NAME(){let H=MAIN(),_=R("tengu_auto_mode_config",{}),q=HELPER(_?.modelByMainModel);if(q)return{value:q,src:"gb"};if(_?.model)return{value:_.model,src:"gb"};if(ISFABLE(H)||ISMYTHOS(H))return{value:RESOLVE(H),src:"default"};return{value:H,src:"default"}}
+  const pattern201 =
+    /function\s+([$\w]+)\s*\(\s*\)\s*\{\s*let\s+([$\w]+)\s*=\s*[$\w]+\s*\(\s*\)\s*,\s*([$\w]+)\s*=\s*[$\w]+\s*\(\s*"tengu_auto_mode_config"\s*,\s*\{\s*\}\s*\)\s*,\s*([$\w]+)\s*=\s*[$\w]+\s*\(\s*\3\s*\?\.\s*modelByMainModel\s*\)\s*;\s*if\s*\(\s*\4\s*\)\s*return\s*\{\s*value\s*:\s*\4\s*,\s*src\s*:\s*"gb"\s*\}\s*;\s*if\s*\(\s*\3\s*\?\.\s*model\s*\)\s*return\s*\{\s*value\s*:\s*\3\s*\.\s*model\s*,\s*src\s*:\s*"gb"\s*\}\s*;\s*if\s*\(\s*[$\w]+\s*\(\s*\2\s*\)\s*\|\|\s*[$\w]+\s*\(\s*\2\s*\)\s*\)\s*return\s*\{\s*value\s*:\s*[$\w]+\s*\(\s*\2\s*\)\s*,\s*src\s*:\s*"default"\s*\}\s*;\s*return\s*\{\s*value\s*:\s*\2\s*,\s*src\s*:\s*"default"\s*\}\s*\}/;
+
+  const match201 = oldFile.match(pattern201);
+  if (match201 && match201.index !== undefined) {
+    const [fullMatch, fnName] = match201;
+    const replacement = `function ${fnName}(){return{value:"${modelId}",src:"default"}}`;
+    const newFile =
+      oldFile.slice(0, match201.index) +
+      replacement +
+      oldFile.slice(match201.index + fullMatch.length);
+    showDiff(
+      oldFile,
+      newFile,
+      replacement,
+      match201.index,
+      match201.index + fullMatch.length
+    );
+    return newFile;
+  }
+
   const match195 = oldFile.match(pattern195);
   if (match195 && match195.index !== undefined) {
     const [fullMatch, fnName] = match195;

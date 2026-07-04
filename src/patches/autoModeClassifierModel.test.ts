@@ -66,6 +66,27 @@ describe('writeAutoModeClassifierModel', () => {
     );
   });
 
+  it('rewrites the 2.1.201 resolver (modelByMainModel lookup extracted to a helper)', () => {
+    const SHAPE_2_1_201 =
+      'function MXa(){let e=Is(),t=nt("tengu_auto_mode_config",{}),n=NXa(t?.modelByMainModel);' +
+      'if(n)return{value:n,src:"gb"};' +
+      'if(t?.model)return{value:t.model,src:"gb"};' +
+      'if(kA(e)||IFt(e))return{value:HFt(e),src:"default"};' +
+      'return{value:e,src:"default"}}';
+    const file = `function W(){return MXa().value}${SHAPE_2_1_201}var B=2;`;
+    const result = writeAutoModeClassifierModel(file, 'haiku');
+    expect(result).toContain(
+      'function MXa(){return{value:"claude-haiku-4-5",src:"default"}}'
+    );
+    expect(result).not.toContain('tengu_auto_mode_config');
+    expect(result).toContain('function W(){return MXa().value}');
+    expect(result).toContain('var B=2;');
+    // idempotent
+    expect(writeAutoModeClassifierModel(result as string, 'haiku')).toBe(
+      result
+    );
+  });
+
   it('is a no-op for choice=default', () => {
     const file = `var A=1;${SHAPE_2_1_170}`;
     expect(writeAutoModeClassifierModel(file, 'default')).toBe(file);
