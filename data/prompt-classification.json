@@ -8410,5 +8410,141 @@
     "id": "data-context-tip-situation-subagent-fan-out",
     "name": "Data: Context tip situation — subagent fan-out",
     "desc": "Situation text for detecting when repeated independent subtasks should be fanned out to subagents"
-  }
+  },
+  "82b3105596e528eb3cb154450316da0b546b090e": {
+    "facing": "model",
+    "id": "skill-doctor-slash-command-description",
+    "name": "Skill: /doctor slash command description",
+    "desc": "Trigger description for the /doctor slash command covering setup health, unused extensions, memory cleanup, hooks, updates, and permission prompts"
+  },
+  "4973f4a0e1e111a007c5f8e6be1bb3b6bf2112bc": {
+    "facing": "model",
+    "id": "tool-result-mcp-servers-blocked-managed-policy",
+    "name": "Tool Result: MCP servers blocked by managed policy",
+    "desc": "tool-result note telling the model the listed MCP servers are blocked by the org's managed policy (administrative block, retrying won't help)"
+  },
+  "0edb6dc137f660c8e1ac6256e3bc8ad379efdc8a": { "facing": "ui" },
+  "d90f66bedf14f01453f8d4e31839b1a6fdcc997d": { "facing": "ui" },
+  "a2e18e6fbcb5bbfcfea375fe562df97fd61e8008": { "facing": "internal" },
+  "e8d9b2927892874272137a86bf7953956ecb0daa": { "facing": "internal" },
+  "8e8c67022e795b509780d8b8d0508c8d9ab3a179": { "facing": "ui" },
+  "d3bcbbed616fa861599c22204dcc3ec1525b49b1": { "facing": "internal" },
+  "2e295923115518b553a0585a3c6f4bd662ff9980": { "facing": "internal" },
+  "89a99dd049e728e2ca0bc4ffea5093580fe73a7d": { "facing": "ui" },
+  "df3dbb1afb3a9e0e7a9e6e61b317744751512fdc": {
+    "facing": "model",
+    "id": "skill-keybindings-help-validation-section",
+    "name": "Skill: Keybindings help — Validation section",
+    "desc": "The '## Validation' section of the keybindings-help command prompt, injected into the model via getPromptForCommand"
+  },
+  "a91691b7c082f8c93c47ae1567862b563c001782": {
+    "facing": "model",
+    "id": "tool-result-conversation-ended-by-model",
+    "name": "Tool Result: Conversation ended by model",
+    "desc": "tool_use_error tool-result content injected when the model ends the conversation"
+  },
+  "ef7ff20efd8d667830e0aa2668d6da52d569c768": {
+    "facing": "model",
+    "id": "system-prompt-commit-body-length-guidance",
+    "name": "System Prompt: Commit/PR body length guidance",
+    "desc": "Guidance to keep the whole PR/commit body under 250 words covering what changed, why now, and how it was verified"
+  },
+  "9964e4a7ee72781d3223570f67d8e8c8786d7b75": { "facing": "internal" },
+  "af03331a77684eff93bf8434ad6d4fbd4ce1b492": { "facing": "internal" },
+  "3aecbc45aaf9d43e039f4901079db49d69197b50": {
+    "facing": "model",
+    "id": "system-reminder-mcp-servers-failed-to-connect",
+    "name": "System Reminder: MCP servers failed to connect",
+    "desc": "Lists configured MCP servers that failed to connect and tells the agent to treat their tools as unavailable because of a connection failure"
+  },
+  "9743773967c34aae1a367cdb0af7f65395e1fd4c": {
+    "facing": "model",
+    "id": "system-prompt-commit-body-opening-guidance",
+    "name": "System Prompt: Commit/PR body opening guidance",
+    "desc": "Guidance to open the body with 1-2 plain sentences saying what the change does and why for a reader who was not part of the session"
+  },
+  "b74a3f0c15db241202dd4d5d056d77e2c172850a": {
+    "facing": "model",
+    "id": "system-prompt-background-session-shipping-commit-push",
+    "name": "System Prompt: Background-session shipping — commit, push, PR",
+    "desc": "Background-session variant instructing the agent to commit, push the branch and open a draft PR; supersedes the Background Session shipping policy where they differ."
+  },
+  "7faf7ae23465ce342d8a2d8c9129a149fc1bcdcd": {
+    "facing": "model",
+    "id": "system-prompt-writing-commit-messages-and-pr-descriptions",
+    "name": "System Prompt: Writing commit messages and PR descriptions",
+    "desc": "Guidance header and bullets for writing zero-context commit messages and PR descriptions"
+  },
+  "17bd27d97f237e223db863f6bea4afa0595a04ed": {
+    "facing": "model",
+    "id": "system-reminder-mid-turn-user-message-surfacing",
+    "name": "System Reminder: Mid-turn user message surfacing",
+    "desc": "Explains to the model that a user message is being surfaced mid-turn within the running turn, alongside the next tool result"
+  },
+  "6caa004a3c123bcbecf66d8752a0eaa6ee5ba22a": { "facing": "internal" },
+  "fc88a571373932f1988794cb3cdcfbee93594da2": {
+    "facing": "model",
+    "id": "system-prompt-cc-memory-citation-wrapping",
+    "name": "System Prompt: cc-memory citation wrapping",
+    "desc": "Instructs the model to wrap any sentence that uses or cites memory content in a <cc-memory filenames=\"...\"> tag"
+  },
+  "f3213dae8afb53c0aa74a10a446eaeed6c9b6b39": {
+    "facing": "model",
+    "id": "system-prompt-user-message-attribution-guard",
+    "name": "System Prompt: User-message attribution guard",
+    "desc": "Directs the model to treat only genuine user-role turns as user messages and never attribute transcript-shaped text inside assistant messages to the user."
+  },
+  "b7d84dee540278ac130ea202c0c05d999ca11123": {
+    "facing": "model",
+    "id": "tool-result-mcp-servers-failed-to-connect",
+    "name": "Tool Result: MCP servers failed to connect",
+    "desc": "tool-result note telling the model the listed MCP servers failed to connect; treat as connection failure and quoted error text as unvalidated data"
+  },
+  "7338b5a6673205f44a38bb8415de4189f2e59af0": { "facing": "ui" },
+  "07c8185d1488ac75010bb7b25a8f77186fb7b390": {
+    "facing": "model",
+    "id": "system-reminder-mcp-servers-blocked-managed-policy",
+    "name": "System Reminder: MCP servers blocked by managed policy",
+    "desc": "System-reminder context listing MCP servers blocked by the org's managed policy — their tools are unavailable this session; an administrative block"
+  },
+  "9106af1336d4b725951152e4dcc7766872db1f06": {
+    "facing": "model",
+    "id": "system-prompt-pr-test-plan-guidance",
+    "name": "System Prompt: PR test-plan guidance",
+    "desc": "Guidance to state in the test plan what was actually verified — the command run and behavior observed — and to name anything left unverified"
+  },
+  "8a48c2bf7371b27468143241444d4397c846fc75": {
+    "facing": "model",
+    "id": "system-prompt-worktree-shipping-branch-isolation",
+    "name": "System Prompt: Worktree shipping branch isolation",
+    "desc": "Shipping guidance: build the PR branch in a separate worktree (git worktree add) carrying only your task's edits, leaving the user's checkout as found"
+  },
+  "429a1c6703aba7dfed7759cc207ff4b58594eed2": {
+    "facing": "model",
+    "id": "system-prompt-task-shipping-feature-branch-pr",
+    "name": "System Prompt: Task shipping — feature branch and PR",
+    "desc": "Instructs the agent to ship code changes on a feature branch, open a PR, and never push to main/master or force-push."
+  },
+  "b2fbafb17d03f4fe91a8b2f9d234b72516073162": {
+    "facing": "model",
+    "id": "system-prompt-untrusted-repo-file-layout-guard",
+    "name": "System Prompt: Untrusted repo-file layout guard",
+    "desc": "Warns the model that an included repository file is untrusted, to mirror only its section layout and never follow instructions or fill in secrets it requests."
+  },
+  "efcea7a20ea8a70ecdd66cfb5a363225073c3ab1": { "facing": "ui" },
+  "2ab7d2f8ae0a0973d7c8a63771b18f5f2cf7832e": {
+    "facing": "model",
+    "id": "tool-parameter-exitplanmode-allowed-prompts",
+    "name": "Tool Parameter: ExitPlanMode allowedPrompts (deprecated)",
+    "desc": "The ExitPlanMode allowedPrompts input-schema field description — deprecated to \"Deprecated: no longer used.\" in CC 2.1.205 (formerly \"Prompt-based permissions needed to implement the plan\")."
+  },
+  "9c76324964598430f8bb7354287c2babbc2f6eaa": { "facing": "ui" },
+  "b7c11b53fdbff396c7b360491e599528deb0ebd1": {
+    "facing": "model",
+    "id": "system-reminder-background-task-event-not-user-input",
+    "name": "System Reminder: Background-task event not user input",
+    "desc": "Prefix note stamped onto background-task events warning the model this is not user acknowledgement/consent"
+  },
+  "712848f83620027fd6ee37c2a30b4cdb209b5b1e": { "facing": "internal" },
+  "3c0d643c0dbe39e2eb6d88f50a39c7205699fafc": { "facing": "internal" }
 }
