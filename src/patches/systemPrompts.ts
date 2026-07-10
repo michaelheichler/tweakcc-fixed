@@ -11,6 +11,57 @@ import {
 import { setAppliedHashes, computeMD5Hash } from '../systemPromptHashIndex';
 import { findAllMatchesWithStackFallback } from '../safeRegexMatch';
 
+// The identifierMap union is polluted from two directions: old prompt JSONs
+// named some slots after JS globals (`JSON`, from `${JSON.stringify(...)}` in
+// the workflow-script prompts) and after raw minified vars (`U`, `G`, `P2`,
+// `YU`, `HH8`). Neither is a tweakcc human-name. Once the leak detector stopped
+// requiring a `}` right after the name, `${JSON.stringify(x)}` in a legitimate
+// workflow-script override would match — so the detector must first ask whether
+// the name is one tweakcc could have written.
+const JS_GLOBAL_NAMES = new Set([
+  'JSON',
+  'Math',
+  'Object',
+  'Array',
+  'String',
+  'Number',
+  'Boolean',
+  'Date',
+  'RegExp',
+  'Map',
+  'Set',
+  'WeakMap',
+  'WeakSet',
+  'Promise',
+  'Symbol',
+  'BigInt',
+  'Error',
+  'TypeError',
+  'RangeError',
+  'Infinity',
+  'NaN',
+  'undefined',
+  'globalThis',
+  'console',
+  'process',
+  'Buffer',
+  'URL',
+  'URLSearchParams',
+  'Intl',
+  'Reflect',
+  'Proxy',
+  'Function',
+]);
+
+/**
+ * A tweakcc human-name is a descriptive placeholder the extractor generated
+ * (`PROMPT_VAR_0`, `AGENT_TOOL_NAME`, `TOOL`). Reject JS globals and the short
+ * minified identifiers (<= 3 chars) that leaked into older prompt JSONs, so the
+ * leak detector never fires on real JS an override is allowed to contain.
+ */
+export const isTweakccHumanName = (name: string): boolean =>
+  name.length > 3 && !JS_GLOBAL_NAMES.has(name);
+
 /**
  * Result of applying system prompts
  */
@@ -221,14 +272,23 @@ export const applySystemPrompts = async (
         // `\${CLAUDE_PLUGIN_ROOT}` in the cowork plugin prompts, which have an
         // empty identifierMap) and survives into the template literal verbatim.
         // The negative lookbehind excludes those so they aren't false-flagged.
-        const placeholderRe = /(?<!\\)\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+        // The name is captured wherever a `${...}` slot OPENS with it, not just
+        // when a `}` follows: `${NAME.prop}`, `${NAME(arg)}` and
+        // `${NAME.x||"y"}` are equally undefined identifiers inside a template
+        // literal. Anchoring on `\}` missed exactly those — CC 2.1.206 shipped
+        // `${SYSTEM_PROMPT_AGENT_RESUMED_WAS_STOPPED_COMPLETED_VAR_2.finalText
+        // ||"(no text output)"}` into the binary because of it.
+        const placeholderRe = /(?<!\\)\$\{([A-Za-z_][A-Za-z0-9_]*)/g;
         const inOutput = new Set(
           [...interpolatedContent.matchAll(placeholderRe)].map(m => m[1])
         );
         const leaked = [...inOutput].filter(
           name =>
+            isTweakccHumanName(name) &&
             identifierMapUnion.has(name) &&
-            new RegExp('(?<!\\\\)\\$\\{' + name + '\\}').test(prompt.content)
+            new RegExp('(?<!\\\\)\\$\\{' + name + '(?![A-Za-z0-9_])').test(
+              prompt.content
+            )
         );
 
         // Every leaked name resolvable by a same-id sibling entry (and none by
