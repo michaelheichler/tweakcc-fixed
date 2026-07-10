@@ -70,6 +70,29 @@ const CURATED_IDENTIFIER_MAPS = {
 };
 
 const NEW_PROMPT_ASSIGNMENTS = [
+  // 2.1.206 capture-gap backfill — two fragments interpolating the inline
+  // `${{ISSUES_EXPLAINER, PACKAGE_URL, ...}}` object (same shape as
+  // data-anthropic-cli; the object literal stays inline in pieces, so no
+  // identifierMap is needed). Surfaced by the rejected-template recursion fix;
+  // never candidates, so the classification cache carries no name for them.
+  {
+    matcher: t =>
+      t.startsWith(
+        "- When you cannot find an answer or the feature doesn't exist, direct the user to ${{ISSUES_EXPLAINER:"
+      ),
+    name: 'Agent Prompt: Claude Code Guide — support escalation',
+    id: 'agent-prompt-claude-code-guide-support-escalation',
+    description:
+      'Escalation bullet of the claude-code-guide agent prompt: when documentation has no answer, direct the user to the issue tracker / package / docs URLs',
+  },
+  {
+    matcher: t =>
+      t.startsWith('To give feedback, users should ${{ISSUES_EXPLAINER:'),
+    name: 'System Prompt: Help block — feedback instructions',
+    id: 'system-prompt-help-feedback-instructions',
+    description:
+      'Feedback line of the main system prompt help block, pointing users at the issue tracker via the inline ISSUES_EXPLAINER object',
+  },
   // 2.1.206 — `tool-result-loop-stopped` was split into shared constants: the
   // re-arm sentence became a `let c = ...` template reused by two envelopes
   // (`Loop stopped — ${reason}. ${c}` and the no-pending-wakeup variant). Name
@@ -2121,7 +2144,7 @@ function inferPromptIdentity(content) {
 // English prompt and wrongly reject short tool/param descriptions). All signals
 // are STABLE — JSON-schema keys + Anthropic-controlled property names, never
 // bundler-minified identifiers — so they survive version bumps.
-function leadShowsModelFacingContext(lead) {
+function leadShowsModelFacingContext(lead, text = '') {
   const tail = lead.slice(-120);
   // A description: field sitting beside a name: or a JSON-schema type: in the
   // same object literal = a tool / agent / skill / command DEFINITION or a
@@ -2154,6 +2177,48 @@ function leadShowsModelFacingContext(lead) {
   // facing:'internal' (the §6.5 broaden-capture-then-classify doctrine, safe via
   // the cache KEEP/DROP at the capture site).
   if (/\.describe\(\s*$/.test(tail)) return true;
+  // Usage-nudge catalog fields ({id, situation, feature, action}): the catalog
+  // is injected into the model's context so IT can decide when a nudge applies.
+  // The field names are Anthropic-controlled vocabulary — stable across bumps.
+  // Short command-string values ("git worktree add …") carry no prose signal at
+  // all, so only the emission site can admit them. Each rule is anchored to the
+  // nudge object's own shape, because the bare keys collide elsewhere in the
+  // bundle: `situation:` is safe only right after the nudge's `id:"…",`;
+  // `feature:`/`action:` must directly follow a closing string value (the
+  // POSIX signal table emits `number:1,action:"terminate"`, keybinding entries
+  // emit `[{action:"app:exit"`, TUI keyboard hints emit
+  // `chord:"enter",action:"confirm"`, and the filetype→language map emits
+  // `nc:"gcode",feature:"gherkin"`. So `feature:`/`action:` additionally
+  // require a sibling nudge key earlier in the WIDE lead window (their long
+  // string values push `id:`/`situation:` beyond the 120-char tail), plus a
+  // length floor on feature.
+  if (/\bid:\s*["'][-\w]+["']\s*,\s*situation:\s*$/.test(tail)) return true;
+  if (
+    text.length >= 25 &&
+    /["'`],\s*feature:\s*$/.test(tail) &&
+    /\b(?:id|situation):\s*["'`]/.test(lead)
+  )
+    return true;
+  if (
+    /["'`],\s*action:\s*$/.test(tail) &&
+    /\b(?:situation|feature):\s*["'`]/.test(lead)
+  )
+    return true;
+  // A hardcoded user-turn message: {role:"user",content:"<here>"} is by
+  // definition text the model reads (utility-agent inputs, command-failure
+  // tool_result envelopes). The floor drops the `max_tokens:1` API health-check
+  // payloads ("." / "test" / "quota").
+  if (
+    text.length >= 25 &&
+    /\brole:\s*["']user["']\s*,\s*content:\s*$/.test(tail)
+  )
+    return true;
+  // A systemPrompt: field — the utility-agent system prompts (conversation
+  // summarizer, bash-command processor, web-search agent, issue-title
+  // generator) are passed inline here. Tolerate one minified wrapper call /
+  // array-open between the stable key and the string, but NOT a member call:
+  // `systemPrompt:t.join("\n\n")`'s argument is a separator, not a prompt.
+  if (/\bsystemPrompt:\s*(?:[$\w]+\()?\[?\s*$/.test(tail)) return true;
   return false;
 }
 
@@ -2177,6 +2242,35 @@ function leadShowsDropContext(lead) {
   if (/process\.(?:stderr|stdout)\.write\(\s*$/.test(tail)) return true;
   // commander/yargs --help builders (render in the terminal, not the model).
   if (/\.(?:option|command|usage|epilog|epilogue|example)\(\s*$/.test(tail))
+    return true;
+  // React jsx-runtime element children (TUI copy shown to the human). CC
+  // 2.1.186 migrated createElement -> jsx()/jsxs(); the factory var is
+  // minified but the `children:` prop key is stable. Two anchored forms: a
+  // direct child / first array element (`children:"…"`, `children:["…"`), and
+  // a subsequent array element (`children:[Da," …"` — anything after the `[`
+  // as long as no `]` closed the array). Deliberately NOT an unanchored
+  // `.jsx(`-anywhere-in-tail test: jsx residue from an ADJACENT function
+  // lands inside the 140-char window and false-drops model-facing strings
+  // (it ate tool-result-ask-user-question-timeout-no-response, whose
+  // `function …(e){return\`No response after …\`}` sits right after a
+  // jsxs() call).
+  if (/\bchildren:\s*\[?\s*$/.test(tail)) return true;
+  if (/\bchildren:\s*\[[^\]]*,\s*$/.test(tail)) return true;
+  // Subclass constructor delegation — `super("...")` is an Error-subclass
+  // message (internal) at every observed site.
+  if (/\bsuper\(\s*$/.test(tail)) return true;
+  // Rejected-promise reasons (internal error strings).
+  if (/\bPromise\.reject\(\s*(?:new\s+[$\w.]*\(\s*)?$/.test(tail)) return true;
+  // Zod `.refine({..., message: "..."})` — validation failure copy (internal).
+  if (/\.refine\((?:[^()]|\([^()]*\))*message:\s*$/.test(tail)) return true;
+  // highlight.js language-definition grammar keys — keyword lists and lexer
+  // regexes for the markdown code-highlighter, never model-facing. All keys
+  // are stable hljs API vocabulary.
+  if (
+    /\b(?:keyword|built_in|literal|\$pattern|beginKeywords|className|begin|end|illegal|subLanguage|lexemes|aliases|keywords|contains|classNameAliases)\s*:\s*$/.test(
+      tail
+    )
+  )
     return true;
   return false;
 }
@@ -2219,6 +2313,10 @@ const CLASSIFICATION_CACHE_PATH = path.join(
   'prompt-classification.json'
 );
 let _classificationCache = null;
+// Test seam: inject a cache object (pass null to restore file-backed loading).
+function _setClassificationCacheForTests(obj) {
+  _classificationCache = obj;
+}
 function loadClassificationCache() {
   if (_classificationCache) return _classificationCache;
   try {
@@ -2230,10 +2328,150 @@ function loadClassificationCache() {
   }
   return _classificationCache;
 }
+// The CC version of the binary being extracted, set by the CLI entry before
+// extraction. Needed because cache keys exist in two forms for any string
+// containing the version: extraction-time lookups hash RAW content ("2.1.206")
+// while post-merge lookups (applyCacheNames, driver classify-candidates) hash
+// the <<CCVERSION>>-normalized form. Without trying both, a version-containing
+// string can never be cache-dropped at capture nor cache-named post-merge.
+let _ccVersionForCache = null;
+function setCcVersionForCacheLookups(version) {
+  _ccVersionForCache = version || null;
+}
 function classifyByCache(body) {
   const cache = loadClassificationCache();
-  const h = crypto.createHash('sha1').update(body).digest('hex');
-  return cache[h] || null;
+  const sha = s => crypto.createHash('sha1').update(s).digest('hex');
+  const direct = cache[sha(body)];
+  if (direct) return direct;
+  if (_ccVersionForCache) {
+    if (body.includes(_ccVersionForCache)) {
+      const norm = cache[sha(body.split(_ccVersionForCache).join('<<CCVERSION>>'))];
+      if (norm) return norm;
+    }
+    if (body.includes('<<CCVERSION>>')) {
+      const raw = cache[sha(body.split('<<CCVERSION>>').join(_ccVersionForCache))];
+      if (raw) return raw;
+    }
+  }
+  return null;
+}
+
+// Structural excludes that win even over a classification-cache 'model'
+// verdict: executable code shapes and the apply-correctness drops (strings
+// that ARE model-facing but can never be independently overridden, so
+// cataloguing them only manufactures "Could not find" warnings at --apply).
+// Everything here is also the first gate inside validateInput.
+function isHardExcluded(text) {
+  // Bundled skill build-tooling / spawned-subprocess scripts — executable
+  // JS/MJS source shipped inside a skill, not prompt text.
+  if (text.startsWith('#!/usr/bin/env node')) return true;
+  if (text.startsWith('#!/usr/bin/env bun')) return true;
+  // @internal JSDoc annotations on staged-release Options fields.
+  if (text.startsWith('@internal ')) return true;
+  // lib/*.mjs ESM modules: `// ` banner + import + top-level export.
+  if (
+    /^\/\/ /.test(text) &&
+    /\nimport\s.+\sfrom\s['"]/.test(text) &&
+    /\nexport\s+(function|const|default|\{)/.test(text)
+  )
+    return true;
+  // Runtime-hardening IIFEs the bundler emits (executable code).
+  if (text.startsWith('(() => {')) return true;
+  // claude-in-chrome file_upload tool description (kept out of the catalogue
+  // for baseline consistency — no sibling browser tool is catalogued).
+  if (
+    text.startsWith(
+      'Upload one or multiple files to a file input element on the page'
+    )
+  )
+    return true;
+  // Two general-purpose-agent fragments with no working override target
+  // (nested/clobbered spans — see the inline notes in validateInput's history).
+  if (
+    text.startsWith(
+      'Your strengths:\n- Searching for code, configurations, and patterns across large codebases'
+    )
+  )
+    return true;
+  if (
+    text.startsWith('You are an agent for Claude Code, Anthropic') &&
+    text.includes('When you complete the task, respond with a concise report') &&
+    !text.includes('Your strengths') &&
+    text.trimEnd().endsWith('so it only needs the essentials.')
+  )
+    return true;
+  return false;
+}
+
+// English-prose heuristic for surfacing prose-gate rejections as
+// classification candidates. Deliberately strict: the drop band is dominated
+// by highlight.js keyword lists whose tokens ARE English words ("if else for
+// while…"), so lexical checks alone admit thousands of junk entries. Real
+// prompt fragments — even single sentences — carry punctuation-then-space
+// (or terminal punctuation) plus function words. Recall-validated against the
+// 110 ground-truth model-facing drops of 2.1.206: every one either passes
+// this filter or is admitted outright by a leadShowsModelFacingContext rule.
+const PROSE_STOPWORDS = new Set(
+  'the a an to of in for with on is are be this that when if it as and or not from by at you your was were will can may should must'.split(
+    ' '
+  )
+);
+function looksLikeEnglishProse(text) {
+  const ascii = text.replace(/[^\x20-\x7e\n\t]/g, '');
+  if (ascii.length / text.length < 0.9) return false;
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < 6) return false;
+  let stop = 0;
+  for (const w of words) {
+    if (PROSE_STOPWORDS.has(w.toLowerCase().replace(/[^a-z]/g, ''))) stop++;
+    if (stop >= 2) break;
+  }
+  if (stop < 2) return false;
+  return /[.,:;!?)](\s|$)/.test(text);
+}
+
+// Strings rejected ONLY by the prose-quality gates (they cleared the drop
+// contexts, the hard excludes, and the floor) that read like English prose.
+// These are the classification candidates the prose gates used to eat
+// silently — ~14k raw drops per version funnel down to a few thousand
+// one-time candidates here; the LLM classification phase writes each a
+// verdict and the NEXT extraction acts on it (capture + name for 'model',
+// permanent drop for 'ui'/'internal'). Collected during extractStrings,
+// filtered against the final catalogue, and written as a sidecar by the CLI.
+const _gateCandidates = new Map(); // body -> flattened lead
+function recordGateCandidate(body, lead) {
+  if (!_gateCandidates.has(body)) {
+    _gateCandidates.set(body, lead.slice(-120).replace(/\n/g, ' '));
+  }
+}
+
+// The capture decision for one emission site. Order:
+//   1. Structural drop contexts (jsx children, throw, console, hljs grammar…)
+//      always drop — candidates are never recorded from these sites, so no
+//      cache verdict can exist to argue with them.
+//   2. A classification-cache verdict is authoritative for everything else —
+//      it was produced by reading this exact content's emission site — so a
+//      'model' verdict rescues a string the prose gates would drop, and a
+//      'ui'/'internal' verdict drops a string the gates would admit. Hard
+//      structural excludes still win over a 'model' verdict.
+//   3. No verdict -> the static gates decide; a prose-gate-only rejection
+//      that looks like English prose becomes a classification candidate.
+function shouldCapture(text, cacheBody, lead, minLength) {
+  if (leadShowsDropContext(lead)) return false;
+  const cls = classifyByCache(cacheBody);
+  if (cls) return cls.facing === 'model' && !isHardExcluded(text);
+  const signalled = leadShowsModelFacingContext(lead, text);
+  const eff = signalled ? 1 : Math.min(minLength, ADMIT_FLOOR);
+  if (validateInput(text, eff, { bypassQuality: signalled })) return true;
+  if (
+    !signalled &&
+    text.length >= ADMIT_FLOOR &&
+    validateInput(text, eff, { bypassQuality: true }) &&
+    looksLikeEnglishProse(cacheBody)
+  ) {
+    recordGateCandidate(cacheBody, lead);
+  }
+  return false;
 }
 
 function validateInput(text, minLength = 500, opts = {}) {
@@ -2243,73 +2481,10 @@ function validateInput(text, minLength = 500, opts = {}) {
   // What to exclude.
   // ////////////////
 
-  // Bundled skill build-tooling — executable JS/MJS source shipped inside a
-  // skill, not model-facing prompt text. The design-sync skill (new in 2.1.160)
-  // ships package-build.mjs and a validation script (#!/usr/bin/env node) plus
-  // lib/*.mjs modules (ts-morph .d.ts extraction, esbuild bundling, storybook
-  // adapters). Piebald excludes these too. Mirror the `#!/usr/bin/env bun` rule.
-  if (text.startsWith('#!/usr/bin/env node')) return false;
-
-  // @internal JSDoc annotations on staged-release Options fields (new in
-  // 2.1.169: supportedDialogKinds dialog-kind gating, retracted-message uuid
-  // wiring). TS doc-comments the AST walk surfaces as prose — not model-facing
-  // prompt text, no override target.
-  if (text.startsWith('@internal ')) return false;
-  // The lib/*.mjs ESM modules open with a `// ` banner comment and carry both an
-  // `import ... from '...'` line and a top-level `export` — a shape no prompt has.
-  if (
-    /^\/\/ /.test(text) &&
-    /\nimport\s.+\sfrom\s['"]/.test(text) &&
-    /\nexport\s+(function|const|default|\{)/.test(text)
-  )
-    return false;
-
-  // Runtime-hardening IIFEs the bundler emits in 2.1.165 (`(() => { ... })`):
-  // an Error.prepareStackTrace lockdown and a WeakMap/Array snapshot guard.
-  // These are executable code, not model-facing prompt text.
-  if (text.startsWith('(() => {')) return false;
-
-  // claude-in-chrome browser MCP tool descriptions are embedded in cli.js as a
-  // tool-definition array but are not part of the catalogued prompt set (no
-  // sibling browser tool is catalogued, and none were through 2.1.162). 2.1.165
-  // extended file_upload's description enough to trip an include heuristic; drop
-  // it to stay consistent with the baseline.
-  if (
-    text.startsWith(
-      'Upload one or multiple files to a file input element on the page'
-    )
-  )
-    return false;
-
-  // Two general-purpose-agent fragments the current extractor surfaces that
-  // have no working override target, so cataloging either only produces a
-  // "Could not find" at apply. Drop both — the live agent-prompt-general-purpose
-  // and agent-prompt-general-purpose-short already cover the text.
-  //
-  // 1. The strengths/guidelines half: general-purpose is authored as
-  //    `intro + ${`strengths`}`, so this inline template literal is kept by the
-  //    ${-interpolation exception in the subset filter. Its only occurrence is
-  //    inside general-purpose's span (which fully inlines it), so an override
-  //    can never match independently.
-  if (
-    text.startsWith(
-      'Your strengths:\n- Searching for code, configurations, and patterns across large codebases'
-    )
-  )
-    return false;
-
-  // 2. The fallback agent prompt (bzK), used in the agent runner's catch path.
-  //    It is the intro + concise-report directive without the strengths block.
-  //    agent-prompt-general-purpose-short's text is a prefix of it and occurs at
-  //    both sites, so the short-variant override (applied with a global pattern)
-  //    clobbers this fragment's opening first — no override of it can ever match.
-  if (
-    text.startsWith('You are an agent for Claude Code, Anthropic') &&
-    text.includes('When you complete the task, respond with a concise report') &&
-    !text.includes('Your strengths') &&
-    text.trimEnd().endsWith('so it only needs the essentials.')
-  )
-    return false;
+  // Structural + apply-correctness excludes, shared with the cache-verdict
+  // path in shouldCapture (a cache 'model' verdict cannot override these).
+  // History/rationale for each rule lives on isHardExcluded.
+  if (isHardExcluded(text)) return false;
 
   // ////////////////
   // What to include.
@@ -2488,9 +2663,6 @@ function validateInput(text, minLength = 500, opts = {}) {
   // CC version-update banner shown to users when their install is outdated.
   if (text.startsWith('Your version of Claude Code (')) return false;
 
-  // Bun-compiled script template embedded in cli.js for spawned subprocesses.
-  if (text.startsWith('#!/usr/bin/env bun')) return false;
-
   // JSON-schema-style config option descriptions (not prompts). Pattern:
   // `When true, ...` followed by `Equivalent to setting <flag>: false on
   // the API.` These appear as tool/server config docstrings.
@@ -2534,6 +2706,15 @@ function validateInput(text, minLength = 500, opts = {}) {
 
   const lowerText = text.toLowerCase();
   const hasYou = lowerText.includes('you');
+  // DELIBERATELY a substring test, not \bai\b. It looks like slop — it also
+  // matches "available"/"detail"/"bailing" — but it is load-bearing: measured
+  // on 2.1.206, tightening it to a word boundary drops six genuinely
+  // model-facing catalogued prompts (system-prompt-minimal-mode,
+  // tool-parameter-computer-action, agent-prompt-claude-code-docs-description,
+  // skill-plan-artifact-html-template, data-github-actions-workflow-for-
+  // claude-mentions, skill-schedule-recurring-cron-…-compact) that pass this
+  // gate only via such substrings. The junk it over-admits is neutralized
+  // downstream by the classification cache; the capture loss would not be.
   const hasAI = lowerText.includes('ai') || lowerText.includes('assistant');
   const hasInstruct =
     lowerText.includes('must') ||
@@ -2619,6 +2800,7 @@ function decodeUnicodeEscapesInPiece(s) {
 }
 
 function extractStrings(filepath, minLength = 500) {
+  _gateCandidates.clear(); // idempotent across calls
   const code = fs.readFileSync(filepath, 'utf-8');
 
   const ast = parser.parse(code, {
@@ -2631,31 +2813,27 @@ function extractStrings(filepath, minLength = 500) {
   const traverse = node => {
     if (!node || typeof node !== 'object') return;
 
-    // Extract string literals
+    // Extract string literals. shouldCapture folds together the drop
+    // contexts, the classification cache (authoritative — a 'model' verdict
+    // rescues prose-gate rejections, a 'ui'/'internal' verdict drops), the
+    // static gates, and candidate recording. NAMES are applied post-merge so
+    // established fuzzy-carryover ids win over cache names (applyCacheNames).
     if (node.type === 'StringLiteral') {
-      const lead = code.slice(Math.max(0, node.start - 140), node.start);
-      const signalled = leadShowsModelFacingContext(lead);
-      const eff = signalled ? 1 : Math.min(minLength, ADMIT_FLOOR);
-      if (
-        !leadShowsDropContext(lead) &&
-        validateInput(node.value, eff, { bypassQuality: signalled })
-      ) {
-        const cls = classifyByCache(node.value);
-        // Cache decides KEEP/DROP here (facing); NAMES are applied post-merge so
-        // established fuzzy-carryover ids win over cache names (applyCacheNames).
-        if (!cls || cls.facing === 'model') {
-          stringData.push({
-            name: '',
-            id: '',
-            description: '',
-            pieces: [node.value],
-            identifiers: [],
-            identifierMap: {},
-            start: node.start,
-            end: node.end,
-          });
-        }
-        // cls.facing 'ui'/'internal' -> not sent to the model, drop.
+      // 600 chars of lead: the last 120 (tail) drive most rules; the wide
+      // window exists for the nudge-catalog compound rules, whose sibling
+      // keys sit beyond a long preceding string value.
+      const lead = code.slice(Math.max(0, node.start - 600), node.start);
+      if (shouldCapture(node.value, node.value, lead, minLength)) {
+        stringData.push({
+          name: '',
+          id: '',
+          description: '',
+          pieces: [node.value],
+          identifiers: [],
+          identifierMap: {},
+          start: node.start,
+          end: node.end,
+        });
       }
     }
 
@@ -2668,17 +2846,19 @@ function extractStrings(filepath, minLength = 500) {
       const contentEnd = node.end - 1; // Before closing backtick
       const fullContent = code.substring(contentStart, contentEnd);
 
-      const lead = code.slice(Math.max(0, node.start - 140), node.start);
-      const signalled = leadShowsModelFacingContext(lead);
-      const eff = signalled ? 1 : Math.min(minLength, ADMIT_FLOOR);
+      // 600 chars of lead: the last 120 (tail) drive most rules; the wide
+      // window exists for the nudge-catalog compound rules, whose sibling
+      // keys sit beyond a long preceding string value.
+      const lead = code.slice(Math.max(0, node.start - 600), node.start);
 
-      // Validate before processing
-      if (
-        leadShowsDropContext(lead) ||
-        !validateInput(fullContent, eff, { bypassQuality: signalled })
-      ) {
-        return;
-      }
+      // No early return here (pre-2.7.0 this `return`ed on any gate
+      // rejection, which also skipped the recursion at the bottom — hiding
+      // every string NESTED inside a rejected template from capture
+      // entirely). The identifier walk now runs first because a template's
+      // cache key is its DECODED piece content (tbody); shouldCapture then
+      // folds in the drop contexts, the classification cache, the static
+      // gates, and candidate recording. The walk on never-captured templates
+      // is cheap and side-effect-free.
 
       // Collect all identifiers with their positions
       const allIdentifiers = []; // Array of {name, start, end} sorted by position
@@ -2804,10 +2984,11 @@ function extractStrings(filepath, minLength = 500) {
       });
 
       const tbody = pieces.join('');
-      const cls = classifyByCache(tbody);
-      // Cache decides KEEP/DROP here (facing); NAMES applied post-merge so
-      // established fuzzy-carryover ids win over cache names (applyCacheNames).
-      if (!cls || cls.facing === 'model') {
+      // NAMES are applied post-merge so established fuzzy-carryover ids win
+      // over cache names (applyCacheNames). Gate checks (raw source) use
+      // fullContent — the same text pre-2.7.0 validated — while the cache
+      // key and prose heuristic use the decoded tbody.
+      if (shouldCapture(fullContent, tbody, lead, minLength)) {
         stringData.push({
           name: '',
           id: '',
@@ -2819,7 +3000,6 @@ function extractStrings(filepath, minLength = 500) {
           end: node.end,
         });
       }
-      // cls.facing 'ui'/'internal' -> not sent to the model, drop.
     }
 
     // Recursively traverse
@@ -2872,7 +3052,16 @@ function extractStrings(filepath, minLength = 500) {
     }
   }
 
-  return { prompts: filteredData };
+  const gateCandidates = [...(_gateCandidates.entries())].map(
+    ([body, lead]) => ({
+      hash: crypto.createHash('sha1').update(body).digest('hex'),
+      len: body.length,
+      lead,
+      body,
+    })
+  );
+
+  return { prompts: filteredData, gateCandidates };
 }
 
 // Post-merge per-id normalization. One JSON entry per code-site is correct —
@@ -3282,6 +3471,10 @@ if (require.main === module) {
     };
   };
 
+  // Cache lookups must recognize both the raw ("2.1.206") and the
+  // <<CCVERSION>>-normalized form of version-containing content.
+  setCcVersionForCacheLookups(version);
+
   const result = extractStrings(filepath);
   // Replace version in newly extracted strings BEFORE merging
   const versionReplacedResult = replaceVersionInPrompts(result, version);
@@ -3404,6 +3597,31 @@ if (require.main === module) {
 
   console.log(`Extracted ${mergedResult.prompts.length} strings`);
   console.log(`Written to ${outputFile}`);
+
+  // Sidecar: prose-gate-rejected English-prose strings that still need a
+  // classification verdict. Filtered against the FINAL catalogue (a candidate
+  // whose text already lives inside a captured prompt needs no verdict).
+  // `driver.mjs classify-candidates` merges these into the chunk files the
+  // classification workflow consumes; classify-merge writes the verdicts and
+  // the next extraction acts on them.
+  const catalogueBlob = mergedResult.prompts
+    .map(p => p.pieces.join(''))
+    .join(' ');
+  const gateCandidates = (result.gateCandidates || []).filter(
+    c => !catalogueBlob.includes(c.body.slice(0, 80))
+  );
+  const sidecarPath = '/tmp/tweakcc-gate-candidates.json';
+  fs.writeFileSync(
+    sidecarPath,
+    JSON.stringify(
+      { version, source: path.resolve(filepath), candidates: gateCandidates },
+      null,
+      1
+    )
+  );
+  console.log(
+    `Prose-gate candidates needing classification: ${gateCandidates.length} -> ${sidecarPath}`
+  );
 }
 
 module.exports = extractStrings;
@@ -3414,3 +3632,8 @@ module.exports.leadShowsDropContext = leadShowsDropContext;
 module.exports.contentIsModelFacingShortPrompt = contentIsModelFacingShortPrompt;
 module.exports.validateInput = validateInput;
 module.exports.ADMIT_FLOOR = ADMIT_FLOOR;
+module.exports.shouldCapture = shouldCapture;
+module.exports.looksLikeEnglishProse = looksLikeEnglishProse;
+module.exports.isHardExcluded = isHardExcluded;
+module.exports.setCcVersionForCacheLookups = setCcVersionForCacheLookups;
+module.exports._setClassificationCacheForTests = _setClassificationCacheForTests;
