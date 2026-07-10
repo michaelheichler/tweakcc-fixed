@@ -17,7 +17,7 @@
 
 Claude Code only exposes so much through its settings. tweakcc reaches the rest: it patches the installed binary directly — the `cli.js`, and the JavaScript baked into the native Bun build — so you can restyle the interface, rewrite the prompts Claude actually runs on, and change how it behaves. You pick what you want from a terminal UI, apply it in one command, and roll it back whenever you like.
 
-This is **tweakcc-fixed**, a fork of [Piebald's tweakcc](https://github.com/Piebald-AI/tweakcc) that keeps everything the original does and pushes further — roughly twice the prompt coverage, a deeper set of patches, and overrides that reach the native install where upstream stops. More on that [below](#what-this-fork-adds).
+This is **tweakcc-fixed**, a fork of [Piebald's tweakcc](https://github.com/Piebald-AI/tweakcc) that keeps everything the original does and pushes further — over four times the prompt coverage, a deeper set of patches, and overrides that reach the native install where upstream stops. More on that [below](#what-this-fork-adds).
 
 ```console
 $ npx -y tweakcc-fixed@latest --apply
@@ -52,12 +52,12 @@ It works the same on npm and native (Bun-compiled) installs, every change is a t
 
 tweakcc-fixed is a strict superset of the original: everything above still applies, on the same latest Claude Code target. What it adds is reach.
 
-The biggest difference is coverage. Its extractor pulls roughly twice the prompt surface upstream does — every model-facing string, including the short ones the base skips — which is what makes serious prompt editing possible in the first place.
+The biggest difference is coverage. Its extractor pulls over four times the prompt surface upstream does — every model-facing string at any length: tool results, system reminders, utility-agent prompts, the usage-nudge catalog, and the short fragments the base skips. Every candidate string is classified by its emission site (model-facing vs UI vs internal) with verdicts cached content-addressed, so coverage is complete by construction, not by heuristic. That is what makes serious prompt editing possible in the first place.
 
 |                              | tweakcc-fixed | upstream  |
 | ---------------------------- | :-----------: | :-------: |
-| Prompt sites (CC 2.1.206)    |   **1,596**   |    570    |
-| Unique prompt IDs            |   **1,482**   |    570    |
+| Prompt sites (CC 2.1.206)    |   **2,635**   |    570    |
+| Unique prompt IDs            |   **2,439**   |    570    |
 | Patches                      |    **58**     |    45     |
 | Overrides on native installs |    **yes**    | gated off |
 
