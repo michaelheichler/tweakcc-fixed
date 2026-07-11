@@ -17237,5 +17237,324 @@
   "e97727c46a290c6e44a02596e63384c36971afce": { "facing": "ui" },
   "9cf3a9f3a5ca8f1d106bcd8721777d041488b1ab": { "facing": "ui" },
   "7f85f091815d4e93af0b07229cc36e7f2e958ff2": { "facing": "ui" },
-  "6ddf16c5f2d547f6fa7a6934c00f5a016e9d85bf": { "facing": "ui" }
+  "6ddf16c5f2d547f6fa7a6934c00f5a016e9d85bf": { "facing": "ui" },
+  "3cff4aa74e648f4c044404117d3cf5aacd219c54": {
+    "facing": "model",
+    "id": "skill-morning-slash-command",
+    "name": "Skill: /morning slash command",
+    "desc": "Body spec for the /morning slash command that the model executes to render or schedule the morning-brief HTML artifact."
+  },
+  "c9c3989e61c8f83430b0cc17e3d6a17cdb628344": {
+    "facing": "model",
+    "id": "tool-description-schedulewakeup-reason-field",
+    "name": "Tool Description: ScheduleWakeup reason field",
+    "desc": "Reason-field guidance fragment appended into the ScheduleWakeup/snooze tool description read by the model."
+  },
+  "475d1b644580ca98086057a9473cfb4d4f1cf933": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-settings-local-indirection-gate-blocked",
+    "name": "Data: Auto-mode recon settings.local indirection-gate blocked",
+    "desc": "Auto-mode recon report fragment noting .claude failed the indirection gate, injected into the auto-mode classifier context."
+  },
+  "84cbce06617970cd5ff6d494d91ce914cadec5e1": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-settings-local-skipped",
+    "name": "Data: Auto-mode recon settings.local skipped",
+    "desc": "Auto-mode recon report fragment noting settings.local.json present but skipped for failing the indirection gate, injected into the auto-mode classifier context."
+  },
+  "438e461b2925abb34674766ed7438b89819a1965": {
+    "facing": "model",
+    "id": "tool-description-schedulewakeup-delay-and-reason-guidance",
+    "name": "Tool Description: ScheduleWakeup delay and reason guidance",
+    "desc": "Composite ScheduleWakeup tool-description extension covering noop reporting, cache-aware delaySeconds selection, and the reason field."
+  },
+  "1c72310dc52a407d59e8fbc3d66d972fc1de4fcb": {
+    "facing": "model",
+    "id": "system-reminder-claudedesign-project-grant-unavailable-without-verified-identity",
+    "name": "System Reminder: ClaudeDesign project grant unavailable without verified identity",
+    "desc": "Permission-deny message returned to the model explaining a ClaudeDesign project-scope grant can't be offered without a verified project identity."
+  },
+  "21e293da1e28991eb2d204850d93c461d17cbd18": { "facing": "ui" },
+  "a61fc68ea38e4435906f66b3a37c476d18dfe3be": { "facing": "internal" },
+  "8e673aeb16951ce0df219796c1e46caea6749e86": { "facing": "ui" },
+  "5b105cb30a4be1b5debbc88ea8e9ec69264fd283": {
+    "facing": "model",
+    "id": "system-prompt-cowritten-artifact-untrusted-trailer",
+    "name": "System Prompt: Co-written artifact untrusted-content trailer",
+    "desc": "Trailing instruction wrapping co-written artifact HTML in model context, warning that the tag's contents are untrusted data."
+  },
+  "92da8de8ffba97e726d32cbd55247611e2acfdf1": { "facing": "internal" },
+  "43f6952f532a10ebf18420bd8e74080f1bb9b9f6": {
+    "facing": "model",
+    "id": "slash-command-morning-description",
+    "name": "Slash Command: /morning description",
+    "desc": "Description/when-to-use string for the /morning command that the model reads to match invocation triggers."
+  },
+  "01b443d32401310e8de342354d5796223e949aac": {
+    "facing": "model",
+    "id": "data-structured-tool-output-field-schema",
+    "name": "Data: Structured tool output field schema",
+    "desc": "Schema description of the tool_use_result Output object field surfaced in user messages, including per-tool shapes and the Agent/Task completed contract."
+  },
+  "4f4d68f01866cc51ff89b66622d1e201009a6d08": {
+    "facing": "model",
+    "id": "data-artifact-unobserved-connector-warning",
+    "name": "Artifact Unobserved Connector Warning",
+    "desc": "Warning appended to the artifact-read/publish tool result telling the model a declared connector had no observed call, directing it to verify or tell the user; injected into the model's context via the warnings array."
+  },
+  "04f79a4f1cc86f19a8830d596d93b0ec493fe4fc": { "facing": "internal" },
+  "d81811b7cadd9147254451169f04e491ef848eed": {
+    "facing": "model",
+    "id": "tool-description-deferred-tool-placeholder",
+    "name": "Deferred Tool Placeholder Description",
+    "desc": "description field of the DeferredToolPlaceholder tool schema the model reads, telling it never to call the reserved placeholder tool."
+  },
+  "88bd062f68f7b3ccb68137c0ac3abf04909994d9": { "facing": "internal" },
+  "7b65a97db9223544889e5d0a7fb05104a160f688": { "facing": "internal" },
+  "da19488df7e1b24c3b9da204b32ba0e6564cc003": { "facing": "internal" },
+  "3434bfe7d93bdb6a4c189d274be37c93b23a6ba7": { "facing": "internal" },
+  "2755934183b720ae8d7f276262a515cfdbe88543": { "facing": "internal" },
+  "5c2fd4fb5f094d91cf07ae14f63ae0f3caec3f36": { "facing": "ui" },
+  "4aa08ad35d069745dea11a3507853c3ffc4901be": { "facing": "internal" },
+  "95b536caad33f073e95beb8077c62447073a9934": { "facing": "internal" },
+  "1dca5e3c144c4e18ccf1adc69e428bc6aea7a2b6": {
+    "facing": "model",
+    "id": "system-prompt-system-reminder-provenance",
+    "name": "System-Reminder Provenance Note",
+    "desc": "System-prompt fragment telling the model that <system-reminder> tags in messages and tool results are injected by the harness, not the user; part of the _rg() system-prompt array."
+  },
+  "630478889817bbd1d91dc7c7884a0da2d7b6c905": {
+    "facing": "model",
+    "id": "system-prompt-system-turns-modifications",
+    "name": "Mid-Conversation System Turns Note",
+    "desc": "System-prompt fragment returned by ieu() explaining that the system may send updates/reminders/rule modifications via mid-conversation system turns, distinct from function results."
+  },
+  "43f1e3f9473b914aecfb6ffc03a749b8af6b90de": { "facing": "ui" },
+  "d204adbfba9f56304aa5435d4c400c6469e57b25": { "facing": "internal" },
+  "0007a5ca923a34ef160b01f6b547bd8b53c006b0": {
+    "facing": "model",
+    "id": "tool-description-bash-sandbox-permission-gate",
+    "name": "Bash Sandbox Permission-Gate Note",
+    "desc": "Sandbox-guidance sub-bullet in the Bash tool description explaining that a dangerouslyDisableSandbox retry passes through the permission gate; injected into the model's Bash tool schema."
+  },
+  "4f7ed82dc77ca8fd92f88d4c067cdd83a03a538f": { "facing": "internal" },
+  "fedf30b5b8d05faa27e1eb3464a92e23f17e995c": { "facing": "internal" },
+  "6e9a8530dbf5539b9153212a67604b20d03ba850": { "facing": "internal" },
+  "9b594128af491b1bc43147bc371b3538c98726de": { "facing": "ui" },
+  "27cc36610dca4ce23e961a2d9e4addcccb7931c5": { "facing": "ui" },
+  "33f49a1258a2715bf488a041f483e0f102305f1c": { "facing": "ui" },
+  "46ae014bcb9828b4545e7af4da30323f7ed059c3": { "facing": "ui" },
+  "e373d7e054e1642210487a6ca724e1e27f5c362c": { "facing": "internal" },
+  "53c5188aaa0460c641d7630f63017c60dd1e506a": { "facing": "ui" },
+  "d6635084b57fdc67afbb3125d767ce01d14a8fc5": { "facing": "ui" },
+  "572394aed45d3406e3bea19b0ca78c6b83e61049": { "facing": "internal" },
+  "be25e10de2ca5b0c810c7f5862e37c0ed627df8d": { "facing": "ui" },
+  "5ab4ffe30eab129d4bc2d6bc89ec8fc93daf0717": { "facing": "internal" },
+  "f21f5bed7d93d1d523e320efc288f3dcd6145ab0": { "facing": "internal" },
+  "8079a577b2171043db0e2de27356cdfa163d0fc4": { "facing": "internal" },
+  "378cae2a028baeb7a626b5708b9d0c7e6bae427f": {
+    "facing": "model",
+    "id": "data-cowritten-artifact-wrap-lead",
+    "name": "Cowritten Artifact Untrusted-Data Wrap Lead",
+    "desc": "Lead text (ARTIFACT_COWRITTEN_WRAP_LEAD) wrapped around cowritten artifact HTML in the artifact-read tool result, instructing the model to treat the tag contents as untrusted data."
+  },
+  "bd3ac55e18d8addce29c1adf1b1e9d038727a68c": {
+    "facing": "model",
+    "id": "data-artifact-cowritten-ownership-label",
+    "name": "Cowritten Artifact Ownership Label",
+    "desc": "Ownership phrase in the [Artifact …] header of the artifact-read tool result telling the model the artifact includes other writers' contributions."
+  },
+  "a0e2e13a124849dbdffc9dd946dd2b71adc38ffb": {
+    "facing": "model",
+    "id": "data-artifact-cowritten-read-note",
+    "name": "Cowritten Artifact Read Note",
+    "desc": "Suffix note in the artifact-read tool result warning the model that the saved file contains co-writer content and must be treated as untrusted when Read."
+  },
+  "560c1dad75e2aa9abb47f2dd9a3fde15dd0f2e69": { "facing": "ui" },
+  "871a17119412784d60e3b0b849bace20865670c4": {
+    "facing": "model",
+    "id": "tool-result-claudedesign-project-scope-no-writes",
+    "name": "ClaudeDesign Project-Scope No-Writes Validation Error",
+    "desc": "Input-validation error message (from tId) returned by the ClaudeDesign tool's validateInput as {result:false,message} to the model when a project-scoped finalize_plan supplies writes/deletes."
+  },
+  "90c4a13a40ece6a42896802175eb02cb610d2538": {
+    "facing": "model",
+    "id": "tool-result-claudedesign-enum-validation",
+    "name": "ClaudeDesign Enum Argument Validation Error",
+    "desc": "Input-validation error message from the ClaudeDesign tool's validateInput telling the model an argument must be one of an enumerated set, returned as the tool result."
+  },
+  "135a2ac99d459c6126a26af8031bfe18bb7d95ce": { "facing": "ui" },
+  "cea66e251347bc132cb99cad61fa13adce3fefd1": {
+    "facing": "model",
+    "id": "tool-result-operation-catalog-unchanged",
+    "name": "Operation Catalog Unchanged Note",
+    "desc": "Note field of the tool-result object {catalog_unchanged:true,note:…} returned to the model when the operation catalog is unchanged, pointing it to the earlier result for full descriptions/schemas."
+  },
+  "c65469f947ff6f367be5d022bcd1806b8645daca": {
+    "facing": "model",
+    "id": "tool-result-claude-design-catalog-unchanged-note",
+    "name": "ClaudeDesign Catalog-Unchanged Note",
+    "desc": "The `note` field of the catalog_unchanged tool-result object returned by the ClaudeDesign tool, telling the model to re-fetch the full operation catalog if it fell out of context."
+  },
+  "8f5f8df6ef79219a0ae868d26d3c952c63b2a7aa": {
+    "facing": "model",
+    "id": "tool-result-design-auth-401-retried",
+    "name": "Design Auth 401 (Retried) Base Message",
+    "desc": "Base HTTP-401 auth-failure message (retried-credential variant) built by mDy and returned to the model as a ClaudeDesign/DesignSync tool_result error."
+  },
+  "f09a13883e66c81a08c2c5a470a7f02b7cf809cf": {
+    "facing": "model",
+    "id": "tool-result-design-auth-401-no-refresh",
+    "name": "Design Auth 401 (No Refresh) Base Message",
+    "desc": "Base HTTP-401 auth-failure message (credential rejected, no refresh produced) built by mDy and returned to the model as a ClaudeDesign tool_result error."
+  },
+  "fbb1e7a4aea59f2325e807dcf234b050ae2b0a16": {
+    "facing": "model",
+    "id": "tool-result-design-auth-401-login-expired",
+    "name": "Design Auth 401 Login Expired/Revoked",
+    "desc": "Auth-failure suffix telling the model the /design login credential is expired/revoked and how to re-authenticate; returned as a ClaudeDesign tool_result error."
+  },
+  "0a3e7146f50cbecca97c00a9915a91a7544ac392": {
+    "facing": "model",
+    "id": "tool-result-design-auth-401-login-noninteractive-suffix",
+    "name": "Design Auth 401 Non-Interactive Login Suffix",
+    "desc": "Ternary suffix appended to the design auth-failure message when /design login needs an interactive terminal; part of the ClaudeDesign tool_result error to the model."
+  },
+  "4e3ba49871337f053fd31f2e632197b0e1136491": {
+    "facing": "model",
+    "id": "tool-result-design-auth-401-remote-session",
+    "name": "Design Auth 401 Remote Session",
+    "desc": "Auth-failure message for a remote session whose credential is host-injected/self-healing; returned to the model as a ClaudeDesign tool_result error."
+  },
+  "bb645e601c856b61612a9e24a04a9b54b6c5435d": {
+    "facing": "model",
+    "id": "tool-result-design-auth-401-ccr-host",
+    "name": "Design Auth 401 CCR Host Token",
+    "desc": "Auth-failure message for a CCR-host-injected OAuth token with no refresh token; returned to the model as a ClaudeDesign tool_result error."
+  },
+  "b144f6557fefb8c06fd53d3e3bd1ef8ed89abc13": {
+    "facing": "model",
+    "id": "tool-result-design-auth-401-oauth-env",
+    "name": "Design Auth 401 OAuth Env Token",
+    "desc": "Auth-failure message for a CLAUDE_CODE_OAUTH_TOKEN env-var token with no refresh, advising `claude setup-token`; returned to the model as a ClaudeDesign tool_result error."
+  },
+  "bc7a15bfecf06c460b9a1fbf9d0c1a97e7d1157d": {
+    "facing": "model",
+    "id": "tool-result-design-credential-expired-noninteractive",
+    "name": "ClaudeDesign Credential Expired (Non-Interactive)",
+    "desc": "ClaudeDesign auth-error message built by mDy() and thrown as a Bn tool error; surfaced to the model as the ClaudeDesign tool_result when the credential is expired in a non-interactive session."
+  },
+  "9e78b964b43a7e59062285afffc7455d1415202b": {
+    "facing": "model",
+    "id": "tool-result-design-credential-expired-login-hint",
+    "name": "ClaudeDesign Re-Login Hint (Interactive)",
+    "desc": "Interactive-session branch of mDy()'s ClaudeDesign auth-error message thrown as a Bn tool error and returned to the model as the ClaudeDesign tool_result."
+  },
+  "dbf7592f4eca7af0a7266e1606e8ed5c6da4d94e": { "facing": "ui" },
+  "8d5f3725186bc801467ca8add4a45092667ca7a5": {
+    "facing": "model",
+    "id": "tool-result-design-finalize-plan-project-id-required",
+    "name": "ClaudeDesign finalize_plan Missing project_id",
+    "desc": "validateInput() error message for the ClaudeDesign tool returned to the model as an invalid-input tool_result when finalize_plan lacks a project_id."
+  },
+  "12eaa0e5880c0ada30d9a70aa61603a3915402f7": {
+    "facing": "model",
+    "id": "tool-result-design-finalize-plan-scope-noninteractive",
+    "name": "ClaudeDesign finalize_plan Scope Denied (Non-Interactive)",
+    "desc": "Permission-deny message returned to the model when finalize_plan requests scope \"project\" in a non-interactive session."
+  },
+  "908f55a175a3d4cd13e50d93d297123ede97da92": {
+    "facing": "model",
+    "id": "tool-result-design-finalize-plan-scope-unavailable-context",
+    "name": "ClaudeDesign finalize_plan Scope Unavailable (Subagent/Hook)",
+    "desc": "Permission-deny message returned to the model when finalize_plan requests scope \"project\" in a subagent/PermissionRequest-hook context."
+  },
+  "b0387f3f1660c74dc2927e834c94e47d122f6ae2": {
+    "facing": "model",
+    "id": "tool-result-design-finalize-plan-scope-needs-connection",
+    "name": "ClaudeDesign finalize_plan Scope Needs Connection Approval",
+    "desc": "Permission-deny message returned to the model when a project-wide finalize_plan grant is requested before the Claude Design connection is approved."
+  },
+  "52d0ec87f8fa916998862c8ed56800b125e5a4c9": { "facing": "internal" },
+  "d7bf33c351e036ee4b72d25cd2132009817cb4b4": { "facing": "ui" },
+  "2d81511ff550e3229c5324c4a12e669e9a999e20": { "facing": "internal" },
+  "958c6236a410d1c0a6433c31cad9dc071dd5bba9": { "facing": "internal" },
+  "048ee864800db9a62108f198e3e8da72f29a59fe": { "facing": "ui" },
+  "41e78ebba82b270d3f7245e2823b984fe1409aff": { "facing": "internal" },
+  "b5c33bb21870936f47c4e94d5258c6392cced6f2": { "facing": "ui" },
+  "c24f7b0ae6e6494dd34003b0a481f94880cf5917": { "facing": "ui" },
+  "485b56fc2c62cb23d79bd899aeba985b941d556d": { "facing": "internal" },
+  "20c669aea8698d814ef34c8a7f10928ce3884c9a": { "facing": "ui" },
+  "ee4ccc0bb944589b900840247e9491002c3b271f": { "facing": "ui" },
+  "9e5f16373aedf44395b8bd45f6ae1ed923a30eb3": { "facing": "ui" },
+  "e7f4111c5b6147263c3ad6f20bd831c02765ad1f": { "facing": "internal" },
+  "1988ec62789a8e0188f50829a956870aad80a08d": { "facing": "internal" },
+  "064dac925fdaeea9e53b95391bcde3cdda5f4550": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-org-not-derivable",
+    "name": "Auto-Mode Recon: Org Not Derivable",
+    "desc": "Markdown note stating the git org couldn't be derived from the origin remote; a fragment of the '## Pre-gathered recon' context injected into the model for /auto-mode-setup."
+  },
+  "b597a7d1a532b189c4644a7fd293d6971df2ac8f": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-settings-local-tracked",
+    "name": "Auto-Mode Recon: settings.local Git-Tracked Status",
+    "desc": "Markdown line reporting whether .claude/settings.local.json is tracked in git; part of the /auto-mode-setup pre-gathered recon document fed to the model."
+  },
+  "2ddbb4472d73b7050017aed95bed7be58b511402": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-classifyallshell-note",
+    "name": "Auto-Mode Recon: classifyAllShell Note",
+    "desc": "Markdown note explaining classifyAllShell makes auto mode ignore all shell allow rules; a fragment of the /auto-mode-setup recon context injected into the model."
+  },
+  "e88482722e73bf0f97c7fedc3d96b1d4900ee80e": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-more-flagged-capped",
+    "name": "Auto-Mode Recon: More Flagged Entries Capped",
+    "desc": "Markdown '…and N more flagged entries not shown (list capped)' line within the /auto-mode-setup pre-gathered recon document read by the model."
+  },
+  "e7f1029bfc1f1a1442a0d1f81f0f875356f3b5de": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-allow-classifier-bypassing",
+    "name": "Auto-Mode Recon: Classifier-Bypassing Allow Entries",
+    "desc": "Markdown '#### permissions.allow entries auto mode ignores' section listing classifier-bypassing rules; a fragment of the /auto-mode-setup recon context injected into the model."
+  },
+  "c58ce1399ac9ddf587621db3b44f7e8ea2a944bf": {
+    "facing": "model",
+    "id": "data-auto-mode-destructive-permissions-section",
+    "name": "Data: Auto-mode destructive permissions.allow section",
+    "desc": "Runtime-built markdown section listing destructive permissions.allow entries, assembled by noe()/vyb() into the auto-mode setup skill prompt the model reads."
+  },
+  "a0e5570b030a3cd1653de7a9088a7230560bb750": {
+    "facing": "model",
+    "id": "data-auto-mode-flagged-entries-note",
+    "name": "Data: Auto-mode uncleanable flagged-entries note",
+    "desc": "Runtime note that N additional flagged permissions.allow entries can't be auto-removed, appended to the auto-mode setup skill prompt context."
+  },
+  "2a115f11fc029e8ed7b98e0c14fe19ec73c4cbc9": { "facing": "ui" },
+  "19c2da19c62cc83b9dc41d7318a328c3f850a621": { "facing": "ui" },
+  "ad5612d737cb9d30abfec8fcb75b23bc7141c6af": { "facing": "internal" },
+  "767f0dda98c1158946e4d84d6a4c899926d299bd": {
+    "facing": "model",
+    "id": "data-canusetool-invalid-permission-deny",
+    "name": "Data: canUseTool invalid-result deny message",
+    "desc": "Deny-result message returned when canUseTool yields a schema-invalid permission result; becomes the tool_result content the model reads."
+  },
+  "3d5c4c61f9b87e59dac23d8abea8b883a695bde3": { "facing": "internal" },
+  "c37ce42012c9f80654ee8968133518689149c146": {
+    "facing": "model",
+    "id": "data-permission-prompt-tool-invalid-deny",
+    "name": "Data: permission-prompt-tool invalid-result deny message",
+    "desc": "Deny-result message when the permission prompt tool returns a schema-invalid result; becomes the tool_result content the model reads."
+  },
+  "c5f86d16d82d45048985b3fed4fd21e6c2e80d3a": { "facing": "ui" },
+  "3bcc3d62243758474728c428a8dec922fbb3b514": { "facing": "ui" },
+  "d569fb3cbadc2da6b76d2fc35e123953f13ac752": { "facing": "ui" },
+  "9c574c1cf27b9a90a9b09a9ea6092da53b68bed3": { "facing": "ui" },
+  "cfa1447e4c48b3e7d7cd546ba48215ffc7974075": { "facing": "internal" },
+  "093c6d8f4d47046eb1e3d2ccc447c5691d4f6d5b": { "facing": "ui" },
+  "bbd61b8739fa9f17eec56cd0d1caa16a6077aeb8": { "facing": "ui" },
+  "69f851c4566e4ddc5427ed16835512a5d28d370a": { "facing": "ui" },
+  "ab31ac1aac431f0ed83662012326b862988def5e": { "facing": "ui" },
+  "11cc266228c7b772116f06946bf72fbbe7199bde": { "facing": "ui" }
 }
