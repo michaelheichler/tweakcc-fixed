@@ -17556,5 +17556,1118 @@
   "bbd61b8739fa9f17eec56cd0d1caa16a6077aeb8": { "facing": "ui" },
   "69f851c4566e4ddc5427ed16835512a5d28d370a": { "facing": "ui" },
   "ab31ac1aac431f0ed83662012326b862988def5e": { "facing": "ui" },
-  "11cc266228c7b772116f06946bf72fbbe7199bde": { "facing": "ui" }
+  "11cc266228c7b772116f06946bf72fbbe7199bde": { "facing": "ui" },
+  "c889600de78c97b647499afbb9a1f5fabe4975aa": {
+    "facing": "model",
+    "id": "data-artifact-connected-source-guidance",
+    "name": "Data: Artifact connected-source guidance",
+    "desc": "Directs Artifact authors to load the runtime capabilities skill before declaring live connector access; appended to the Artifact skill markdown."
+  },
+  "682d0c17e14670b70dd8b23bcf7d20a2cd779189": {
+    "facing": "model",
+    "id": "system-prompt-coordinator-command-unavailable",
+    "name": "System prompt: command unavailable in coordinator mode",
+    "desc": "Coordinator-mode instruction block (pushed into the command-guidance array) telling the model not to have workers invoke a command and to tell the user it is unavailable."
+  },
+  "0606ff152ad42b5c77678e3198fd0972098d83d4": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-repo-facts-gh-note",
+    "name": "Data: auto-mode recon repo-facts gh note",
+    "desc": "Note inside the auto-mode-setup Repo facts recon section explaining gh-gathered visibility/rulesets and NOT GATHERED consent-gated parts; fed to the propose model call."
+  },
+  "2c30eb06eda0dfd46f3643e104b576249b078f25": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-shell-history-optin-note",
+    "name": "Data: auto-mode recon shell-history opt-in note",
+    "desc": "Note in the auto-mode-setup shell-history recon section clarifying Q3 opt-in and that raw history was not read; fed to the propose model call."
+  },
+  "d2df6a8c705f610685c4bacde71d8a52df779c04": {
+    "facing": "model",
+    "id": "tool-result-worktree-resumed-existing",
+    "name": "Tool result: worktree resumed as-is",
+    "desc": "EnterWorktree tool-result message fragment shown when a same-named worktree already existed and was resumed rather than reset."
+  },
+  "5baad064944997bd0218c0658740794a424979c0": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-history-no-home-dir",
+    "name": "Data: auto-mode recon history NOT GATHERED (no home dir)",
+    "desc": "NOT GATHERED placeholder in the auto-mode-setup shell-history recon section when no home directory could be determined; fed to the propose model call."
+  },
+  "065a71f78c99fb5febb3fefc0d5e55e35a92102c": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-history-network-home",
+    "name": "Data: auto-mode recon history NOT GATHERED (network home)",
+    "desc": "NOT GATHERED placeholder in the auto-mode-setup shell-history recon section when the home directory resolves to a network path; fed to the propose model call."
+  },
+  "09adf8dabcf17cd1356aea13ccc4be82dce86d4e": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-history-no-optin",
+    "name": "Data: auto-mode recon history NOT GATHERED (no opt-in)",
+    "desc": "NOT GATHERED placeholder in the auto-mode-setup shell-history recon section when the user did not opt in at Q3; fed to the propose model call."
+  },
+  "47ec5469536312bfd0380f4b9ce5e37fdf594cb5": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-home-not-searched",
+    "name": "Data: auto-mode recon home NOT GATHERED (beyond-repo not opted in)",
+    "desc": "NOT GATHERED placeholder in the auto-mode-setup recon output when the user did not opt into looking beyond the repo; fed to the propose model call."
+  },
+  "7e8790c81746bda48ce70146fbed01ec5e5baa7a": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-sibling-repos-not-fetched",
+    "name": "Data: auto-mode recon sibling repos NOT GATHERED",
+    "desc": "NOT GATHERED placeholder in the auto-mode-setup recon output when the user chose just-this-project so sibling repos were not fetched; fed to the propose model call."
+  },
+  "179ad94cbbf65a1732c43611a8ffe5c6c089dce6": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-other-transcripts-not-read",
+    "name": "Data: auto-mode recon other-project transcripts NOT GATHERED",
+    "desc": "NOT GATHERED placeholder in the auto-mode-setup recon output when other projects' transcripts were not read; fed to the propose model call."
+  },
+  "31e1fb4e38c9c023c48492b29678c603537b92e8": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-org-posture-not-fetched",
+    "name": "Data: auto-mode recon org posture NOT GATHERED",
+    "desc": "NOT GATHERED placeholder in the auto-mode-setup recon output when org posture was not fetched and must be inferred from repo facts and Q1; fed to the propose model call."
+  },
+  "99f6b686cf7e2178cc9872d65af645739536a265": {
+    "facing": "model",
+    "id": "tool-result-sendfile-agent-same-filesystem",
+    "name": "Tool result: SendFile target is a same-session agent",
+    "desc": "SendFile refused-result telling the model that a same-session agent already shares the filesystem and to use the message tool with @path instead."
+  },
+  "84257e0ff6fedb75b56d430e9efc18b98a6b452b": {
+    "facing": "model",
+    "id": "data-artifact-window-claude-contract-unavailable",
+    "name": "Data: Artifact window.claude contract unavailable",
+    "desc": "Skill call-contract fallback text injected when the served window.claude type definitions could not be extracted, warning the model not to write mcp calls from memory."
+  },
+  "9fe3829eb5f3aa932f878dde05584e838ac2aad0": {
+    "facing": "model",
+    "id": "skill-dataviz-validate-palette-js-script",
+    "name": "Skill: dataviz validate_palette.js script",
+    "desc": "The full validate_palette.js six-checks palette validator served as a file of the dataviz skill for the model to run."
+  },
+  "f6fb67942b1265f7ce4ce206bdb089374222df93": { "facing": "internal" },
+  "eb1b910a9e8322ccf4bb266c9246348305300b73": {
+    "facing": "model",
+    "id": "data-artifact-runtime-capability-declarations",
+    "name": "Data: Artifact runtime capability declarations",
+    "desc": "Defines Artifact runtime capability declaration, carry-forward, clearing, replacement, and contract pinning semantics; injected into the Artifact capabilities skill."
+  },
+  "2df0971402e4dbeccd975e6139c4959bbacf4107": {
+    "facing": "model",
+    "id": "skill-setup-cowork",
+    "name": "Skill: Setup Cowork",
+    "desc": "Guided Cowork setup flow that helps the user pick a role, install matching plugins, connect tools, try a skill, configure writing voice, and wrap up; the skill body injected as model instructions."
+  },
+  "640768a1ddb0fcf7aa67312f2fdd982bf7909f89": {
+    "facing": "model",
+    "id": "skill-morning-slash-command",
+    "name": "Skill: /morning slash command",
+    "desc": "Renders a concise styled morning brief from connected calendar and communication sources or configures it as a recurring weekday task; the MORNING_BRIEF_PROMPT injected as model instructions."
+  },
+  "86dd4458309dbe37c3db487be8c8cb308b4d6c68": {
+    "facing": "model",
+    "id": "skill-artifact-data-table-html-template",
+    "name": "Skill: Artifact data-table HTML template",
+    "desc": "Sortable/filterable data-table artifact HTML body fragment served as a reference template by the Artifact skill."
+  },
+  "fed20290035277f52eff355e566d83d32fcbecdc": {
+    "facing": "model",
+    "id": "skill-artifact-dashboard-html-template",
+    "name": "Skill: Artifact dashboard HTML template",
+    "desc": "KPI/chart/breakdown dashboard artifact HTML body fragment served as a reference template by the Artifact skill."
+  },
+  "4486b8d36882e1a21a0c9370796f00d88f6856eb": { "facing": "ui" },
+  "e00366808bf2d55fefeccd8ab1d3c83d4b6960f3": {
+    "facing": "model",
+    "id": "slash-command-design-consent-revoke-row",
+    "name": "Slash command /design: consent/revoke dispatch row",
+    "desc": "Markdown dispatch-table row in the /design command prompt instructing the model to have the user run /design consent or /design revoke and to stop rather than treat the word as a brief."
+  },
+  "00e898d62cea3b0a5551724ef8f7f7f0ccbfc6cd": {
+    "facing": "model",
+    "id": "slash-command-design-sync-login-row",
+    "name": "Slash command /design: sync/login dispatch row",
+    "desc": "Markdown dispatch-table row in the /design command prompt instructing the model to have the user run /design sync or /design login themselves and to stop."
+  },
+  "ed963e4b19dc176432cbc3ad54cb9a9a9f94ed1c": {
+    "facing": "model",
+    "id": "data-artifact-mcp-connector-guidance",
+    "name": "Data: Artifact MCP connector guidance",
+    "desc": "Explains how Artifact MCP manifests identify claude.ai connectors and discover upstream tool names; injected into the Artifact capabilities skill."
+  },
+  "2f1ff269b5a11a7a08d94f37621948df47741eed": { "facing": "ui" },
+  "6a06dcc754a0bfd17096880205f07f83239eac33": {
+    "facing": "model",
+    "id": "data-artifact-runtime-capabilities-prompt-addendum",
+    "name": "Data: Artifact runtime-capabilities prompt addendum",
+    "desc": "Optional-runtime-capabilities paragraph appended to the Artifact tool prompt telling the model to load the capabilities skill before declaring mcp/window.claude code."
+  },
+  "b22f16ac335aac757b6b764dacf84a461ac0f385": {
+    "facing": "model",
+    "id": "system-reminder-neutralized-control-tags-findings",
+    "name": "System reminder: neutralized control tags marker",
+    "desc": "Injection-guard preamble prepended to sanitized tool/observed content telling the model control tags were neutralized and to treat remaining directive-shaped text as a finding, not an instruction."
+  },
+  "ec95ff2fafdb74afde8085c6d834bc76be1ac2f7": { "facing": "internal" },
+  "1c5959423849151af113f39d2538edd3b8337beb": { "facing": "internal" },
+  "92d3b3a5970c3ca9ac676327ab0c7401ae9021ab": {
+    "facing": "model",
+    "id": "tool-result-bash-timed-out-backgrounded",
+    "name": "Tool result: Bash command auto-backgrounded on timeout",
+    "desc": "Bash tool-result text returned to the model when a command exceeded its timeout and was moved to the background, with the output file path and how to check interim output."
+  },
+  "697c0ece90ccffe77ba713eb386cdc6d1d62dffa": { "facing": "ui" },
+  "ff09890ecd8e96b443bfba0f7e77910e56df792a": { "facing": "internal" },
+  "b64f6e6ab1f7684a3e180ed23f3637fe88469c0e": {
+    "facing": "model",
+    "id": "tool-result-auto-mode-setup-recon-failed",
+    "name": "Tool result: auto-mode-setup recon failed",
+    "desc": "Reason returned as the auto-mode-setup non-interactive command result when the repo/session recon scan fails, advising a re-run and --debug."
+  },
+  "82a50d3f299dc66aea1c82744c10d5527323a1c3": { "facing": "ui" },
+  "4cad486c24f77d20294abf0e28defe8891e57dbc": {
+    "facing": "model",
+    "id": "tool-result-sendfile-cross-machine-unavailable",
+    "name": "Tool result: SendFile cross-machine unavailable",
+    "desc": "SendFile tool-result returned to the model when cross-machine transfer is blocked by the provider/privacy configuration, noting same-machine transfers still work."
+  },
+  "de54c1aa1c3df91c4541f5016cb4bbf571d79034": { "facing": "internal" },
+  "de2b77766236f7c6d9e4285d44b514b59d984858": { "facing": "internal" },
+  "d10f8ebb829c4f5a38df9b5ee1e51e0084682cad": { "facing": "internal" },
+  "26614a6ab2719a1dab099730e770fcad71dd1b78": { "facing": "internal" },
+  "ada2109e6ed65fd1305c940ef014e7213bae5a62": {
+    "facing": "model",
+    "id": "tool-parameter-auto-mode-setup-remove-from-allow",
+    "name": "Tool parameter: auto-mode-setup remove_from_permissions_allow",
+    "desc": "Structured-output field description guiding the auto-mode-setup propose model to list exact permissions.allow rule strings to remove."
+  },
+  "8cf92afbd11e9789af856095ce86d4c1211e5382": {
+    "facing": "model",
+    "id": "tool-parameter-sendfile-files",
+    "name": "Tool parameter: SendFile files",
+    "desc": "Input-schema description for the SendFile tool's files parameter, telling the model to always pass an array of file paths."
+  },
+  "980944004b7cdb668635f3512b46c5e7408ff4d9": {
+    "facing": "model",
+    "id": "tool-result-worker-command-unavailable-report-coordinator",
+    "name": "Tool result: worker command unavailable, report to coordinator",
+    "desc": "Result returned to a worker model when it invokes a command not available in coordinator mode, telling it to report unavailability to the coordinator."
+  },
+  "06f835d505177a3a6a270fe616d31392c4357e0b": {
+    "facing": "model",
+    "id": "tool-parameter-artifact-list-scope",
+    "name": "Tool parameter: Artifact list scope",
+    "desc": "Input-schema description for the Artifact tool's list scope enum (mine/shared/all) shown to the model."
+  },
+  "18e0d29a1ebdb10497776fbb40301cfcb236fd43": {
+    "facing": "model",
+    "id": "tool-parameter-auto-mode-setup-environment",
+    "name": "Tool parameter: auto-mode-setup environment",
+    "desc": "Structured-output field description guiding the auto-mode-setup propose model to emit markdown-bullet environment context that never carries $defaults."
+  },
+  "befaa3e1b49f3bcd28f6a74e7390c8a8242fe5e5": { "facing": "internal" },
+  "f886feb5d0637f12c48e3ebc9c99a83ef1e94bd6": { "facing": "internal" },
+  "b738592b90eb7e7c884ba7a6863f7238f689ed64": {
+    "facing": "model",
+    "id": "tool-parameter-artifact-action",
+    "name": "Tool parameter: Artifact action",
+    "desc": "Input-schema description for the Artifact tool's action enum (publish/list) shown to the model."
+  },
+  "431c2477923644a3ef2d7e6f67ed9b3b12eb514a": {
+    "facing": "model",
+    "id": "tool-result-auto-mode-setup-oneshot-apply-blocked",
+    "name": "Tool result: auto-mode-setup one-shot --apply blocked",
+    "desc": "Auto-mode-setup non-interactive command result telling the invoking model one-shot --apply is unavailable and to use --propose then --apply-file after user review."
+  },
+  "09b8a99d19358992bb9b390649b9a2f706c4a85a": {
+    "facing": "model",
+    "id": "tool-parameter-auto-mode-setup-allow",
+    "name": "Tool parameter: auto-mode-setup allow",
+    "desc": "Structured-output field description guiding the auto-mode-setup propose model on optional permissions.allow carve-outs that must start with $defaults when non-empty."
+  },
+  "9aa8f27d4aa0c6290dd393d120cb318b95347bf1": {
+    "facing": "model",
+    "id": "tool-parameter-auto-mode-setup-hard-deny",
+    "name": "Tool parameter: auto-mode-setup hard_deny",
+    "desc": "Structured-output field description guiding the auto-mode-setup propose model on optional extra hard-block rules, proposed only for clear-cut destructive footguns."
+  },
+  "f75ade85d1c46a4d4510e0a3eef6c18e4ef3baeb": {
+    "facing": "model",
+    "id": "tool-parameter-auto-mode-setup-soft-deny",
+    "name": "Tool parameter: auto-mode-setup soft_deny",
+    "desc": "Structured-output field description guiding the auto-mode-setup propose model on optional extra soft-block rules that must start with $defaults when non-empty."
+  },
+  "b0529e2833dbd64709bcab9281e0ae369c0970c9": {
+    "facing": "model",
+    "id": "tool-parameter-sendfile-message",
+    "name": "Tool parameter: SendFile message",
+    "desc": "Input-schema description for the SendFile tool's optional message delivered alongside the files."
+  },
+  "ccd9f6bfc35f7d73f2d7fc16a9080a71e898de2b": { "facing": "internal" },
+  "c914c35d5d25299f2c1f7e79e52d86a3da4e2f4b": { "facing": "internal" },
+  "b32e0bae5661f78566cb0991bc142feadc1b8c88": {
+    "facing": "model",
+    "id": "tool-parameter-sendfile-recipient",
+    "name": "Tool parameter: SendFile recipient",
+    "desc": "Input-schema description for the SendFile tool's to parameter accepting a peer session name or uds:/bridge: address."
+  },
+  "a59f9cf04fbdb6670b224c13cc274ded0c51975f": {
+    "facing": "model",
+    "id": "skill-artifact-capabilities-description",
+    "name": "Skill: Artifact runtime capabilities description",
+    "desc": "Description of the Artifact runtime-capabilities skill (shown to the model in available skills) instructing it to load the skill before declaring capabilities or writing window.claude.mcp code."
+  },
+  "1fae4967014c2fc14d7a457bbbe0ceb357c4c129": {
+    "facing": "model",
+    "id": "tool-parameter-artifact-capabilities",
+    "name": "Tool parameter: Artifact capabilities",
+    "desc": "Input-schema description for the Artifact tool's capabilities record parameter, covering declaration, clearing, carry-forward and loading the capabilities skill first."
+  },
+  "16eec61e9f9497d7c3057628d19af5dba7043ea1": {
+    "facing": "model",
+    "id": "tool-description-sendfile",
+    "name": "Tool Description: SendFile",
+    "desc": "Describes sending local files to peer, Remote Control, or cloud Claude Code sessions, including addressing, limits, integrity verification, and when to use shared-text messaging instead."
+  },
+  "39c3365dc30524754374f73f7da97b7df1aad50b": { "facing": "ui" },
+  "0f4ca699a11c70c6f9a107cd2a2bc2a2d203e35a": { "facing": "internal" },
+  "73a03fca77078475b9ef452078e4bea36bda25f6": { "facing": "internal" },
+  "fbe109208ba8eef5334fc718abf750b75d27b2dc": { "facing": "internal" },
+  "48806df71ea07f8a8570ce7ed99ffcf835df747b": { "facing": "ui" },
+  "8f9a4bbf036d59d22c8057f9a23ef3c06877d891": { "facing": "ui" },
+  "bbefde5a72cfce0f3050ade88fcb0a6dae4af597": { "facing": "ui" },
+  "943abb16380e45390fa90e6aed46e7eba51843b7": { "facing": "ui" },
+  "319e16ef559a580f17a5c89f67f8fa63af570ff9": { "facing": "ui" },
+  "9e55bd95348f3c6f28f021729ec33caeec321715": { "facing": "ui" },
+  "741c0e5a2786e2ae0ae4ae8ff0f04d7b992088be": {
+    "facing": "model",
+    "id": "data-artifact-connector-call-observation-requirement",
+    "name": "Artifact connector call observation requirement",
+    "desc": "Instruction block injected into the model's context (artifact capability section) requiring a real request/response pair be observed before a published Artifact calls a connector tool."
+  },
+  "89014cec6cc9951bee1fea91b5c19c5743ba261f": { "facing": "ui" },
+  "2cf187c1687748859b5e16f738f68a8acf1cfab6": {
+    "facing": "model",
+    "id": "tool-parameter-artifact-title",
+    "name": "Artifact tool 'title' parameter",
+    "desc": "descriptionForModel of the Artifact tool's optional `title` input parameter, sent to the model as part of the tool input schema."
+  },
+  "e75f507524bccbee534ec707d4f17ecf472b1549": {
+    "facing": "model",
+    "id": "data-doctor-checkup-suggestion-trigger",
+    "name": "Doctor checkup context-tip situation",
+    "desc": "The `situation` string for the doctor-checkup context tip, fed to the context-tip selector model to decide when to surface the /doctor suggestion."
+  },
+  "275e523ccd1db49b76af1b9c80a460654a54bc0d": {
+    "facing": "model",
+    "id": "skill-artifact-connectors-capabilities-description",
+    "name": "Artifact runtime-capabilities skill description (tail)",
+    "desc": "Tail fragment of the model-facing skill description for the published-Artifact runtime-capabilities skill (calling claude.ai connectors via window.claude.mcp)."
+  },
+  "2f673429d7aa66b567f349b2f50813529a886478": { "facing": "internal" },
+  "04520962c72b8a5954d5541c3d9b50ee8cdae816": { "facing": "ui" },
+  "e5a7fbde4c9a9810153e7fde6f744732385c51db": {
+    "facing": "model",
+    "id": "system-prompt-pronoun-neutral-default",
+    "name": "Neutral-pronoun default system prompt",
+    "desc": "System-prompt fragment instructing the model to default to they/them when a person's pronouns are unstated and never infer pronouns from a name."
+  },
+  "aa614de3243f8b1fa3959de5fb18d5dca5c7eee3": { "facing": "internal" },
+  "8f0a6beb244148165a8bbc9f2d5df285c886829a": {
+    "facing": "model",
+    "id": "system-prompt-auto-mode-setup-proposal-generator",
+    "name": "Auto-mode setup proposal generator system prompt",
+    "desc": "System prompt for the auto-mode-setup side query that turns a mechanically-gathered recon block into a JSON auto-mode configuration proposal."
+  },
+  "34f0bcc85cd693695067726b87abd79a1111b660": { "facing": "ui" },
+  "4796148f14faba0a9931d3e1bc7a7ce120263f47": { "facing": "ui" },
+  "9f1b357e2949d35e5510df0181c6c3d9271da3e1": { "facing": "ui" },
+  "c057fa35908422fe68c81eeb511523e2b691a94f": {
+    "facing": "model",
+    "id": "tool-result-edit-blocked-read-deny-rule",
+    "name": "Edit blocked by Read deny rule",
+    "desc": "Edit tool error returned to the model when the target file is covered by a permissions Read deny rule and cannot be edited."
+  },
+  "420bab2f57ea107f0d3f10dc627c38ff2d616b17": { "facing": "internal" },
+  "c136116742feb25f86582a3b14c0b51bf921425e": { "facing": "internal" },
+  "daf6b1e9ae47c050bc969048ed863ecb9f2884c1": { "facing": "internal" },
+  "0d60b1e3b32ab664492f0fe430cb109fa7711124": { "facing": "internal" },
+  "c9096bc22e0c3218ad3bc17c8f050e0b8511f415": { "facing": "internal" },
+  "804b98ba4a8f3d7c99f6e90e378f96393053a60d": { "facing": "internal" },
+  "433a950fae3e7d3d79f10f4027f06c81eb43d519": { "facing": "internal" },
+  "b44b7ad918e39bfc5fa8e74e8f5c8e137a1867a6": { "facing": "internal" },
+  "aae5260ff54d102545cdb06c720cbf35d87358b4": { "facing": "internal" },
+  "b2b6520e5fa53f3d14adb9389c0cb740bf4c9d2f": { "facing": "internal" },
+  "e1d5376195de05dccb01e6230c091ea74fbfe84a": { "facing": "internal" },
+  "bd7edb0747b816d2b57aead9553f47ee7a17633e": { "facing": "internal" },
+  "684040c395116df1fdfdceb1a8c6f98753cf364a": { "facing": "internal" },
+  "6cbdd831b01f37f917b30015471b41ce0087d00f": { "facing": "internal" },
+  "e054134ca94631520ec3eb638f2aa0b6a98d860a": { "facing": "internal" },
+  "3716bcd27f6a393e59104c49264d90fd70945773": { "facing": "internal" },
+  "868e18b8a2da03f440af480af9ae0b855ea08f79": {
+    "facing": "model",
+    "id": "tool-result-grep-nonnegative-integer-param",
+    "name": "Grep numeric param validation error",
+    "desc": "Grep tool validateInput error returned to the model when head_limit/offset is not a whole number of 0 or more."
+  },
+  "7e38553551daa3dcff5d2d47b96438f26706267e": {
+    "facing": "model",
+    "id": "system-prompt-compaction-transcript-reference",
+    "name": "Post-compaction transcript reference",
+    "desc": "Suffix appended to the post-compaction continuation summary telling the model where to read the full pre-compaction transcript for exact details."
+  },
+  "1d619940cb75f0cefa923279873609249e2d6860": { "facing": "internal" },
+  "0f1eab69b6f9b6f931bb560d983f066fda14a078": { "facing": "internal" },
+  "fa9587e03c70e8399c71841543c17a079ff31a36": {
+    "facing": "model",
+    "id": "system-reminder-memory-write-org-store-not-mounted",
+    "name": "Memory write: org store not mounted",
+    "desc": "PostToolUse additionalContext injected to the model warning that a memory write landed in an unmounted org-memory store's directory and is not being synced."
+  },
+  "c730edc68f62ae6512569fadf64f40c8bebb6a4b": {
+    "facing": "model",
+    "id": "system-reminder-memory-write-store-readonly",
+    "name": "Memory write: store read-only",
+    "desc": "PostToolUse additionalContext injected to the model warning that the memory store is mounted read-only, so the write was saved locally only and will be overwritten on next pull."
+  },
+  "3c2367173c8e354c47f706cbdbe4880d09b1d37e": {
+    "facing": "model",
+    "id": "system-reminder-memory-write-sync-disabled-unmanifested",
+    "name": "Memory write: sync disabled (unmanifested dir)",
+    "desc": "PostToolUse additionalContext injected to the model warning that memory sync is disabled for a pre-existing unmanifested directory, so the write is not synced to shared/server memory."
+  },
+  "2f2501ae2be23837e1d67065d1f88425ae63b407": {
+    "facing": "model",
+    "id": "tool-result-bash-backgrounded-cwd-note",
+    "name": "Bash backgrounded-command cwd note",
+    "desc": "Note appended to the Bash tool result telling the model that a backgrounded command's directory changes do not apply to subsequent commands."
+  },
+  "0f098fbb17adf5f3d5209492dc762035a6bc3555": { "facing": "ui" },
+  "2c7101f5b4f58de7ec97c1484dbde09648d22261": {
+    "facing": "model",
+    "id": "tool-result-mcp-wait-server-unconfigured",
+    "name": "MCP wait: server not configured",
+    "desc": "Fragment of the wait-for-MCP-servers tool result returned to the model listing servers with no URL set that the user must configure first."
+  },
+  "2ff96da9ea3a1351653f4d9eac33039889bac7c7": {
+    "facing": "model",
+    "id": "tool-result-send-message-not-local-socket-address",
+    "name": "SendMessage invalid socket address",
+    "desc": "SendMessage/SendUserFile validateInput error returned to the model when the `to` address is not a valid local socket address."
+  },
+  "3c9d23e9292222756eef33819ec4999d00b631cc": { "facing": "ui" },
+  "09f9115f81b6584f0f0d8225bafb78716b0afde6": { "facing": "internal" },
+  "3c2b3f56cca71ec2264a0924e9956b3c1dc1cd72": { "facing": "internal" },
+  "658137119c79a94c0e97e1334400d04cbddac87a": { "facing": "ui" },
+  "21e97bd40f922e16f85cf80c28055c14f04c021f": { "facing": "ui" },
+  "2f1b4b38fade0f5260cf473f6b17bd355ad3f61b": { "facing": "ui" },
+  "4908b60791b86a942965d48fe7d3169ba44ae57c": { "facing": "ui" },
+  "de70412682a34de4630e35d2eb2de8144fb777df": { "facing": "ui" },
+  "19ec76edb3e378a12e8e36c6b26ea12b4818d501": { "facing": "ui" },
+  "5fe55b306738a4b3ac854f4799ea4bd8f595121e": { "facing": "ui" },
+  "74438ff08ebfea8b0d3481cd324f35304802c356": {
+    "facing": "model",
+    "id": "tool-result-coordinator-mcp-prompt-not-invocable",
+    "name": "Coordinator MCP prompt not invocable",
+    "desc": "Meta message injected into the coordinator conversation when it tries to run an MCP prompt that cannot run in coordinator mode."
+  },
+  "26314b0f28e1786e1c4f7edf631d97d5770bf17c": {
+    "facing": "model",
+    "id": "tool-result-coordinator-skill-user-invocable-only",
+    "name": "Coordinator skill user-invocable-only block",
+    "desc": "Meta message returned when a coordinator tries to run a disable-model-invocation skill that only the user may invoke."
+  },
+  "5a8cab948359f81229607880bcd9a4965d06b2f8": {
+    "facing": "model",
+    "id": "tool-result-coordinator-subcommands-route-note",
+    "name": "Coordinator subcommands still route note",
+    "desc": "Meta note in the coordinator command-block message explaining that listed subcommands still route to their own dedicated commands."
+  },
+  "0b7ce3da14e5995f64bb891afa7f66dbb2b4978c": {
+    "facing": "model",
+    "id": "tool-result-subagent-tools-not-available-fragment",
+    "name": "Subagent zero-tools: not-available fragment",
+    "desc": "Fragment listing requested tools not available to subagents, embedded in the zero-tool spawn refusal returned to the model."
+  },
+  "7a88ffc946b6e0d6f50ab8cfdda3b005e9396029": {
+    "facing": "model",
+    "id": "tool-result-subagent-tools-matched-none-fragment",
+    "name": "Subagent zero-tools: matched-none fragment",
+    "desc": "Fragment listing tools recognized but matching nothing this session, embedded in the zero-tool spawn refusal returned to the model."
+  },
+  "953f6ee6f5d75f8bb95583cf85e447949521c716": {
+    "facing": "model",
+    "id": "tool-result-subagent-zero-tools-refused",
+    "name": "Subagent zero-tools spawn refused",
+    "desc": "First half of the error the Task/agent tool returns when a subagent would spawn with zero tools."
+  },
+  "66da26c0ebd01719e703fe4a3b13949ade1120b3": {
+    "facing": "model",
+    "id": "tool-result-subagent-zero-tools-fix-hint",
+    "name": "Subagent zero-tools fix hint",
+    "desc": "Second half of the zero-tool spawn refusal telling the caller to fix the agent tools frontmatter or pass a different subagent_type."
+  },
+  "364fa5886dc6baf7f6876d3e0700d6ff10cdb52f": {
+    "facing": "model",
+    "id": "tool-result-subagent-security-policy-warning",
+    "name": "Subagent security-policy violation warning",
+    "desc": "Security warning prepended to sub-agent output when the handoff classifier flags a possible policy violation, shown to the parent model."
+  },
+  "ac988797edeb5daab8ef6298803ef135e7e1a278": {
+    "facing": "model",
+    "id": "tool-result-command-not-invocable-ask-user",
+    "name": "Command not invocable — ask user",
+    "desc": "Suffix appended to skill-invoke errors telling the model to ask the user to run the slash command themselves."
+  },
+  "9c56cdacdbad6d61a590c5c2feee94beae61bb90": {
+    "facing": "model",
+    "id": "tool-result-skill-invoke-not-a-skill-command",
+    "name": "Skill invoke: UI/CLI command not a skill",
+    "desc": "Skill-tool error returned to the model when the named target is a UI or built-in CLI command rather than a skill."
+  },
+  "4c5aa6386f397cb174daec3ed711bab7ad776931": {
+    "facing": "model",
+    "id": "tool-result-skill-invoke-mcp-prompt-not-skill",
+    "name": "Skill invoke: MCP prompt not a skill",
+    "desc": "Skill-tool error returned to the model when the named target is an MCP prompt rather than a skill."
+  },
+  "ce18160471c2b3a05e505de23f3869371d2af545": {
+    "facing": "model",
+    "id": "tool-result-artifact-too-large-mermaid-note",
+    "name": "Artifact too-large mermaid renderer note",
+    "desc": "Suffix in the Artifact publish too-large error noting the inline mermaid renderer was appended, returned to the model."
+  },
+  "79ed1459efc8cd5a582c1e37b7e45a84fd94e6c2": { "facing": "internal" },
+  "864b1da7c2af8f0a289dea2ee7977ecfe518e9f5": { "facing": "internal" },
+  "9ed61b9f97beae250bb4c81320e0b35679646f54": { "facing": "internal" },
+  "e8f0deb15c1529fb40e1cdbc4412013826c7c8a3": { "facing": "internal" },
+  "1052d2dba102fc90021587c7f48c4e9fa80cd3a9": { "facing": "internal" },
+  "58f4e4b54169be3a50fab89414896b349a548a3f": { "facing": "internal" },
+  "b867b680f845605711ffba8527b19033f9c018a0": {
+    "facing": "model",
+    "id": "tool-result-sendfile-source-unreadable-or-too-large",
+    "name": "SendFile source unreadable/too large",
+    "desc": "Per-file error shown in the SendFile tool result when a source cannot be read or exceeds the transfer size limit."
+  },
+  "563770432074512a33d859e3acfb304b4194f17a": {
+    "facing": "model",
+    "id": "tool-result-pretooluse-hook-timeout",
+    "name": "PreToolUse hook timeout stop",
+    "desc": "Stop reason returned to the model when a PreToolUse hook does not respond before its timeout and the tool call is skipped."
+  },
+  "7359be4938a7e6aadff829f7f2074d0d7c1c52c2": {
+    "facing": "model",
+    "id": "tool-result-enterworktree-reset-to-fresh-base",
+    "name": "EnterWorktree reset-to-base note",
+    "desc": "Note in the EnterWorktree tool result that an existing fully-merged worktree was reset to the current base."
+  },
+  "847750022e809983873f3ba2be99481889c04b6d": {
+    "facing": "model",
+    "id": "tool-result-enterworktree-now-working-message",
+    "name": "EnterWorktree now-working message",
+    "desc": "Main EnterWorktree tool result telling the model the session is now working in the worktree, with ExitWorktree guidance."
+  },
+  "0c5bd0b1aed5b5ff288821f21c5503a22b354aab": { "facing": "internal" },
+  "e5e2657197bb0cf086f7c3068adfe21f8e2e0579": { "facing": "internal" },
+  "e2ae9d33ad862a7a44afe16c98a4aa01b900d992": { "facing": "internal" },
+  "e0643357ed548b36a2ce7fc494c4c67c655624f2": {
+    "facing": "model",
+    "id": "data-sendfile-not-delivered-placeholder",
+    "name": "SendFile not-delivered placeholder",
+    "desc": "Inline placeholder shown in message content when a sent file could not be delivered to the recipient."
+  },
+  "8ee1d7c7cf14096587b5c63ff6f2af58c5ca5d44": { "facing": "internal" },
+  "da3c89818665350b2938ce02e03924da78cf5253": {
+    "facing": "model",
+    "id": "tool-result-send-target-did-text-only",
+    "name": "Send target: DID peers text-only",
+    "desc": "Refused-target SendFile result when the recipient is a DID peer, which accepts text only."
+  },
+  "39da6bbd7183612e27e36e3300e6ad620c67cc3c": {
+    "facing": "model",
+    "id": "tool-result-send-target-ambiguous-peer-sessions",
+    "name": "Send target ambiguous — multiple peers",
+    "desc": "Refused-target SendFile result when a recipient name matches multiple peer sessions, asking the model to re-send with a specific ref."
+  },
+  "38e2a325f2a83b13be748ce4ce8aebcc12af39f6": {
+    "facing": "model",
+    "id": "tool-result-send-target-only-in-session-agents",
+    "name": "Send target matches only in-session agents",
+    "desc": "Refused-target SendFile result when a recipient matches only in-session agents, steering to reference the file as @<path>."
+  },
+  "10d2247807e0df6f78bc8d9d9c07c9589043eee2": {
+    "facing": "model",
+    "id": "tool-result-send-target-see-sessions-hint",
+    "name": "Send target: see available sessions hint",
+    "desc": "Hint in the refused not-found SendFile result pointing the model to the tool that lists sessions it can send files to."
+  },
+  "f4cbe54d9c411bd791140e3ba47ab0f9f91ecb7a": {
+    "facing": "model",
+    "id": "tool-result-send-target-cloud-list-unavailable",
+    "name": "Send target: cloud list unavailable",
+    "desc": "Note appended to a refused SendFile target result that the cloud session list could not be fetched, so cloud sessions were not searched."
+  },
+  "b04a8db31fe57039c783a6c67f07ce1c898ddfe9": {
+    "facing": "model",
+    "id": "tool-result-sendfile-read-disabled-deny",
+    "name": "SendFile file-read disabled (deny)",
+    "desc": "Permission-deny message returned to the model when SendFile file-content reading is disabled by rule."
+  },
+  "59f931fdb1af121ea8ab7547656a0996164b0e71": { "facing": "ui" },
+  "f4177933f038c38a4366c8ac90d978a467f6d983": { "facing": "ui" },
+  "9a79bf9d3cd763918a68b394cacc5e9cdfb2a937": { "facing": "ui" },
+  "031be042e86662f3ce1de2457b44bc3193e8c382": {
+    "facing": "model",
+    "id": "tool-result-sendfile-autofs-hosts-unsupported",
+    "name": "SendFile autofs -hosts path unsupported",
+    "desc": "SendFile validateInput error returned to the model when an attachment path is a /net autofs -hosts path."
+  },
+  "d541ead381582c005c830a57907352dd12244fda": {
+    "facing": "model",
+    "id": "tool-result-sendfile-files-not-sent-header",
+    "name": "SendFile files-not-sent header",
+    "desc": "Header line in the SendFile tool result introducing the list of files that could not be sent."
+  },
+  "f173167793a56155c9e33c636b7c4cd026e46dd7": {
+    "facing": "model",
+    "id": "tool-result-sendfile-path-not-readable-permissions",
+    "name": "SendFile path resolves to unreadable location",
+    "desc": "Per-file SendFile error that a path resolves to a location not readable under the sessions permissions."
+  },
+  "e64ab0c40b671d015e7ffa4accc27c1742ad6beb": {
+    "facing": "model",
+    "id": "tool-result-sendfile-none-staged",
+    "name": "SendFile: no files staged",
+    "desc": "SendFile tool result when no files could be staged for transfer to the recipient."
+  },
+  "44d51f5dcd65e8188c78141a2d7e523b17730287": {
+    "facing": "model",
+    "id": "tool-result-sendfile-peer-restarted-stale-socket",
+    "name": "SendFile peer restarted, stale socket",
+    "desc": "Suffix appended to a SendFile failure telling the model the peer likely restarted and the socket path is stale."
+  },
+  "b395f4c0082fda71cc49ca07aede93bb62fdb1e2": {
+    "facing": "model",
+    "id": "tool-result-sendfile-peer-pipe-busy",
+    "name": "SendFile peer pipe busy",
+    "desc": "Suffix appended to a SendFile failure telling the model the peer pipe is momentarily busy and to retry."
+  },
+  "2d69142881e613820cd77756991e1bbbb6f86549": {
+    "facing": "model",
+    "id": "tool-result-sendfile-failed-to-send-uds",
+    "name": "SendFile failed-to-send (socket)",
+    "desc": "SendFile tool result reporting a send failure to a labeled recipient over the local socket, with an error detail suffix."
+  },
+  "b600aa59ee778f2e19288b15fa10167326ef574b": {
+    "facing": "model",
+    "id": "tool-result-sendfile-isolate-peer-needs-approval",
+    "name": "SendFile isolatePeerMachines needs approval",
+    "desc": "SendFile tool result when isolatePeerMachines requires approval and nothing was sent."
+  },
+  "54d747a3e063b0ef40fc0e61958c24ecbb8ad19d": {
+    "facing": "model",
+    "id": "tool-result-sendfile-permission-narrowed-input",
+    "name": "SendFile permission narrowed input",
+    "desc": "SendFile tool result when the permission handler narrowed the input to a shape SendFile cannot accept, so nothing was sent."
+  },
+  "79a67e577ebcb5075c67f599e81b4c371a2693bc": {
+    "facing": "model",
+    "id": "tool-result-sendfile-none-uploaded",
+    "name": "SendFile: no files uploaded",
+    "desc": "SendFile tool result when no files could be uploaded for transfer to the recipient over the bridge."
+  },
+  "a09517bd46bc25902de87138fa255fb5408e40e2": {
+    "facing": "model",
+    "id": "tool-result-sendfile-bridge-id-stale",
+    "name": "SendFile bridge ID stale",
+    "desc": "Suffix appended to a bridge SendFile failure telling the model the peer session ended/restarted and the bridge ID is stale."
+  },
+  "73712fe3093f42bbbd7709fbf7c21820fb3bc702": {
+    "facing": "model",
+    "id": "tool-result-sendfile-failed-to-send-bridge",
+    "name": "SendFile failed-to-send (bridge)",
+    "desc": "SendFile tool result reporting a send failure over the bridge transport, with an error detail suffix."
+  },
+  "04407c3a5810d16b433a468f69a1e6e6e57cfc99": { "facing": "internal" },
+  "21e03522e301a9883636cc24a0306a643895299f": { "facing": "ui" },
+  "a0abd2cab913a47943fc0d9c8079aed5b3f2cf0e": { "facing": "ui" },
+  "db23266881cacc2abb29f48bf41cf60cbe83788e": { "facing": "ui" },
+  "040007042cb41b5ca4bfee3f90b3128e736eaa55": {
+    "facing": "model",
+    "id": "tool-description-artifact-list-mine-dynamic",
+    "name": "Artifact list description (mine)",
+    "desc": "Dynamic Artifact tool description shown to the model for the list action scoped to the users own published artifacts."
+  },
+  "90d523b6440e3f6fc59f1df48bafa0dd5afb02a9": {
+    "facing": "model",
+    "id": "tool-description-artifact-list-shared-dynamic",
+    "name": "Artifact list description (shared)",
+    "desc": "Dynamic Artifact tool description shown to the model for the list action scoped to artifacts others shared."
+  },
+  "a5d17f70824bf4f5d69c578264d1249bab5ced09": {
+    "facing": "model",
+    "id": "tool-description-artifact-list-all-dynamic",
+    "name": "Artifact list description (all)",
+    "desc": "Dynamic Artifact tool description shown to the model for the list action covering both published and shared artifacts."
+  },
+  "73a2f90d79737457b82afe3fb6e1465b72154b4a": { "facing": "ui" },
+  "ba6bc971cf399ee15f14e4140b8eb1ac11206a60": {
+    "facing": "model",
+    "id": "tool-result-artifact-list-extra-params-error",
+    "name": "Artifact list extra-params error",
+    "desc": "Artifact validateInput error telling the model the list action takes only limit and scope, listing the extra keys to remove."
+  },
+  "ee65e612fba721bec232ace5b8580ff010dcd291": {
+    "facing": "model",
+    "id": "tool-result-artifact-no-inline-content-steer",
+    "name": "Artifact no-inline-content steer",
+    "desc": "Validation steer returned to the model that the Artifact tool reads from a file on disk and does not take inline content."
+  },
+  "f93e779976ab52578edb586ffae15a46001ef1f0": {
+    "facing": "model",
+    "id": "tool-result-artifact-write-file-first-steer",
+    "name": "Artifact write-file-first steer",
+    "desc": "Validation steer instructing the model to write the page to a file first, then call Artifact with file_path."
+  },
+  "9255d182e9ce91acf40e3a483b70251695e6cffc": {
+    "facing": "model",
+    "id": "tool-result-artifact-list-empty-not-proof-shared",
+    "name": "Artifact list empty-not-proof caveat",
+    "desc": "Caveat appended to the Artifact list result that an empty listing does not prove nothing was shared org-wide."
+  },
+  "f622b6884e87f1c63ac5cc65ee5ef415be07bd40": {
+    "facing": "model",
+    "id": "tool-result-artifact-list-empty-truncated",
+    "name": "Artifact listing empty-window note",
+    "desc": "Branch of the ArtifactTool listing tool_result shown when the truncated window is empty; injected as tool-result content to the model."
+  },
+  "c8e4e9dee2d34e78490c4a3b94998c33783f385c": {
+    "facing": "model",
+    "id": "tool-result-artifact-list-count-header",
+    "name": "Artifact listing count header",
+    "desc": "Count/scope header line of the ArtifactTool listing tool_result (e.g. \"N artifacts shared with you (most recent first):\"), returned to the model."
+  },
+  "258e362ddc4698cb30bb67fd4b25f4d7f163e0fc": { "facing": "ui" },
+  "02486299211c3e2bfb03328bea7c80a1696cc433": { "facing": "internal" },
+  "407a276fbc51465377b7ee87e99abd692002ca0c": { "facing": "internal" },
+  "4098a0f98c47b742c6aecb998779b4dcbca5213b": {
+    "facing": "model",
+    "id": "data-mcp-server-session-credential-rejected",
+    "name": "MCP server credential-rejected error",
+    "desc": "Failed-server .error text (HTTP 401 session credential rejected) quoted into the model-facing \"MCP servers failed to connect\" system-reminder via DZn."
+  },
+  "cf48273577019919375d2cd6b46b1bdc931c0f07": { "facing": "ui" },
+  "cd01dfffe0ebafe34a325e78085eaaa6fe94d384": { "facing": "internal" },
+  "59f15af03aab33ef3244385380bd1f230457f84f": { "facing": "internal" },
+  "5598baadf4e382ffd420ff61f6abbaec9397cef9": { "facing": "internal" },
+  "d4720d9e96b72bf918f8f86520d35cfc3bc76697": {
+    "facing": "model",
+    "id": "agent-prompt-permission-judge-stage1-severity-only",
+    "name": "Permission judge stage-1 harm-grading instruction",
+    "desc": "Prompt fragment (Xoy) spliced into the auto-mode/permission severity-classifier prompt: stage 1 grades HARM only and emits <severity>N</severity>."
+  },
+  "8452d82321cba6a768d7302ef3fd87c131f4e893": {
+    "facing": "model",
+    "id": "agent-prompt-permission-judge-severity-review-reminder",
+    "name": "Permission judge classification-review reminder",
+    "desc": "Prompt fragment (Qoy) reminding the severity classifier that explicit user confirmation is required to override blocks; part of the auto-mode classifier prompt."
+  },
+  "1e0d9549d75bcc556b0482c4722db6f19fff3123": {
+    "facing": "model",
+    "id": "agent-prompt-permission-judge-severity-scale",
+    "name": "Permission judge severity-scale output instruction",
+    "desc": "Prompt fragment (Zoy) defining the 0-100 <severity> output scale with 50 as the allow/block boundary; part of the auto-mode severity-classifier prompt."
+  },
+  "f85eea1be1d01a2eff00ab14802cc09780659ee5": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-visibility-traffic-disabled",
+    "name": "Recon: visibility not queryable (traffic disabled)",
+    "desc": "Repo-visibility placeholder in the auto-mode pre-gathered recon document (nonessential traffic disabled/policy-restricted), sent as the recon user message to the proposer model."
+  },
+  "3c9c93677de02d32018184f647ddc00cad946177": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-visibility-org-not-derivable",
+    "name": "Recon: visibility not queryable (org/repo not derivable)",
+    "desc": "Repo-visibility placeholder in the auto-mode recon document when org/repo cannot be derived from the origin remote; part of the model-facing recon context."
+  },
+  "855b5af1fdf2c17653e1a8632a62294e946f4660": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-visibility-non-github-host",
+    "name": "Recon: visibility not queryable (non-github host)",
+    "desc": "Repo-visibility placeholder in the auto-mode recon document when the origin remote is not github.com; part of the model-facing recon context."
+  },
+  "63abff77d5ba05aec660c7900c8b12eb817160f5": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-visibility-redacted-count",
+    "name": "Recon: visibility redacted-count note",
+    "desc": "Note in the auto-mode recon visibility section for names outside the display charset/visibility enum being redacted; part of the model-facing recon context."
+  },
+  "fcb424f017900511397553bec0b3d9507375b988": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-visibility-infer-fallback",
+    "name": "Recon: infer-visibility fallback guidance",
+    "desc": "Fallback text (Xds) embedded in the \"not queryable here\" recon visibility placeholders, telling the classifier to infer visibility from the remote hostname or ask."
+  },
+  "0a3ae8a89d050310c3ed446408932d98afab956d": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-transcripts-not-mined-note",
+    "name": "Recon: other-project transcripts not mined note",
+    "desc": "Note in the auto-mode recon that other projects’ transcripts are not mined (a Q2 opt-in); part of the model-facing recon context."
+  },
+  "9cdaec8648422a9f234c8dc2faebd620958ef161": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-home-network-path-not-walked",
+    "name": "Recon: home is a network path, not walked",
+    "desc": "Repo-walk placeholder in the auto-mode recon when the home dir resolves to a network path so it is not walked; part of the model-facing recon context."
+  },
+  "0f2fd2a61f42a116df41a8ca18a9c1147b79b3a8": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-home-unreadable-not-walked",
+    "name": "Recon: home unreadable, not walked",
+    "desc": "Repo-walk placeholder in the auto-mode recon when the home dir could not be read; part of the model-facing recon context."
+  },
+  "7be01aa8f0aa025d2f6838a04fbbf895fd1fe2a0": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-gitdir-outside-home",
+    "name": "Recon: gitdir outside home note",
+    "desc": "Per-repo note in the auto-mode recon repos list when the gitdir points outside the home directory so remotes were not read."
+  },
+  "d65de415221dcbae9eb7cecb88bc1422009997ad": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-remote-unknown-host",
+    "name": "Recon: remote on unknown VCS host note",
+    "desc": "Per-repo note in the auto-mode recon repos list when the remote is not on a known VCS host so it is not shown."
+  },
+  "44a62658c494fd8fcf7ef52252164b144378915a": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-repos-found-header",
+    "name": "Recon: repos-found list header",
+    "desc": "Header for the \"Other git repos under the home directory\" recon section listing repo paths and stripped host/org/repo remotes; part of the model-facing recon context."
+  },
+  "7aa442c41caeb74fd9a3bff10347ce7a729044f3": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-repos-walk-cut-short",
+    "name": "Recon: no repos found before walk cut short",
+    "desc": "Recon repos-section placeholder when the walk was cut short before finding repos; instructs treating as unknown not none."
+  },
+  "5d4f049d2414bee1e2e285b19dec23c0810aa215": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-repos-candidates-note",
+    "name": "Recon: repos are candidates, not vetted",
+    "desc": "Note in the auto-mode recon repos section that listed repos are candidates to keep only if the org appears in Repo facts/sibling-docs."
+  },
+  "939ebf151e5aca7040d65b731153729a6c4a1755": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-transcripts-not-gathered-no-permission",
+    "name": "Recon: transcripts not gathered (no permission context)",
+    "desc": "Placeholder in the auto-mode recon recent-usage section when no permission context was available to enforce permissions.deny."
+  },
+  "9fde963f01331e13cbd44837fe92ab09a4637540": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-projects-root-unqueryable",
+    "name": "Recon: projects root not queryable",
+    "desc": "Placeholder in the auto-mode recon recent-usage section when the projects root is absent/unreadable or enumeration timed out."
+  },
+  "d678a5a76e66be435d9a8f649e37d2dd82b82383": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-transcripts-scanned-summary",
+    "name": "Recon: transcripts-scanned summary line",
+    "desc": "Summary line in the auto-mode recon recent-usage section reporting transcripts scanned/selected/enumerated and Bash commands seen."
+  },
+  "3055ff8b3e9c3f89c1a3de57d68091531cf2929e": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-enumeration-cap-reached",
+    "name": "Recon: enumeration cap reached note",
+    "desc": "Note in the auto-mode recon recent-usage section that the enumeration cap was hit so recent sessions past the cap may be missing."
+  },
+  "c4fd35f5632865b47e0542402c73bc58ab3c88e1": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-transcripts-projects-not-enumerated",
+    "name": "Recon: transcripts/projects not enumerated note",
+    "desc": "Note in the auto-mode recon recent-usage section that some transcripts/project dirs could not be enumerated so coverage is partial."
+  },
+  "a9cd93cc1f7197a65a608e0269faaaccafb4b814": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-transcripts-read-deny-skipped",
+    "name": "Recon: transcripts skipped by read-deny gate",
+    "desc": "Note in the auto-mode recon recent-usage section that some transcripts were not read due to permissions.deny / untrusted / out-of-scope paths."
+  },
+  "e3270ff96bc31d540550a266d785c3a2b16f5d34": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-transcripts-unreadable",
+    "name": "Recon: transcripts unreadable note",
+    "desc": "Note in the auto-mode recon recent-usage section that some transcripts could not be read (removed mid-gather or symlink/hardlink alias)."
+  },
+  "6c313feb7f67fb0660ab37e17045bcce624c7020": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-other-projects-tools-note",
+    "name": "Recon: tools-in-other-projects Q2 note",
+    "desc": "Note under the recon \"Tools run in other projects\" list clarifying the Q2 opt-in and that only command words (not raw command lines) were read."
+  },
+  "ec6ae137cf91f820558ab123af3a6bb211f1e68c": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-walk-time-budget-incomplete",
+    "name": "Recon: walk hit time budget (incomplete)",
+    "desc": "Trailing note in the auto-mode recon repos section that the walk hit its time budget so the list is incomplete."
+  },
+  "31d60a9d1248bf0ea23e0a35bf317036dc7dbc65": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-walk-directory-budget-incomplete",
+    "name": "Recon: walk hit directory budget (incomplete)",
+    "desc": "Trailing note in the auto-mode recon repos section that the walk hit its directory budget so the list is incomplete."
+  },
+  "a8c6735628e99fbf18914a8741284fbf97eb9fa1": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-walk-repo-cap-reached",
+    "name": "Recon: walk hit repo cap",
+    "desc": "Trailing note in the auto-mode recon repos section that the walk stopped at the repo cap so more may exist."
+  },
+  "e731cf0f370770528a444acc34f16d3f5d98ee26": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-permissions-allow-ignored-header",
+    "name": "Recon: classifier-bypassing allow entries header",
+    "desc": "Section header (ops) in the auto-mode recon \"Existing auto-mode settings\" block listing permissions.allow entries auto mode ignores; part of the model-facing recon context."
+  },
+  "1ad0957ae7ebfb7633a2f95b4712454d9f5afb90": {
+    "facing": "model",
+    "id": "data-auto-mode-recon-permissions-allow-destructive-header",
+    "name": "Recon: destructive allow entries header",
+    "desc": "Section header (ips) in the auto-mode recon \"Existing auto-mode settings\" block listing destructive permissions.allow entries honored at runtime; part of the model-facing recon context."
+  },
+  "a1aa9d2846ebd9dc2a990bef6bd3f8a8867ab0d8": { "facing": "ui" },
+  "655ce9dd50cf71e6068353dd8d52a554604ee283": { "facing": "ui" },
+  "82d2da9480b767c3cf61acdebbcffd5a7c123166": { "facing": "ui" },
+  "c545494d89d4dd4c3457dbe0f68c2a85e48268a0": { "facing": "ui" },
+  "a8abaa90763824c4086e988065298bd011f9aa4b": { "facing": "ui" },
+  "4eac6f50c07766182ccc0d9472efe8c65b7c9295": { "facing": "ui" },
+  "5b2f9d3e83477667051bfff865db0e5678eb9f94": { "facing": "ui" },
+  "e694968f09523f1df35e61334512165d8a8b86db": { "facing": "ui" },
+  "6e559c9933a0d678d7fb277ab4e48593786db392": { "facing": "ui" },
+  "2f197eab320831f60f64c4e5464650c9611854ca": { "facing": "ui" },
+  "5f6e1cf7fa3b987ca734d1584fe4238b83fa9f84": { "facing": "ui" },
+  "bdad0d9fadd4f91d55747dc5edf83c48aa82f313": { "facing": "ui" },
+  "9a18cb182f9e27e55fb862739706255d8baf4132": { "facing": "ui" },
+  "d8af560b98838e31ab40bf0169661b95f273beef": { "facing": "ui" },
+  "c8f0baec3b5bf1e3b78debfbd27e525dc815d565": { "facing": "ui" },
+  "9790894f1c797221bc2204f5ca87709c8cc926cb": { "facing": "ui" },
+  "36784183f65b4b42e1481d8fad8918f85a4d12b5": { "facing": "ui" },
+  "09176cc57cbe7db2a2cd7a0d4af225b75b4a642f": { "facing": "ui" },
+  "b9f075ce8c9fa2eb6c5df66fcdb001a51532d323": { "facing": "ui" },
+  "6630a0cec9d2b66110b260817b375cbc988e1f57": { "facing": "ui" },
+  "abc5af153dd327f7986c75042d3329a983f2d334": { "facing": "ui" },
+  "3f08ba04b7b56588479f675cd82ab6521fb8fa7f": {
+    "facing": "model",
+    "id": "slash-command-auto-mode-setup-usage",
+    "name": "/auto-mode-setup usage text",
+    "desc": "Usage string returned as JSON reason by the non-interactive /auto-mode-setup local command; surfaced to the model via local-command-stdout."
+  },
+  "65abc17d9d6d36e3e92bb4a1cf731296ade6eb13": {
+    "facing": "model",
+    "id": "slash-command-auto-mode-setup-bad-path",
+    "name": "auto-mode-setup bad-path reason",
+    "desc": "bad_path error reason returned by /auto-mode-setup --apply-file when the proposal path isn't under an allowed dir; model-visible command result."
+  },
+  "9f581e0228aa9c82a2502940d6def57d7cbbb56e": {
+    "facing": "model",
+    "id": "slash-command-auto-mode-setup-read-denied",
+    "name": "auto-mode-setup read-denied reason",
+    "desc": "read_denied error reason when the proposal path is covered by a permissions.deny read rule; returned as /auto-mode-setup command result."
+  },
+  "72eb36efc4b705939508a38031c5273707a54492": {
+    "facing": "model",
+    "id": "slash-command-auto-mode-setup-read-failed",
+    "name": "auto-mode-setup read-failed reason",
+    "desc": "read_failed error reason when the proposal file can't be read; returned as /auto-mode-setup command result."
+  },
+  "4dd388c6e96605839f5a63c6850ca555a0c454fa": {
+    "facing": "model",
+    "id": "slash-command-auto-mode-setup-file-too-large",
+    "name": "auto-mode-setup too-large reason",
+    "desc": "too_large error reason when the proposal file exceeds the 1 MB cap; returned as /auto-mode-setup command result."
+  },
+  "74098636a86ca93d8cdcae9c5b500fe2cea60902": { "facing": "ui" },
+  "2e13ef68bd774d2f95121ca8a5c02fe142b0953e": { "facing": "internal" },
+  "2bc8d9e8bb5bdc9bd233e84ca0bb406c77a756d8": {
+    "facing": "model",
+    "id": "slash-command-mcp-reconnect-none-configured",
+    "name": "MCP reconnect: none configured",
+    "desc": "/mcp reconnect result reported when the requested servers aren't configured yet; returned as model-visible local-command-stdout."
+  },
+  "9b789e84a5d33965b7ccb1e34e51a31c7f14b35f": { "facing": "ui" },
+  "dbd2079d4d24ccb8af909f604b9c90e15e0e9eed": { "facing": "ui" },
+  "2b0bf2285032d41d837c6264f0b0b55d3f2481d4": { "facing": "internal" },
+  "8ef863fa0863a17735d11ebb4ac008e7b9dd3751": { "facing": "internal" },
+  "f06f72da9254e98a41b38bf388f7153b82f52da6": { "facing": "ui" },
+  "297bd5d50aa56ebe9157e5708ceadf6b00b569de": { "facing": "ui" },
+  "4d348ec519b9a7f2a14b8016f211345beeb22a6b": { "facing": "ui" },
+  "dfb0ef8851cec430752e5644679b5b209b675843": { "facing": "ui" },
+  "4f805adf14bc9466810aa13553c27a5653a31fdc": { "facing": "internal" },
+  "d0956bc616668f8468de0ab1cabde469b6dff6c0": { "facing": "ui" },
+  "798ee14c79b23330474fb36a3c0d9b52dd6901ba": { "facing": "ui" },
+  "4594510c3fb298d25089553072ad67a89eb6a578": { "facing": "ui" },
+  "3e29e645f1a2c1c6185c6c888d1072ac2b026508": { "facing": "ui" },
+  "bfad9b593bf356df6794cd2b5b6ff4e85d224f39": { "facing": "ui" },
+  "2bf607f273daae3175174f2922d32effdfad7707": { "facing": "ui" },
+  "9217ff6ede37e297e7fb019ab8e11cf338a41970": { "facing": "ui" },
+  "85acad015a91612b729ef0007fc9021c63c91511": {
+    "facing": "model",
+    "id": "data-usage-nudge-doctor-checkup-feature",
+    "name": "Usage nudge: /doctor checkup feature",
+    "desc": "Feature blurb for the 'doctor-checkup' usage-nudge entry, injected into the context-tip/usage-nudge selector prompt the model reads to decide which tip to surface."
+  },
+  "64f21c9d9bd81812d268ef3a52c612bde57b4445": { "facing": "ui" },
+  "afebd3879372778e4345cc712d6761600fea33a6": { "facing": "ui" },
+  "41f122da9ff154277f779db37e32a32ae7005ff9": { "facing": "ui" },
+  "580a58bcbfb5dddbf5ec0b1c4e7da2e38c0eee55": { "facing": "ui" },
+  "e30b72e0c23972ac9a6dca51919f32d0187fcbc7": { "facing": "ui" },
+  "afa119a68c6ad4fa40d553e9893d12bd2ad85cb2": { "facing": "ui" },
+  "b1c35266c989bd66a5f9bb83451a882de7e13857": { "facing": "ui" },
+  "c27a1a151a251b1429c0f13125754d4af59d24ca": { "facing": "ui" },
+  "63bc43a7a907c9b65ede8743df8a50de74af8b23": { "facing": "ui" },
+  "2e2e0d8393d0ac69c4f626666be5ad96c3a2ddb4": { "facing": "ui" },
+  "d7cc6f52180b4f51f09043a86596964c7d93742a": { "facing": "internal" },
+  "a9bd2e72529d2e9981c72600220dd59fdbb645c0": { "facing": "internal" },
+  "c20ce36762b9041f150e0123c1646c0fc9df2cf4": { "facing": "internal" },
+  "b03a44587cbed0372b43810cd3afb5de1523bdef": { "facing": "ui" },
+  "be4a976802cc6d9b132a1e13e322a05e8114f92a": { "facing": "ui" },
+  "5228cc2a98436e7975f593bb6e2d869b89c92de4": { "facing": "ui" },
+  "2592d2cf1f03e27a9a5b4712aa3ea05025ea9378": { "facing": "ui" },
+  "b393a43eff3427e79839e037b80ee05a49f15486": { "facing": "ui" },
+  "c62c1109ffc58ac04bedcd527bb841f69dd00861": { "facing": "ui" },
+  "fb230a5917c3339c45f47df11c88b82f83367f2f": { "facing": "ui" },
+  "f4d442c44e54c65ae2780d19b934ba631064b449": { "facing": "ui" },
+  "08474af8c1e1253de3630e46c5080dbd5999d4d1": { "facing": "ui" },
+  "cf9c04ad6be654c07f41deeff827b59bad7a81ba": { "facing": "ui" },
+  "3938029cdb90c96478bf43638a5293406bf6eb50": { "facing": "ui" },
+  "50e4a66c1c13c91ee76450bf14110afcb6a782d5": { "facing": "ui" },
+  "0216e6b360671c703fbdb7a63c98a189e497fb75": { "facing": "ui" },
+  "fe831fe8f31e9eb16c4fa7be6d10d4ce3db81549": { "facing": "internal" },
+  "3487bab6b5bfe42a37f24303efa1eafd5a397def": { "facing": "internal" },
+  "ba433852bc488d3c2e24e48a79a08f220ab44749": { "facing": "internal" },
+  "18389143eeb3278fef5a5f95dc592c1975bfd2d0": { "facing": "internal" },
+  "13aa7a2c8d628775c5c21d4803d065808c109fd2": { "facing": "ui" },
+  "23e1d55b7c8dd551629cd846e2f8f475f8a47f33": { "facing": "ui" },
+  "6e1b2058e49fc69af985f5c2675c34997508c958": { "facing": "ui" },
+  "bac46ed7af910800f71e5b2f416b834b95de2dd1": { "facing": "internal" },
+  "44f5af274b2a59bfe226bfd374424630865947eb": { "facing": "internal" },
+  "31bffaf2348dac745b31d045d8ff9467eb955422": { "facing": "internal" },
+  "c3ae45278735bfd0410775bf0dbbc03b2e1225a3": { "facing": "internal" },
+  "52bd8beee14fda090e225e51261cc7e406ce8417": { "facing": "ui" },
+  "15c5f626f907ca2f279980b19ef8e6d047ddc398": { "facing": "ui" },
+  "8e5ff93c06d00aada280bf2800c4844bbd792355": { "facing": "ui" },
+  "f2dbd998901048efc45225192c5353677703e929": {
+    "facing": "model",
+    "id": "tool-result-senduserfile-download-failed-not-signed-in",
+    "name": "SendUserFile download-failed reason (not signed in)",
+    "desc": "Reason fragment embedded in the model-facing '[SendFile: \"X\" was not delivered — …]' tool result when a file couldn't be downloaded because the user isn't signed in."
+  },
+  "c7ff8311b12f2cdeffa11395c093cd72fb82760e": { "facing": "internal" },
+  "7c5ceba21cfdfa3f5dea53c1e3bba3a04f09dac0": { "facing": "internal" },
+  "dcfca217c6f0ce1e32d927fb15979b8bfe114f66": {
+    "facing": "model",
+    "id": "data-artifact-mcp-call-contract-guidance",
+    "name": "Artifact MCP call-contract guidance",
+    "desc": "Guidance injected into the artifact runtime-capabilities skill body telling the model where the window.claude.mcp type definitions (.d.ts) are extracted and to read them before writing any window.claude.mcp call."
+  },
+  "86925a7d998ac70ad81f1e6bd11618e87756fdda": {
+    "facing": "model",
+    "id": "data-artifact-capability-guidance-unfetched",
+    "name": "Artifact capability guidance unfetched",
+    "desc": "Artifact-capability guidance fragment stating a capability's authoring guidance couldn't be fetched but its type definitions were extracted, telling the model to read that file before declaring the capability."
+  },
+  "74ccab3cf3384e4b494c0f2291b95df0b4153561": {
+    "facing": "model",
+    "id": "data-artifact-capability-fully-unfetched",
+    "name": "Artifact capability fully unfetched",
+    "desc": "Artifact-capability guidance fragment stating both authoring guidance and type definitions couldn't be fetched this invocation and that re-invoking the skill retries."
+  },
+  "e780569749e4572bdf31681e34e1e18e7b6f581b": {
+    "facing": "model",
+    "id": "data-artifact-capability-roster-unfetched",
+    "name": "Artifact capability roster unfetched",
+    "desc": "Artifact runtime-capabilities guidance note appended when the contract's capability roster couldn't be fetched, telling the model the contract service may be unreachable and re-invoking retries."
+  },
+  "9d13c4e26f261e2688c5ab250ba997e14b0b112d": {
+    "facing": "model",
+    "id": "data-artifact-guidance-pinned-note",
+    "name": "Artifact guidance pinned-to-contract note",
+    "desc": "Artifact runtime-capabilities guidance note injected to tell the model this guidance is pinned to the runtime-contract version the target currently runs."
+  },
+  "6c53055a91a9e8fa9d33b7ab52069ddc204a68a6": {
+    "facing": "model",
+    "id": "data-artifact-type-definitions-extracted",
+    "name": "Artifact type-definitions extracted note",
+    "desc": "Artifact-capability guidance fragment listing the extracted .d.ts type-definition files and telling the model to read each before declaring that capability."
+  },
+  "e0759129da78192e3b9bb64f0b6e25c8c282ffb6": {
+    "facing": "model",
+    "id": "slash-command-schedule-note-github-access-unverified",
+    "name": "Schedule note: GitHub access unverified",
+    "desc": "Environment/context note injected into the /schedule (routine) prompt when GitHub access for a repo couldn't be verified temporarily, suggesting installing the Claude GitHub App."
+  },
+  "698de89d92daef037b8501f0dcb21a11f09e1c8c": { "facing": "ui" },
+  "6fe1dd627067ec508efc97056e9c7c913cf5696d": {
+    "facing": "model",
+    "id": "system-reminder-orphaned-agents-aggregate-stopped-count",
+    "name": "Orphaned agents aggregate — stopped",
+    "desc": "Aggregate system-reminder listing background agents from a previous session with no completion record (stopped variant), injected as a task-notification into the model context."
+  },
+  "04ecb7eaa2b86be7ed7f5db901e46c0db23c2030": {
+    "facing": "model",
+    "id": "system-reminder-orphaned-agents-aggregate-lost-count",
+    "name": "Orphaned agents aggregate — lost",
+    "desc": "Aggregate system-reminder listing background agents that were running when the previous Claude Code process exited and lost in-process state, injected as a task-notification into the model context."
+  },
+  "a4c405c4143c0ae1b4d7bab41b3efe7dbe7aaace": {
+    "facing": "model",
+    "id": "system-reminder-orphaned-tasks-aggregate-notification",
+    "name": "Orphaned tasks aggregate notification wrapper",
+    "desc": "Generic system-reminder wrapper announcing that N background agent/shell task(s) from the previous session have no completion record and were marked stopped/failed, injected as a task-notification into the model context."
+  },
+  "e4c85d765efe8e516645848a41ee37eb8529745f": { "facing": "internal" },
+  "4bc9890748eae1715db84876429425dde8953cf0": { "facing": "internal" },
+  "2482a014837ee239776057a1571a49cefc5e45d1": { "facing": "internal" },
+  "f3a8a7e05c1aec80d698eeb0da443d90eacf5fbb": { "facing": "internal" },
+  "ec2cf32c60de4a7f3a2127a7cf02a707a16be7fa": { "facing": "internal" },
+  "2d24858ea5d7870ca88dd66eb963a8644b1ddc46": { "facing": "internal" },
+  "175e602e83f4bd21be6dc18691669be54ab3c988": { "facing": "internal" },
+  "96579f170123b80143d04bb0a5ae86610df3d500": { "facing": "internal" },
+  "42ab262c10ab84e5e4e2a4d9faf02e2d5c2a4295": { "facing": "internal" },
+  "8efaa8947c1dd3d86445cce92b4134699e26d17d": { "facing": "internal" },
+  "bcb40f6c3de424e8eada623a463131a8160dde55": { "facing": "ui" },
+  "4bb7f2bc2fda630c36d6b2746f4e1874e1f093ea": { "facing": "ui" },
+  "cb99af86e71af1c55677e63cf6c41e15e70d6749": { "facing": "ui" },
+  "2010acf0f647b0412d239ab07db2308a3edfabd3": { "facing": "ui" },
+  "37b5d9ec94a66a7f7f5764617a937d75dfbf2f9d": { "facing": "internal" },
+  "db4674b02835bc4da9e55d33bb976e34737393c5": { "facing": "ui" },
+  "123d9094540d8d1b637d5f0ee2cefca63b9bbb8f": { "facing": "ui" },
+  "53ae63f2968957a078ad22454ee63a30a88a16e8": { "facing": "ui" },
+  "4b6409acdf9ce403126ad097d634c78060719a7a": { "facing": "ui" },
+  "ca3d4a8ac148f2d5ccbb272fc2baec1a596c047d": { "facing": "ui" },
+  "4c709ef21d61c3bab4dfa58d19d89b5090e2d7e4": { "facing": "ui" },
+  "cebc1e61ebcd04271f5166bc7ff31a4b4bf5c957": { "facing": "internal" },
+  "7ebd3b416b15575f7b482427bca4be3f7997ac79": { "facing": "internal" },
+  "6e96a8fc6c118a9acace4a5310c93f2128ec8867": { "facing": "internal" },
+  "87a76ddb53bc223df65c4e4629d592b599f5cb4b": { "facing": "internal" },
+  "429fdcb820bedd0c38e0430ea7ed3aa56f882719": { "facing": "internal" },
+  "30c89eec8687f5fc5b808dc04be5ba4ffc59e8fa": { "facing": "internal" },
+  "9d7696c5d5f75e79096cae53bec890ea3b1ea4ab": { "facing": "internal" },
+  "733436eb37c0a4e0aa61090f86e7adeeb547742b": { "facing": "internal" },
+  "365a01a6587cbeabaad33949e3a52b1accf82e70": { "facing": "ui" },
+  "57372eff72ea53fd8b3e3fc1fae7937bbcfbd15a": { "facing": "ui" },
+  "6e76701b65b2f1931bd879f1531d82b093e3c9bd": { "facing": "ui" },
+  "65b1cc4122c0abceae79eac3c6414465e41fa715": { "facing": "ui" },
+  "efb9f1736948160de2887c71cf7db36c135064a4": { "facing": "ui" },
+  "c5c2d7e37af195b9d636b3a873746e3658706138": { "facing": "ui" },
+  "bf23583b82b7e20f4fe9e9122a2292b26ef7dd8f": { "facing": "ui" },
+  "ce92959c7f7d3b72239b1aa95291e6089721bb7f": { "facing": "ui" },
+  "f3639354fcf767582c881a0079dacf86d4e2501f": { "facing": "ui" },
+  "e6c8fc025cda98c149a4cb761c9b49064f580037": { "facing": "ui" },
+  "b16ce2ce74b08014e457a87bd0465a8882b5f9cd": { "facing": "ui" },
+  "6377a8a8ca7607e3fc7367541d25ef469055a6b9": { "facing": "ui" },
+  "049f6773e6f1447df9ec583ada9e7af82418ae4e": { "facing": "ui" },
+  "28f96fae36d34a690e4a799c25f55d133eaf5f23": { "facing": "ui" },
+  "3ad581161b74ccdd4d66d024b5b7bd0d89e644bc": { "facing": "ui" }
 }
