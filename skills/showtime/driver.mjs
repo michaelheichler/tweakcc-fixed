@@ -178,7 +178,14 @@ function cmdReport(oldArg) {
   const grab = (re) => (out.match(re) || [])[1];
   const checks = [
     ['blocking issues', grab(/blocking issues:\s*(\d+)/)],
-    ['anonymous prompts', grab(/anonymous:\s*(\d+)/)],
+    // The report prints THREE `anonymous:` lines — one per metrics block ("old",
+    // "committed new", "extracted"). A bare /anonymous:\s*(\d+)/ matched the
+    // FIRST, i.e. the PREVIOUS version's count, so a bump that extracted N
+    // anonymous prompts still reported 0 and read as green while the report
+    // itself listed them under blocking issues (seen on 2.1.215: 8 anonymous,
+    // driver said 0). Key on the extracted block — that is the one this bump
+    // produced and the one the completion bar is about.
+    ['anonymous prompts', grab(/extracted metrics:\s*\{[^}]*?anonymous:\s*(\d+)/s)],
     ['UNKNOWN placeholders', grab(/UNKNOWN placeholders:\s*(\d+)/)],
     ['empty identifierMap', grab(/empty identifierMap entries:\s*(\d+)/)],
     ['prompt overrides not in JSON', grab(/prompt overrides not in JSON:\s*(\d+)/)],
