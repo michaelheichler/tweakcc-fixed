@@ -237,6 +237,12 @@ export const applySystemPrompts = async (
           `Disambiguated ${allMatches.length} matches \u2192 1 standalone for "${prompt.name}"`
         );
       } else {
+        // NOT an arbitrary pick. 124 prompt ids occupy MULTIPLE binary sites
+        // (327 catalogue entries). Each entry splices one site; after a splice
+        // the content changes, so the next entry's regex matches the remaining
+        // sites and [0] is the next unpatched one. Removing this in favour of
+        // "fail on ambiguity" broke 124 prompts / 302 sites. Cardinality-checked
+        // sequential consumption belongs in the apply preflight, not here.
         match = allMatches[0];
       }
     }

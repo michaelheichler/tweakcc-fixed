@@ -877,16 +877,27 @@ export const applyInlineBlobOverrides = async (
 
       // Guard 3 — authored content inside a `${...}` slot cannot survive. The
       // remap below swaps each slot wholesale for pristine's, so an edit made
-      // inside one (typically a reworded ternary branch) is discarded silently:
-      // apply reports ✓, nothing warns, the smoke test passes, and the override
-      // is simply not there. Warn loudly instead — the fix is always to move the
-      // content into the literal AROUND the slot. Not fatal: the rest of the
-      // override still applies correctly, so we splice and report.
+      // inside one (typically a reworded ternary branch) is discarded. Splicing
+      // anyway ships a half-applied override the operator believes is live, and
+      // the restored branch can break the grammar of the sentence the author
+      // rewrote around it. Fail this override instead; the others still apply.
       const droppedSlots = droppedInterpolationEdits(body, pristineExprs);
       if (droppedSlots.length > 0) {
-        console.log(
-          `inline-blob: "${frontmatter.name}" (${filename}) edits inside \${...} slot(s) ${droppedSlots.join(', ')} are DISCARDED — interpolations are re-emitted from the binary; move that text into the literal around the slot`
+        const bodyExprs = extractTemplateInterpolations(body);
+        const offending = droppedSlots
+          .map(i => `#${i} \${${bodyExprs[i] ?? ''}}`)
+          .join(', ');
+        console.error(
+          `patch: inline-blob: "${frontmatter.name}" (${filename}): authored content inside \${...} slot(s) ${offending} cannot survive — the binary re-emits every interpolation, so that text would be silently discarded. Move the content into the literal AROUND the slot. Override not applied.`
         );
+        results.push({
+          filename,
+          name: frontmatter.name,
+          applied: false,
+          failed: true,
+          details: `authored content inside \${...} slot(s) ${droppedSlots.join(', ')} would be discarded`,
+        });
+        continue;
       }
 
       const remappedBody = remapTemplateInterpolations(body, pristineExprs);

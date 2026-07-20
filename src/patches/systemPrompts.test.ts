@@ -876,5 +876,98 @@ describe('systemPrompts.ts', () => {
       expect(warned).toBe(true);
       expect(result.newContent).toBe(current);
     });
+
+    // Multi-site disambiguation. Exactly one standalone match is preferred.
+    // When that fails we take allMatches[0], which is NOT arbitrary: 124 prompt
+    // ids occupy multiple binary sites (327 catalogue entries), each entry
+    // splicing one site. After a splice the content changes, so the next
+    // entry's regex matches the remaining sites and [0] is the next unpatched
+    // one. Making ambiguity fail instead broke 124 prompts / 302 sites.
+    describe('multi-site disambiguation', () => {
+      const buildData = () =>
+        buildMockPromptData({
+          prompt: { content: 'HOOKS OVERRIDE' },
+          regex: 'never skip hooks',
+          getInterpolatedContent: () => 'HOOKS OVERRIDE',
+          pieces: ['never skip hooks'],
+        });
+
+      const applyWithSpy = async (cliContent: string) => {
+        const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const result = await applySystemPrompts(cliContent, '1.0.0', false);
+        const errors = errSpy.mock.calls
+          .flat()
+          .filter((a): a is string => typeof a === 'string');
+        errSpy.mockRestore();
+        return { result, errors };
+      };
+
+      it('splices the single standalone match, not the first occurrence', async () => {
+        setupMocks(buildData());
+        const { result, errors } = await applyWithSpy(
+          'x="pre never skip hooks post";y="never skip hooks";'
+        );
+
+        expect(result.newContent).toBe(
+          'x="pre never skip hooks post";y="HOOKS OVERRIDE";'
+        );
+        expect(result.results[0].applied).toBe(true);
+        expect(errors).toEqual([]);
+      });
+
+      it('falls back to the first site when none is standalone', async () => {
+        setupMocks(buildData());
+        const { result, errors } = await applyWithSpy(
+          'x="pre never skip hooks post";y="never skip hooks now";'
+        );
+
+        expect(result.newContent).toBe(
+          'x="pre HOOKS OVERRIDE post";y="never skip hooks now";'
+        );
+        expect(result.results[0].applied).toBe(true);
+        expect(errors).toEqual([]);
+      });
+
+      // The multi-site mechanism: each catalogue entry consumes the next
+      // unpatched site, so several standalone matches must NOT fail.
+      it('consumes the first site when several are standalone', async () => {
+        setupMocks(buildData());
+        const { result, errors } = await applyWithSpy(
+          'x="never skip hooks";y="never skip hooks";'
+        );
+
+        expect(result.newContent).toBe(
+          'x="HOOKS OVERRIDE";y="never skip hooks";'
+        );
+        expect(result.results[0].applied).toBe(true);
+        expect(errors).toEqual([]);
+      });
+
+      // A multi-site prompt must not disturb its neighbours.
+      it('applies both a multi-site prompt and an unrelated one', async () => {
+        const ambiguous = buildData();
+        const other = buildMockPromptData({
+          promptId: 'other-prompt',
+          prompt: { name: 'Other Prompt', content: 'OTHER OVERRIDE' },
+          regex: 'unique target text',
+          getInterpolatedContent: () => 'OTHER OVERRIDE',
+          pieces: ['unique target text'],
+        });
+        vi.mocked(promptSync.loadSystemPromptsWithRegex).mockResolvedValue([
+          ambiguous,
+          other,
+        ]);
+        vi.mocked(systemPromptHashIndex.setAppliedHashes).mockResolvedValue();
+
+        const { result } = await applyWithSpy(
+          'x="never skip hooks";y="never skip hooks";z="unique target text";'
+        );
+
+        expect(result.results[0].applied).toBe(true);
+        expect(result.results[1].applied).toBe(true);
+        expect(result.newContent).toContain('x="HOOKS OVERRIDE"');
+        expect(result.newContent).toContain('z="OTHER OVERRIDE"');
+      });
+    });
   });
 });

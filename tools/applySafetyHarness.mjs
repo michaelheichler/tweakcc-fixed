@@ -12,8 +12,12 @@
 //
 // Checks (the bar a correct apply-safety fix must hit):
 //   - 0 "Could not find" warnings
+//   - 0 "cannot apply safely" warnings
 //   - 0 INTRODUCED minified `${var}` interpolations (vs pristine) — catches the
 //     K9-class mis-bind that ReferenceErrors at boot
+//   - 0 INTRODUCED raw non-ASCII codepoints (vs pristine) — every injection
+//     surface escapes to \uXXXX; raw bytes there mojibake under Bun's Latin-1
+//     module storage
 //   - the patched cli.js still parses
 //
 // Usage:  node tools/applySafetyHarness.mjs [pristineCliJs]
@@ -27,16 +31,11 @@ import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PRISTINE = process.argv[2] || '/tmp/cli-2.1.179.js';
-if (!fs.existsSync(PRISTINE)) {
-  console.error(`harness: pristine cli.js not found: ${PRISTINE}`);
-  process.exit(2);
-}
 // Version drives which prompts-X.Y.Z.json the apply loads — derive it from the
 // pristine filename (cli-X.Y.Z.js) so the harness tracks the binary under test
 // across version bumps instead of pinning a stale version.
 const VERSION =
   (PRISTINE.match(/cli-(\d+\.\d+\.\d+)\.js$/) || [, '2.1.179'])[1];
-const orig = fs.readFileSync(PRISTINE, 'utf8');
 
 // minified `${var}` tokens: 1-4 alnum/$ chars, not an ALL_CAPS tweakcc name.
 const minifiedSlots = (s) => {
@@ -68,6 +67,58 @@ const boundLocals = (s) => {
   return out;
 };
 
+// Raw (unescaped) non-ASCII the patch INTRODUCED. Compared per codepoint against
+// the pristine rather than absolute-counted: the pristine binary carries plenty
+// of its own non-ASCII, so only a codepoint whose count GREW can have come from
+// an injection surface that failed to escape to \uXXXX.
+export const introducedRawNonAscii = (pristine, patched) => {
+  const census = (s) => {
+    const out = new Map();
+    for (const ch of s) {
+      const cp = ch.codePointAt(0);
+      if (cp < 0x80) continue;
+      out.set(cp, (out.get(cp) || 0) + 1);
+    }
+    return out;
+  };
+  const o = census(pristine);
+  const p = census(patched);
+  const out = [];
+  for (const [cp, n] of p) {
+    const delta = n - (o.get(cp) || 0);
+    if (delta > 0) {
+      out.push(
+        `U+${cp.toString(16).toUpperCase().padStart(4, '0')}(+${delta})`
+      );
+    }
+  }
+  return out.sort();
+};
+
+// A "cannot apply safely" warning means an override was NOT spliced — the
+// operator's content is missing from the binary. Counting it without gating on
+// it reported PASS for a half-applied set, so it is a failure like the rest.
+export const harnessVerdict = ({
+  cnf,
+  cannotApply,
+  introduced,
+  rawNonAscii,
+  parses,
+  wfScriptErrors,
+}) =>
+  cnf === 0 &&
+  cannotApply === 0 &&
+  introduced.length === 0 &&
+  rawNonAscii.length === 0 &&
+  parses &&
+  wfScriptErrors.length === 0;
+
+const runHarness = () => {
+if (!fs.existsSync(PRISTINE)) {
+  console.error(`harness: pristine cli.js not found: ${PRISTINE}`);
+  process.exit(2);
+}
+const orig = fs.readFileSync(PRISTINE, 'utf8');
 const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'applysafe-home-'));
 try {
   // Isolated ~/.tweakcc with a copy of the real override set + config.
@@ -124,6 +175,8 @@ try {
     const unresolved = slotDelta - Math.max(0, bindDelta);
     if (unresolved > 0) introduced.push(`${v}(+${unresolved})`);
   }
+
+  const rawNonAscii = introducedRawNonAscii(orig, patched);
 
   // Syntax check. The check must use a parser capable of the language features
   // the pristine binary ALREADY uses — Bun compiled this cli.js and it contains
@@ -245,12 +298,36 @@ try {
   console.log(`Could not find:    ${cnf}`);
   console.log(`cannot apply safely (warns): ${cannotApply}`);
   console.log(`introduced minified \${var}: ${introduced.length}  ${introduced.slice(0, 12).join(' ')}`);
+  console.log(`introduced raw non-ASCII: ${rawNonAscii.length}  ${rawNonAscii.slice(0, 12).join(' ')}`);
   console.log(`patched parses:    ${parses}  [${parseMode}]`);
   console.log(`workflow-script JS: ${wfScriptErrors.length === 0 ? 'ok' : wfScriptErrors.join(' | ')}`);
-  const ok =
-    cnf === 0 && introduced.length === 0 && parses && wfScriptErrors.length === 0;
+  const ok = harnessVerdict({
+    cnf,
+    cannotApply,
+    introduced,
+    rawNonAscii,
+    parses,
+    wfScriptErrors,
+  });
   console.log(ok ? 'RESULT: PASS' : 'RESULT: FAIL');
   process.exit(ok ? 0 : 1);
 } finally {
   fs.rmSync(tmpHome, { recursive: true, force: true });
 }
+};
+
+// Run unless we were imported (the unit tests import the two pure helpers).
+// Resolved through realpath on both sides: a mismatch here would make the
+// harness exit 0 having checked nothing — a false PASS, the exact failure mode
+// this file exists to catch.
+const realpath = (p) => {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return path.resolve(p);
+  }
+};
+const invokedDirectly =
+  !!process.argv[1] &&
+  realpath(process.argv[1]) === realpath(fileURLToPath(import.meta.url));
+if (invokedDirectly) runHarness();

@@ -253,6 +253,71 @@ describe('inlineBlobOverrides: applyInlineBlobOverrides (integration)', () => {
     expect(out).toBe(before);
   });
 
+  // Guard 3: content authored INSIDE a `${...}` slot is thrown away by the
+  // positional remap. Splicing anyway ships a half-applied override the
+  // operator believes is live — and the restored branch can break the grammar
+  // of the sentence rewritten around it. Must fail, not warn-and-splice.
+  it('fails (no splice) a template override with authored content inside a ${...} slot', async () => {
+    clearOverrides();
+    writeOverride(
+      'inline-tern.md',
+      [
+        '<!--',
+        "name: 'Inline blob: tern'",
+        'description: x',
+        'inlineBlobAnchor: "`You are an agent"',
+        'inlineBlobKind: template',
+        'injectionGate: always on',
+        'ccVersion: 2.1.211',
+        '-->',
+        'You are an agent ${H!==null?"REWORDED BRANCH":"with tasks."} now',
+      ].join('\n')
+    );
+    const content =
+      'x=`You are an agent ${H!==null?"in a session":"with tasks."} now`;';
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { content: out, results } = await applyInlineBlobOverrides(content);
+    const errors = errSpy.mock.calls
+      .flat()
+      .filter((a): a is string => typeof a === 'string');
+    errSpy.mockRestore();
+
+    expect(results[0].applied).toBe(false);
+    expect(results[0].failed).toBe(true);
+    // Binary untouched — nothing half-applied.
+    expect(out).toBe(content);
+    expect(out).not.toContain('REWORDED BRANCH');
+    expect(errors.some(e => e.includes('REWORDED BRANCH'))).toBe(true);
+    expect(errors.some(e => e.includes('inline-tern.md'))).toBe(true);
+    expect(errors.some(e => e.includes('AROUND the slot'))).toBe(true);
+  });
+
+  // The contrast case: a BARE placeholder slot carries no authored content, so
+  // the remap loses nothing and the override applies as before.
+  it('still applies a template override whose slots are bare placeholders', async () => {
+    clearOverrides();
+    writeOverride(
+      'inline-bare.md',
+      [
+        '<!--',
+        "name: 'Inline blob: bare'",
+        'description: x',
+        'inlineBlobAnchor: "`You are an agent"',
+        'inlineBlobKind: template',
+        'injectionGate: always on',
+        'ccVersion: 2.1.211',
+        '-->',
+        'You are an agent ${X} REWRITTEN TAIL',
+      ].join('\n')
+    );
+    const content = 'x=`You are an agent ${H} with tasks.`;';
+    const { content: out, results } = await applyInlineBlobOverrides(content);
+
+    expect(results[0].applied).toBe(true);
+    expect(out).toContain('${H} REWRITTEN TAIL');
+    expect(out).not.toContain('${X}');
+  });
+
   it('applies a raw-passthrough array override, remapping bare identifiers positionally', async () => {
     clearOverrides();
     writeOverride(
