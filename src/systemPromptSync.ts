@@ -1450,6 +1450,300 @@ export const applyOriginalWhitespace = (
   return originalWhitespace.leading + trimmed + originalWhitespace.trailing;
 };
 
+interface CodeRegion {
+  start: number;
+  end: number;
+}
+
+// Characters that can legally precede a regex literal. After anything else a
+// `/` is division, so the two are told apart by the last meaningful character.
+const REGEX_LITERAL_PRECEDERS = new Set([
+  '(',
+  ',',
+  '=',
+  ':',
+  '[',
+  '!',
+  '&',
+  '|',
+  '?',
+  '{',
+  '}',
+  ';',
+  '+',
+  '-',
+  '*',
+  '%',
+  '~',
+  '^',
+  '<',
+  '>',
+  'n', // `return` / `in` — checked only via the keyword test below
+]);
+
+const IDENT_CHAR = /[$\w]/;
+
+const isRegexLiteralStart = (content: string, at: number): boolean => {
+  let i = at - 1;
+  while (i >= 0 && /\s/.test(content[i])) i--;
+  if (i < 0) return true;
+  const ch = content[i];
+  if (ch === 'n') {
+    return /(?:^|[^$\w])(?:return|in)$/.test(content.slice(0, i + 1));
+  }
+  return REGEX_LITERAL_PRECEDERS.has(ch);
+};
+
+const skipQuotedString = (
+  content: string,
+  start: number,
+  quote: string
+): number => {
+  let i = start + 1;
+  while (i < content.length) {
+    const ch = content[i];
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+    if (ch === quote) return i + 1;
+    i++;
+  }
+  return -1;
+};
+
+const skipRegexLiteral = (content: string, start: number): number => {
+  let i = start + 1;
+  let inClass = false;
+  while (i < content.length) {
+    const ch = content[i];
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+    if (ch === '\n') return -1;
+    if (ch === '[') inClass = true;
+    else if (ch === ']') inClass = false;
+    else if (ch === '/' && !inClass) {
+      i++;
+      while (i < content.length && /[a-z]/i.test(content[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return -1;
+};
+
+/**
+ * Walks one `${...}` interpolation starting at `openIndex` (the `$`), returning
+ * the index of its closing `}` plus the sub-ranges of the expression that are
+ * real code — string literals, comments, regex literals and template-literal
+ * text are excluded so identifier substitution never touches them.
+ */
+const scanInterpolation = (
+  content: string,
+  openIndex: number
+): { end: number; codeRegions: CodeRegion[] } | null => {
+  const codeRegions: CodeRegion[] = [];
+  const stack: Array<'expr' | 'template'> = ['expr'];
+  let regionStart = openIndex + 2;
+  let i = regionStart;
+
+  const closeRegion = (at: number): void => {
+    if (at > regionStart) codeRegions.push({ start: regionStart, end: at });
+  };
+
+  while (i < content.length) {
+    const ch = content[i];
+
+    if (stack[stack.length - 1] === 'template') {
+      if (ch === '\\') {
+        i += 2;
+        continue;
+      }
+      if (ch === '`') {
+        stack.pop();
+        i++;
+        regionStart = i;
+        continue;
+      }
+      if (ch === '$' && content[i + 1] === '{') {
+        stack.push('expr');
+        i += 2;
+        regionStart = i;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    if (ch === '/' && content[i + 1] === '/') {
+      closeRegion(i);
+      const nl = content.indexOf('\n', i);
+      i = nl === -1 ? content.length : nl;
+      regionStart = i;
+      continue;
+    }
+
+    if (ch === '/' && content[i + 1] === '*') {
+      closeRegion(i);
+      const close = content.indexOf('*/', i + 2);
+      if (close === -1) return null;
+      i = close + 2;
+      regionStart = i;
+      continue;
+    }
+
+    if (ch === '/' && isRegexLiteralStart(content, i)) {
+      closeRegion(i);
+      const after = skipRegexLiteral(content, i);
+      if (after === -1) return null;
+      i = after;
+      regionStart = i;
+      continue;
+    }
+
+    if (ch === "'" || ch === '"') {
+      closeRegion(i);
+      const after = skipQuotedString(content, i, ch);
+      if (after === -1) return null;
+      i = after;
+      regionStart = i;
+      continue;
+    }
+
+    if (ch === '`') {
+      closeRegion(i);
+      stack.push('template');
+      i++;
+      continue;
+    }
+
+    if (ch === '{') {
+      stack.push('expr');
+      i++;
+      continue;
+    }
+
+    if (ch === '}') {
+      stack.pop();
+      if (stack.length === 0) {
+        closeRegion(i);
+        return { end: i, codeRegions };
+      }
+      if (stack[stack.length - 1] === 'template') {
+        closeRegion(i);
+        i++;
+        continue;
+      }
+      i++;
+      continue;
+    }
+    i++;
+  }
+
+  return null;
+};
+
+const prevMeaningfulIndex = (content: string, at: number): number => {
+  let i = at - 1;
+  while (i >= 0 && /\s/.test(content[i])) i--;
+  return i;
+};
+
+const nextMeaningfulIndex = (content: string, at: number): number => {
+  let i = at;
+  while (i < content.length && /\s/.test(content[i])) i++;
+  return i < content.length ? i : -1;
+};
+
+const isSubstitutableReference = (
+  content: string,
+  start: number,
+  end: number
+): boolean => {
+  const prev = prevMeaningfulIndex(content, start);
+  const prevCh = prev >= 0 ? content[prev] : '';
+
+  // A property position is NOT excluded: buildSearchRegexFromPieces captures
+  // `([\w$]+)` wherever pieces split, so a piece ending in `.`/`?.` makes the
+  // property name itself a slot (e.g. pieces [..., '?.', '??', ...] yields
+  // `${VAR_0?.VAR_1??VAR_2()}`). reconstructContentFromPieces writes that label
+  // into the override, so excluding `x.LABEL` would stop the tool's own
+  // generated markdown from round-tripping and silently emit a dead property.
+
+  const next = nextMeaningfulIndex(content, end);
+  const nextCh = next >= 0 ? content[next] : '';
+  if (nextCh === ':' && (prevCh === '{' || prevCh === ',')) return false;
+
+  return true;
+};
+
+/**
+ * Substitutes mapped identifiers inside `${...}` interpolations only. Text
+ * outside an interpolation is prose the model reads and is copied byte for
+ * byte — Anthropic's own prompts contain label names (`$CLAUDE_JOB_DIR`) as
+ * literal prose alongside the slot that resolves them.
+ */
+const substituteInInterpolations = (
+  content: string,
+  reverseMap: Record<string, string>
+): string => {
+  const regions: CodeRegion[] = [];
+
+  for (let i = 0; i < content.length; i++) {
+    if (
+      content[i] !== '$' ||
+      content[i + 1] !== '{' ||
+      countPrecedingBackslashes(content, i) % 2 !== 0
+    ) {
+      continue;
+    }
+    const scanned = scanInterpolation(content, i);
+    if (!scanned) {
+      throw new Error(
+        `applyIdentifierMapping: unbalanced \${...} interpolation at offset ${i}: ${JSON.stringify(
+          content.slice(i, i + 80)
+        )}`
+      );
+    }
+    regions.push(...scanned.codeRegions);
+    i = scanned.end;
+  }
+
+  if (regions.length === 0) return content;
+
+  let out = '';
+  let cursor = 0;
+  for (const region of regions) {
+    out += content.slice(cursor, region.start);
+    let i = region.start;
+    while (i < region.end) {
+      if (!IDENT_CHAR.test(content[i])) {
+        out += content[i];
+        i++;
+        continue;
+      }
+      let j = i;
+      while (j < region.end && IDENT_CHAR.test(content[j])) j++;
+      const token = content.slice(i, j);
+      if (
+        Object.prototype.hasOwnProperty.call(reverseMap, token) &&
+        isSubstitutableReference(content, i, j)
+      ) {
+        out += reverseMap[token];
+      } else {
+        out += token;
+      }
+      i = j;
+    }
+    cursor = region.end;
+  }
+  out += content.slice(cursor);
+
+  return out;
+};
+
 /**
  * Applies identifier mapping to convert human-readable names to actual minified variables.
  * Takes content with ${HUMAN_NAME} and converts to ${actualVar} using extracted variable names.
@@ -1461,7 +1755,7 @@ export const applyOriginalWhitespace = (
  *     - extractedVars[1] maps to identifierMap["0"]
  *     - extractedVars[2] maps to identifierMap["1"]
  */
-const applyIdentifierMapping = (
+export const applyIdentifierMapping = (
   content: string,
   identifiers: (number | string)[],
   identifierMap: Record<string, string>,
@@ -1485,17 +1779,7 @@ const applyIdentifierMapping = (
     reverseMap[humanName] = capturedVar;
   }
 
-  // Replace ${HUMAN_NAME} with ${actualVar} - sort by length descending to avoid partial replacements
-  let result = content;
-  const sortedEntries = Object.entries(reverseMap).sort(
-    (a, b) => b[0].length - a[0].length
-  );
-
-  for (const [humanName, actualVar] of sortedEntries) {
-    const pattern = new RegExp(`\\b${humanName}\\b`, 'g');
-    // Use a replacer function to avoid special replacement pattern interpretation (e.g., $$ -> $), see #237
-    result = result.replace(pattern, () => actualVar);
-  }
+  let result = substituteInInterpolations(content, reverseMap);
 
   // Replace <<CCVERSION>> with the actual Claude Code version
   result = result.replace(/<<CCVERSION>>/g, ccVersion);
