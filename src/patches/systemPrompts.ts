@@ -389,9 +389,9 @@ export const applySystemPrompts = async (
           continue;
         }
         if (escaped !== replacementContent) {
-          console.log(
-            chalk.yellow(`Auto-escaped unescaped backticks in "${prompt.name}"`)
-          );
+          // Successful auto-repair, not an actionable condition: the override
+          // applies correctly. Keep it out of the apply log (0-warnings bar).
+          debug(`Auto-escaped unescaped backticks in "${prompt.name}"`);
         }
         replacementContent = escaped;
       }
