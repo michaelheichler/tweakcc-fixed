@@ -1,0 +1,30 @@
+src/tests/promptExtractor217Identities.test.ts
+  s_ef227f29261427::t_2c2bc8696f5514 1,3,33-34
+  s_ef227f29261427::t_19758018c04df0 2,4-32
+  s_ef227f29261427::t_c9997a805dc58d 35-47
+pnpm-workspace.yaml
+  s_ef227f29261427::t_0893dff7487ebd 1-3
+data/prompt-classification.json
+  s_ef227f29261427::t_4e04a583df693b 2-72
+.requirements/20260722T093230Z_support_claude_2_1_217/REQUIREMENTS.md
+  s_ef227f29261427::t_a01c96ec24df27 7,11,13,20,25,32
+  s_ef227f29261427::t_352d0c24098118 1-6,8-10,12,14-19,21-24,26-31,33-35
+data/prompts/prompts-2.1.217.json
+  s_ef227f29261427::t_4e258ded8b8790 1-43319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "76459aa4fb2bdc03a0f5bb3b643263afbc739ffd",
+  "prompts": {},
+  "sessions": {
+    "s_ef227f29261427": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5177-b841-77f3-aaf7-8fd5cd6e51cb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Heichler <iam@michaelheichler.eu>"
+    }
+  }
+}
