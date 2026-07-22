@@ -1,0 +1,26 @@
+src/patches/systemPromptsPristine.test.ts
+  s_ef227f29261427::t_3354e89b932e99 1-3,5-14,20-40,42-57
+  s_ef227f29261427::t_9adc4bf460de95 4,15-19,41
+.requirements/20260722T105426Z_skip_pristine_prompt_overrides/REQUIREMENTS.md
+  s_ef227f29261427::t_3354e89b932e99 33
+  s_ef227f29261427::t_e8534738b48b5d 1-32
+src/patches/systemPrompts.ts
+  s_ef227f29261427::t_9edb0ebc1cd0b0 69,71,76-90,92-95,161-175
+  s_ef227f29261427::t_b24e82adee991b 70,72-75,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "fde87361f42fae5a87ea40a75489a4d3bb0fe4fb",
+  "prompts": {},
+  "sessions": {
+    "s_ef227f29261427": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5177-b841-77f3-aaf7-8fd5cd6e51cb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Heichler <iam@michaelheichler.eu>"
+    }
+  }
+}
