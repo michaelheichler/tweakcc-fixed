@@ -1,4 +1,75 @@
 {
+  "5c7bc532e2334616d32f1fdab37fd262964a3885": {
+    "facing": "model",
+    "id": "system-prompt-correction-restraint",
+    "name": "System Prompt: Correction restraint",
+    "desc": "Limits explicit corrections to errors that change the user's code, conclusions, or decisions"
+  },
+  "2f4ea081e75826b18d790a3b25c04cbc4cc509f8": {
+    "facing": "model",
+    "id": "system-prompt-scope-fidelity",
+    "name": "System Prompt: Scope fidelity",
+    "desc": "Directs Claude to deliver the intended scope and ask only when ambiguity changes the work"
+  },
+  "86da7df53268e5ba171a8b1342de89753f18fd47": {
+    "facing": "model",
+    "id": "system-prompt-delivering-work-at-full-scope",
+    "name": "System Prompt: Delivering work at full scope",
+    "desc": "Directs Claude to finish unblocked work and report any remaining limitation plainly"
+  },
+  "b9eb4c95468f1a94eff64917a62ae9a97ffce678": {
+    "facing": "model",
+    "id": "skill-artifact-pr-review-html-template",
+    "name": "Skill: Artifact PR review HTML template",
+    "desc": "HTML template used by the artifact PR review skill"
+  },
+  "df27516383462e47d9dc74aa88d6a83fc9125426": { "facing": "ui" },
+  "1372769eacd13259dc674b688379cab373d22b10": {
+    "facing": "model",
+    "id": "tool-result-subagent-budget-limit",
+    "name": "Tool Result: Subagent budget limit",
+    "desc": "Reports that the subagent budget is exhausted and directs the agent to finish directly"
+  },
+  "72457ac68fe750b25bd1af0dc0749ea1fc7c249a": {
+    "facing": "model",
+    "id": "tool-result-subagent-concurrency-limit",
+    "name": "Tool Result: Subagent concurrency limit",
+    "desc": "Reports the concurrent subagent cap and tells the agent not to retry"
+  },
+  "d2af8d3f2eceffc1b148813e4b7e730b8ea50ad1": { "facing": "internal" },
+  "6b5804caeb6d82b4c978c365e2e45dbf2bb81f2c": {
+    "facing": "model",
+    "id": "skill-explain-usage-description",
+    "name": "Skill: Explain usage description",
+    "desc": "Description used to route requests for a plain-language token usage breakdown"
+  },
+  "1df48c066c75cfc05a55618eaf157d67b8457e81": {
+    "facing": "model",
+    "id": "tool-result-import-digest-mismatch",
+    "name": "Tool Result: Import digest mismatch",
+    "desc": "Refuses an import whose confirmation digest no longer matches the current scan"
+  },
+  "3f17854c127202dd3e73b54ac5262f8b8290ebc8": {
+    "facing": "model",
+    "id": "skill-explain-usage-slash-command",
+    "name": "Skill: /explain-usage slash command",
+    "desc": "Prompt for grouping and explaining effective token usage from a session transcript"
+  },
+  "d64209554df3f992f0b265ec8c5f446019c6b419": { "facing": "internal" },
+  "d39864eda4b577c428d47c49d2fbaa0bab2387c8": {
+    "facing": "model",
+    "id": "tool-result-network-shaped-cwd-guard",
+    "name": "Tool Result: Network-shaped working directory guard",
+    "desc": "Blocks a command whose network-shaped path cannot be proven inside the local worktree"
+  },
+  "d036cbb2dc2172fb4a9002044261fdb6508017eb": { "facing": "ui" },
+  "7069278f33df08d8cc13d3ccd9e3e5b06a2f963f": {
+    "facing": "model",
+    "id": "tool-result-network-shaped-write-guard",
+    "name": "Tool Result: Network-shaped write guard",
+    "desc": "Blocks a write whose network-shaped path cannot be proven inside the local worktree"
+  },
+  "bb83814a39e57d23f9eeff2bad8b2903d6339041": { "facing": "internal" },
   "2d4b45f174ea423330f5a1f204de867cb8bff343": { "facing": "internal" },
   "4f19e3b79187555205fd7bc0403024eb9326344b": { "facing": "internal" },
   "e3e1b717e500336d80932c4b9faf77d4299c5099": { "facing": "internal" },
