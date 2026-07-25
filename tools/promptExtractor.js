@@ -107,6 +107,99 @@ const CURATED_IDENTIFIER_MAPS = {
 };
 
 const NEW_PROMPT_ASSIGNMENTS = [
+  // 2.1.219 — ten fuzzy-carryover misses. Every one is still in the binary with a
+  // bound override; Anthropic reworded each prompt's OPENING (inside FUZZY_PREFIX's
+  // first 100 chars), so the carried name dropped. Four extracted anonymous; five
+  // were additionally rejected by the prose-quality gate and only surfaced as
+  // classify candidates (a NEW_PROMPT_ASSIGNMENTS hit bypasses that gate). Restoring
+  // our established ids is what keeps the existing overrides bound — without these
+  // the classify phase mints fresh ids and every override orphans.
+  {
+    // The claude-api skill's shared/model-migration.md, grown 145,946 -> 176,402 ch
+    // by the "Migrating to Claude Opus 5" chapter. It QUOTES the whole
+    // "# Communicating with the user" block, so the disambiguator collided it with
+    // system-prompt-communicating-with-the-user and emitted "...-2".
+    matcher: t =>
+      t.includes('# Model Migration Guide') &&
+      t.includes('If you arrived via'),
+    name: 'Skill: Model migration guide',
+    id: 'skill-model-migration-guide',
+    description:
+      "The claude-api skill's model-migration reference (shared/model-migration.md), read by `/claude-api migrate`: per-model breaking changes, behavioral shifts and migration checklists.",
+  },
+  {
+    matcher: t => t.includes('### Phase 4: Final Plan'),
+    name: 'Agent Prompt: Plan mode phase 4',
+    id: 'agent-prompt-plan-mode-phase-4',
+    description:
+      'Phase 4 of the five-phase plan-mode workflow: write the final plan to the plan file, beginning with a Context section.',
+  },
+  {
+    matcher: t =>
+      t.includes('## Plan File Info:') && t.includes('### Phase 3: Review'),
+    name: 'System Reminder: Plan mode is active (5-phase)',
+    id: 'system-reminder-plan-mode-is-active-5-phase',
+    description:
+      'Plan-mode system reminder carrying the full five-phase workflow, including the Phase 3 review step.',
+  },
+  {
+    matcher: t =>
+      t.includes('## Plan File Info:') &&
+      t.includes('### Call ') &&
+      !t.includes('### Phase 3: Review'),
+    name: 'System Reminder: Plan mode is active (5-phase, custom instructions)',
+    id: 'system-reminder-plan-mode-is-active-5-phase-2',
+    description:
+      'Short plan-mode system-reminder variant that defers the workflow body to the output style’s custom instructions.',
+  },
+  {
+    matcher: t =>
+      t.includes('Only part of it was loaded') &&
+      t.includes('Keep index entries to one line'),
+    name: 'System Reminder: Memory index partially loaded',
+    id: 'system-reminder-memory-index-partial-load-warning',
+    description:
+      'Warns that the memory index exceeded its budget and only part of it was loaded, and to keep index entries to one line.',
+  },
+  {
+    matcher: t =>
+      t.includes('it held content before this memory store was mounted'),
+    name: 'System Reminder: Memory write sync disabled (unmanifested dir)',
+    id: 'system-reminder-memory-write-sync-disabled-unmanifested',
+    description:
+      'Tool-result note that memory sync is disabled for a directory that held content before the memory store was mounted, so writes stay local.',
+  },
+  {
+    matcher: t =>
+      t.includes('it already holds the synced memory of a different memory store'),
+    name: 'Tool Result: Memory sync foreign partition',
+    id: 'tool-result-memory-sync-foreign-partition',
+    description:
+      "Tool-result note that a directory already holds another memory store's synced content, so writes here are saved locally but not synced.",
+  },
+  {
+    matcher: t => t.includes('no recorded review target resolved'),
+    name: 'Tool Result: PR review target unresolvable',
+    id: 'tool-result-artifact-pr-review-target-unresolvable',
+    description:
+      'Tool-result explaining that the PR review target is fixed at invocation and could not be resolved, so the run cannot be revived.',
+  },
+  {
+    matcher: t => t.includes('reads the declared data island from the published artifact'),
+    name: 'Tool Parameter: Artifact action read_page_data',
+    id: 'tool-parameter-artifact-action-read-page-data',
+    description:
+      "Describes the artifact tool's 'read_page_data' action: read the declared data island and validate it against a named interaction schema.",
+  },
+  {
+    matcher: t =>
+      t.includes('You have a persistent, file-based memory at') &&
+      t.includes('applicable, durable, and legible'),
+    name: 'System Prompt: Persistent memory usage and writing guidance',
+    id: 'system-prompt-persistent-memory-usage-and-writing-guidance',
+    description:
+      'Core persistent-memory system prompt: what to save, the applicable/durable/legible bar, and how to keep memories current.',
+  },
   // 2.1.216 — the lean-arm system-prompt builder (Wty, formerly RW_) absorbed the
   // interactive-intro conditional + the shared security note (l1s) + the whole
   // "# Harness" block into ONE template literal, so the previously-standalone

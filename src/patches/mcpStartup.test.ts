@@ -20,6 +20,15 @@ const BATCH_FIXTURE_OLD =
 const BATCH_FIXTURE_NEW =
   'function gv(){let H=parseInt(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE||"",10);return H>0?H:3}';
 
+// CC >=2.1.219: the parseInt moved into a shared numeric-env helper, so the
+// `||"",10)` anchor is gone. Verbatim shape from the 2.1.220 bundle, where the
+// helper appears twice (both copies must be rewritten). The neighbouring
+// MCP_REMOTE_... helper (default 20) must stay untouched.
+const BATCH_FIXTURE_HELPER =
+  'function iKu(){let e=Bd(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE);return e>0?e:3}' +
+  'function sKu(){let e=Bd(process.env.MCP_REMOTE_SERVER_CONNECTION_BATCH_SIZE);return e>0?e:20}' +
+  'function OYu(){let $Rg=Bd(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE);return $Rg>0?$Rg:3}';
+
 describe('writeMcpNonBlocking', () => {
   it('replaces the blocking guard call with the literal false', () => {
     const out = writeMcpNonBlocking(NONBLOCKING_FIXTURE);
@@ -69,6 +78,35 @@ describe('writeMcpBatchSize', () => {
   it('coerces a multi-digit value correctly (replaces the whole default token)', () => {
     const out = writeMcpBatchSize(BATCH_FIXTURE_OLD, 100)!;
     expect(out).toContain('10)||100;');
+  });
+
+  it('bumps the CC >=2.1.219 helper-fn default at every occurrence', () => {
+    const out = writeMcpBatchSize(BATCH_FIXTURE_HELPER, 12);
+    expect(out).not.toBeNull();
+    expect(out).toContain(
+      'function iKu(){let e=Bd(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE);return e>0?e:12}'
+    );
+    // Second copy of the helper in the bundle — minified name contains `$`,
+    // which a String.replace-based splice would mangle.
+    expect(out).toContain(
+      'function OYu(){let $Rg=Bd(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE);return $Rg>0?$Rg:12}'
+    );
+    // The remote-server helper keeps its own default of 20.
+    expect(out).toContain(
+      'process.env.MCP_REMOTE_SERVER_CONNECTION_BATCH_SIZE);return e>0?e:20}'
+    );
+    expect(out).not.toContain(':3}');
+  });
+
+  it('leaves the env-name export map alone (no bare-name rewrite)', () => {
+    // The bundle also mentions the env var in an export map and a string set;
+    // neither has the `);return X>0?X:N` clamp, so neither may be touched.
+    const input =
+      'MCP_SERVER_CONNECTION_BATCH_SIZE:()=>Luh,MCP_SDK_GENERATION:()=>Muh,' +
+      'function iKu(){let e=Bd(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE);return e>0?e:3}';
+    const out = writeMcpBatchSize(input, 9)!;
+    expect(out).toContain('MCP_SERVER_CONNECTION_BATCH_SIZE:()=>Luh,');
+    expect(out).toContain('return e>0?e:9}');
   });
 
   it('returns null (logging) when the batch-size shape is absent', () => {

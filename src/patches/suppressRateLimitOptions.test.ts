@@ -15,7 +15,46 @@ const FIXTURE_P1 =
 const FIXTURE_P2 =
   'y.createElement($n,{messages:mm,tools:tt,commands:cc,verbose:!0,toolJSX:null,inProgressToolUseIDs:ip,isMessageSelectorVisible:!1,conversationId:cv,screen:sc,agentDefinitions:ad,streamingToolUses:st,showAllInTranscript:sa,onOpenRateLimitOptions:rL9,x:1})';
 
+// FIXTURE_JSX_* mirror the CC >= 2.1.186 jsx() runtime shape (real 2.1.220
+// minified props, truncated), where the message list is rendered via
+// `Fo.jsx(UXe,{...})` and the two prop orders differ between the transcript
+// and the main scroll path.
+const FIXTURE_JSX_A =
+  'let yt=I||ds()&&!z&&!Cr?Py:void 0,dr=Fo.jsx(UXe,{messages:tNr,tools:_o,commands:Dn,verbose:!0,toolJSX:null,inProgressToolUseIDs:ug.inProgressToolUseIDs,isMessageSelectorVisible:!1,conversationId:ug.conversationKey,screen:lr,agentDefinitions:ee,streamingToolUses:rNr,showAllInTranscript:fr,onOpenRateLimitOptions:CCt,isLoading:bs,scrollRef:yt});';
+
+const FIXTURE_JSX_B =
+  'Fo.jsx(UXe,{messages:ug.messages,deferMessages:ug.isMain&&!Uge&&bs,tools:_o,commands:Dn,verbose:re,toolJSX:as,inProgressToolUseIDs:ug.inProgressToolUseIDs,isMessageSelectorVisible:Hv,conversationId:ug.conversationKey,screen:lr,streamingToolUses:ec,showAllInTranscript:fr,agentDefinitions:ee,onOpenRateLimitOptions:CCt,isLoading:bs});';
+
 describe('writeSuppressRateLimitOptions', () => {
+  it('replaces the callback var in the jsx() runtime shape (method 3)', () => {
+    const out = writeSuppressRateLimitOptions(FIXTURE_JSX_A);
+
+    expect(out).not.toBeNull();
+    expect(out).toContain('onOpenRateLimitOptions:()=>{}');
+    expect(out).not.toContain('onOpenRateLimitOptions:CCt');
+    expect(out).toContain('showAllInTranscript:fr,onOpenRateLimitOptions:');
+    expect(out).toContain(',isLoading:bs,scrollRef:yt});');
+  });
+
+  it('handles both jsx() prop orders (agentDefinitions before/after showAllInTranscript)', () => {
+    const out = writeSuppressRateLimitOptions(
+      FIXTURE_JSX_A + '\n' + FIXTURE_JSX_B
+    );
+
+    expect(out).not.toBeNull();
+    expect(out).not.toContain('onOpenRateLimitOptions:CCt');
+    expect(out!.match(/onOpenRateLimitOptions:\(\)=>\{\}/g)).toHaveLength(2);
+    // the intervening agentDefinitions prop of shape B survives untouched
+    expect(out).toContain('showAllInTranscript:fr,agentDefinitions:ee,');
+  });
+
+  it('is idempotent: re-running on already-patched jsx output is a no-op', () => {
+    const once = writeSuppressRateLimitOptions(FIXTURE_JSX_A);
+    const twice = writeSuppressRateLimitOptions(once!);
+
+    expect(twice).toBe(once);
+  });
+
   it('replaces the callback var with a no-op in the lenient (pattern 1) shape', () => {
     const out = writeSuppressRateLimitOptions(FIXTURE_P1);
 

@@ -52,6 +52,16 @@ describe('patch regex/capture consistency', () => {
       )) {
         (regexDecls[m[1]] ||= []).push(countCapturingGroups(m[2]));
       }
+      // A `for (const X of …)` binding rebinds the name in an inner scope — a
+      // redeclaration the const-scan cannot see. Without this, a matchAll loop var
+      // named `match` gets paired with an unrelated `const match = s.match(pattern)`
+      // elsewhere in the file and false-positives (hit on mcpStartup.ts 2026-07-25,
+      // where the batch loop's match[1] was attributed to a 0-group regex in a
+      // different function). Names bound this way are ambiguous and get skipped,
+      // per this guard's own skip-rather-than-false-positive rule.
+      const loopBound = new Set<string>();
+      for (const m of src.matchAll(/for\s*\(\s*(?:const|let)\s+(\w+)\s+of\b/g))
+        loopBound.add(m[1]);
       const regexVars: Record<string, number> = {};
       for (const [k, v] of Object.entries(regexDecls))
         if (v.length === 1) regexVars[k] = v[0];
@@ -65,6 +75,7 @@ describe('patch regex/capture consistency', () => {
       }
       const matchVars: Record<string, string> = {};
       for (const [k, v] of Object.entries(matchDecls)) {
+        if (loopBound.has(k)) continue;
         if (v.length === 1 && regexVars[v[0]] !== undefined)
           matchVars[k] = v[0];
       }

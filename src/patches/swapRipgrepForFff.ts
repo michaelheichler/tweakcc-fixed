@@ -142,6 +142,69 @@ const repointRgResolver = (file: string, wrapperPath: string): string => {
   return newFile;
 };
 
+const skipString = (s: string, i: number): number => {
+  const q = s[i];
+  i++;
+  while (i < s.length) {
+    if (s[i] === '\\') i += 2;
+    else if (s[i] === q) return i;
+    else i++;
+  }
+  return i;
+};
+
+/** From a position INSIDE a template literal, return the index of that
+ *  template's closing backtick, skipping `${…}` interpolations (which may nest
+ *  further templates) and escaped chars. -1 if unbalanced.
+ *
+ *  A naive "next unescaped backtick" scan stops on the OPENING backtick of a
+ *  template nested in an interpolation — CC 2.1.215+ builds the Grep
+ *  description as `…${vW()==="default"?`…`:""}…`, so splicing there lands
+ *  inside the ternary consequent and breaks the file. Regex literals and
+ *  comments inside an interpolation are not modelled; none occur in these
+ *  prompt builders, and the -1 refusal is the guard. */
+const findTemplateEnd = (s: string, from: number): number => {
+  const modes: Array<{ k: 'tpl' } | { k: 'expr'; b: number }> = [{ k: 'tpl' }];
+  for (let i = from; i < s.length; i++) {
+    const top = modes[modes.length - 1];
+    const c = s[i];
+    if (c === '\\') {
+      i++;
+      continue;
+    }
+    if (top.k === 'tpl') {
+      if (c === '`') {
+        modes.pop();
+        if (modes.length === 0) return i;
+        continue;
+      }
+      if (c === '$' && s[i + 1] === '{') {
+        modes.push({ k: 'expr', b: 0 });
+        i++;
+      }
+      continue;
+    }
+    if (c === '`') {
+      modes.push({ k: 'tpl' });
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      i = skipString(s, i);
+      continue;
+    }
+    if (c === '{') {
+      top.b++;
+      continue;
+    }
+    if (c === '}') {
+      if (top.b === 0) modes.pop();
+      else top.b--;
+      continue;
+    }
+  }
+  return -1;
+};
+
 /** [BEST-EFFORT] Append text before the unescaped closing backtick of every
  *  bullet/string that contains `anchor`. Idempotent via `marker`. */
 const appendBeforeClosingBacktick = (
@@ -165,9 +228,14 @@ const appendBeforeClosingBacktick = (
   for (;;) {
     const a = file.indexOf(anchor, from);
     if (a === -1) break;
-    let j = a;
-    while (j < file.length && !(file[j] === '`' && file[j - 1] !== '\\')) j++;
-    if (j < file.length) inserts.push(j);
+    const j = findTemplateEnd(file, a);
+    if (j === -1) {
+      console.error(
+        `patch: swapRipgrepForFff: ${label} anchor at ${a} has no balanced closing backtick; skipping this site`
+      );
+    } else {
+      inserts.push(j);
+    }
     from = a + anchor.length;
   }
   if (inserts.length === 0) {

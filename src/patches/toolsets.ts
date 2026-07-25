@@ -14,6 +14,178 @@ import {
 import { Toolset } from '../types';
 
 // ============================================================================
+// UTILITY FUNCTIONS - Minified-JS scanning
+// ============================================================================
+
+const REGEX_ALLOWED_BEFORE = new Set([
+  '(',
+  ',',
+  '=',
+  ':',
+  '[',
+  '!',
+  '&',
+  '|',
+  '?',
+  '{',
+  '}',
+  ';',
+  '+',
+  '-',
+  '*',
+  '%',
+  '~',
+  '^',
+  '<',
+  '>',
+]);
+
+const REGEX_ALLOWED_KEYWORDS = [
+  'return',
+  'typeof',
+  'instanceof',
+  'in',
+  'of',
+  'new',
+  'delete',
+  'void',
+  'case',
+  'do',
+  'else',
+  'yield',
+  'await',
+];
+
+// A '/' starts a regex literal only where an expression may begin. Look back at
+// the previous significant character: an operator/punctuator means regex, an
+// identifier/number/closing bracket means division.
+const isRegexStart = (file: string, index: number): boolean => {
+  let i = index - 1;
+  while (i >= 0 && /\s/.test(file[i])) i--;
+  if (i < 0) return true;
+  const c = file[i];
+  if (REGEX_ALLOWED_BEFORE.has(c)) return true;
+  if (!/[$\w]/.test(c)) return false;
+  let start = i;
+  while (start >= 0 && /[$\w]/.test(file[start])) start--;
+  return REGEX_ALLOWED_KEYWORDS.includes(file.slice(start + 1, i + 1));
+};
+
+const skipQuoted = (file: string, index: number): number => {
+  const quote = file[index];
+  let i = index + 1;
+  while (i < file.length) {
+    const c = file[i];
+    if (c === '\\') {
+      i += 2;
+      continue;
+    }
+    if (c === quote) return i + 1;
+    i++;
+  }
+  return -1;
+};
+
+const skipRegexLiteral = (file: string, index: number): number => {
+  let i = index + 1;
+  let inClass = false;
+  while (i < file.length) {
+    const c = file[i];
+    if (c === '\\') {
+      i += 2;
+      continue;
+    }
+    if (c === '\n') return -1;
+    if (c === '[') inClass = true;
+    else if (c === ']') inClass = false;
+    else if (c === '/' && !inClass) {
+      i++;
+      while (i < file.length && /[a-z]/.test(file[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return -1;
+};
+
+const skipTemplate = (file: string, index: number): number => {
+  let i = index + 1;
+  while (i < file.length) {
+    const c = file[i];
+    if (c === '\\') {
+      i += 2;
+      continue;
+    }
+    if (c === '`') return i + 1;
+    if (c === '$' && file[i + 1] === '{') {
+      const end = matchDelimiter(file, i + 1);
+      if (end === null) return -1;
+      i = end + 1;
+      continue;
+    }
+    i++;
+  }
+  return -1;
+};
+
+/**
+ * Find the index of the delimiter matching the '{' or '(' at openIndex,
+ * skipping over strings, template literals, comments and regex literals so
+ * braces that only appear inside a string cannot throw the count off.
+ */
+export const matchDelimiter = (
+  file: string,
+  openIndex: number
+): number | null => {
+  const open = file[openIndex];
+  const close = open === '{' ? '}' : open === '(' ? ')' : '';
+  if (!close) return null;
+
+  let depth = 0;
+  let i = openIndex;
+  while (i < file.length) {
+    const c = file[i];
+    if (c === '/' && file[i + 1] === '/') {
+      const nl = file.indexOf('\n', i);
+      if (nl === -1) return null;
+      i = nl + 1;
+      continue;
+    }
+    if (c === '/' && file[i + 1] === '*') {
+      const end = file.indexOf('*/', i + 2);
+      if (end === -1) return null;
+      i = end + 2;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      const next = skipQuoted(file, i);
+      if (next < 0) return null;
+      i = next;
+      continue;
+    }
+    if (c === '`') {
+      const next = skipTemplate(file, i);
+      if (next < 0) return null;
+      i = next;
+      continue;
+    }
+    if (c === '/' && isRegexStart(file, i)) {
+      const next = skipRegexLiteral(file, i);
+      if (next < 0) return null;
+      i = next;
+      continue;
+    }
+    if (c === open) depth++;
+    else if (c === close) {
+      depth--;
+      if (depth === 0) return i;
+    }
+    i++;
+  }
+  return null;
+};
+
+// ============================================================================
 // UTILITY FUNCTIONS - Variable Discovery
 // ============================================================================
 
@@ -23,7 +195,17 @@ import { Toolset } from '../types';
 export const findSelectComponentName = (
   fileContents: string
 ): string | null => {
-  // Pattern matches the Select component's function signature
+  // Method 1 (CC >=2.1.186): the jsx runtime replaced createElement, and the
+  // children/props moved into the object literal:
+  //   Mb.jsx(ya,{confirmLabel:"Yes, use recommended settings",...})
+  const jsxPattern =
+    /\.jsxs?\(([$\w]+),\{[\s\S]{0,100}"Yes, use recommended settings"/;
+  const jsxMatch = fileContents.match(jsxPattern);
+  if (jsxMatch) {
+    return jsxMatch[1];
+  }
+
+  // Method 2 (CC <2.1.186): classic createElement call.
   const selectPattern =
     /\.createElement\(([$\w]+),.{0,100}"Yes, use recommended settings"/;
   const match = fileContents.match(selectPattern);
@@ -391,7 +573,76 @@ export const writeComputeToolsFilter = (
 
   // stateInfo validated above — computeTools reads toolset from STORE.getState() directly
 
-  // Find the computeTools closure pattern:
+  // Create toolsets mapping (shared by both methods)
+  const toolsetsMapJSON = JSON.stringify(
+    Object.fromEntries(
+      toolsets.map(ts => [
+        ts.name,
+        ts.allowedTools === '*' ? '*' : ts.allowedTools,
+      ])
+    )
+  );
+  const toolsetFallback = defaultToolset
+    ? JSON.stringify(defaultToolset)
+    : 'undefined';
+
+  // Method 1 (CC >=2.1.219): the closure gained a ref-backed memo cache and the
+  // agent-resolution branch collapsed into a ternary inside a post-filter call:
+  //   VAR=NS.useCallback(()=>{let STATE=STORE.getState(),CACHE=REF.current;
+  //     if(CACHE!==null&&CACHE.tpc===STATE.toolPermissionContext&&...)return CACHE.result;
+  //     SIDE(...);
+  //     let ASSEMBLED=ASSEMBLE(STATE.toolPermissionContext,STATE.mcp.tools,{skillTools:STATE.skillTools}),
+  //       MERGED=MERGE(INIT,ASSEMBLED,STATE.toolPermissionContext.mode),
+  //       RESULT=POST(AGENT?RESOLVE(AGENT,MERGED,!1,!0).resolvedTools:MERGED,STATE.toolPermissionContext);
+  //     return REF.current={tpc:...,result:RESULT},RESULT},[deps])
+  // Both exits are wrapped; the cache keeps storing the UNFILTERED list so a
+  // /toolset switch takes effect without invalidating the memo.
+  const memoPattern =
+    /([,;{])([$\w]+)=([$\w]+\.useCallback\()\(\)=>\{let ([$\w]+)=([$\w]+)\.getState\(\),([$\w]+)=([$\w]+)\.current;if\(\6!==null&&[\s\S]{0,400}?\)return \6\.result;[\s\S]{0,300}?let ([$\w]+)=[$\w]+\(\4\.toolPermissionContext,\4\.mcp\.tools(?:,\{skillTools:\4\.skillTools\})?\),([$\w]+)=[$\w]+\([$\w]+,\8,\4\.toolPermissionContext\.mode\),([$\w]+)=[$\w]+\([$\w]+\?[$\w]+\([$\w]+,\9,!1,!0\)\.resolvedTools:\9,\4\.toolPermissionContext\);return \7\.current=\{[\s\S]{0,400}?result:\10\},\10\},\[/;
+
+  const memoMatch = oldFile.match(memoPattern);
+  if (memoMatch && memoMatch.index !== undefined) {
+    const full = memoMatch[0];
+    const stateVar = memoMatch[4];
+    const cacheVar = memoMatch[6];
+    const resultVar = memoMatch[10];
+
+    const helper = `const __ts=${toolsetsMapJSON},__tf=(t,s)=>{const n=s.toolset??${toolsetFallback};globalThis.__tweakcc_toolset={name:n,tools:__ts[n]};if(__ts.hasOwnProperty(n)){const a=__ts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};`;
+
+    const bodyStart = full.indexOf('()=>{');
+    const cachedReturn = `return ${cacheVar}.result;`;
+    const cachedIndex = full.indexOf(cachedReturn);
+    const tail = `,${resultVar}},[`;
+
+    if (bodyStart === -1 || cachedIndex === -1 || !full.endsWith(tail)) {
+      console.error(
+        'patch: toolsets: computeToolsFilter: memoized shape matched but landmarks missing'
+      );
+      return null;
+    }
+
+    // Splice from the highest index down so earlier offsets stay valid.
+    let patched =
+      full.slice(0, full.length - tail.length) +
+      `,__tf(${resultVar},${stateVar})},[`;
+    patched =
+      patched.slice(0, cachedIndex) +
+      `return __tf(${cacheVar}.result,${stateVar});` +
+      patched.slice(cachedIndex + cachedReturn.length);
+    patched =
+      patched.slice(0, bodyStart + 5) + helper + patched.slice(bodyStart + 5);
+
+    const startIndex = memoMatch.index;
+    const endIndex = startIndex + full.length;
+    const newFile =
+      oldFile.slice(0, startIndex) + patched + oldFile.slice(endIndex);
+
+    showDiff(oldFile, newFile, patched, startIndex, endIndex);
+
+    return newFile;
+  }
+
+  // Method 2 (CC <=2.1.218): find the computeTools closure pattern:
   // Old form: VAR=()=>{let STATE=STORE.getState(),ASSEMBLED=ASSEMBLE(STATE.toolPermissionContext,STATE.mcp.tools),MERGED=MERGE(INIT,ASSEMBLED,STATE.toolPermissionContext.mode);if(!AGENT)return MERGED;return RESOLVE(AGENT,MERGED,!1,!0).resolvedTools}
   // CC 2.1.140+: VAR=NS.useCallback(()=>{...let ASSEMBLED=ASSEMBLE(STATE.toolPermissionContext,STATE.mcp.tools,{skillTools:STATE.skillTools}),...},[deps])
   const pattern =
@@ -487,8 +738,10 @@ export const writePrintToolsFilter = (
     ? JSON.stringify(defaultToolset)
     : 'undefined';
 
+  // CC >=2.1.219 folded the declaration into a multi-declarator `let`, so the
+  // statement can end on `,` instead of `;`: `let TOOLS=COMPUTE(STATE),NEXT=...`.
   const toolsPattern =
-    /let ([$\w]+)=([$\w]+)\(([$\w]+)\);(?=[\s\S]{0,2500}tools:\1,refreshTools:\(\)=>\2\(([$\w]+)\(\)\))/;
+    /let ([$\w]+)=([$\w]+)\(([$\w]+)\)([;,])(?=[\s\S]{0,2500}tools:\1,refreshTools:\(\)=>\2\(([$\w]+)\(\)\))/;
   const toolsMatch = oldFile.match(toolsPattern);
   if (!toolsMatch || toolsMatch.index === undefined) {
     console.error(
@@ -500,9 +753,13 @@ export const writePrintToolsFilter = (
   const toolsVar = toolsMatch[1];
   const computeFn = toolsMatch[2];
   const stateVar = toolsMatch[3];
-  const getterFn = toolsMatch[4];
+  const terminator = toolsMatch[4];
+  const getterFn = toolsMatch[5];
 
-  const filterCode = `let ${toolsVar}=${computeFn}(${stateVar});const __tpts=${toolsetsJSON},__tptf=(t,s)=>{const n=s.toolset??${fallback};globalThis.__tweakcc_toolset={name:n,tools:__tpts[n]};if(__tpts.hasOwnProperty(n)){const a=__tpts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};${toolsVar}=__tptf(${toolsVar},${stateVar});`;
+  // A `,` terminator means more declarators follow — reopen the `let` after the
+  // injected statements so they keep their original binding form.
+  const reopen = terminator === ',' ? 'let ' : '';
+  const filterCode = `let ${toolsVar}=${computeFn}(${stateVar});const __tpts=${toolsetsJSON},__tptf=(t,s)=>{const n=s.toolset??${fallback};globalThis.__tweakcc_toolset={name:n,tools:__tpts[n]};if(__tpts.hasOwnProperty(n)){const a=__tpts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};${toolsVar}=__tptf(${toolsVar},${stateVar});${reopen}`;
 
   let newFile =
     oldFile.slice(0, toolsMatch.index) +
@@ -788,6 +1045,171 @@ export const writeToolsetComponentDefinition = (
   return newFile;
 };
 
+// ============================================================================
+// STATUS LINE COMPONENT (mode display + "? for shortcuts")
+// ============================================================================
+
+export interface StatusLineComponent {
+  /** Minified name of the component function. */
+  name: string;
+  /** Name of the React-compiler memo cache array (`let bm=NS.c(143)`). */
+  cacheVar: string;
+  /** Index of the '{' that opens the component body. */
+  braceIndex: number;
+  /** Index just after that '{' — where `currentToolset` gets declared. */
+  bodyStart: number;
+  /** Index of the '}' that closes the component body. */
+  bodyEnd: number;
+}
+
+// CC >=2.1.204 compiles the status line with the React compiler, so the
+// component opens with its memo-cache allocation:
+//   function ctl(LpI){let bm=wOn.c(143),{mode:MpI,...}=LpI,...
+// The optional `currentToolset` prefix makes the locator idempotent: step 5
+// injects there, and steps 6/7 must still be able to find the same component.
+const compilerComponentHeader = () =>
+  /function ([$\w]+)\([$\w]+\)\{(?:let currentToolset=[^;]*;)?let ([$\w]+)=[$\w]+\.c\(\d+\),/g;
+
+// `Que(dne)," on",EWf` — the permission-mode label in the status line.
+const modeLabelPattern = () => /([$\w]+\([$\w]+\))," on"/g;
+
+const SHORTCUTS_LABEL = '"? for shortcuts"';
+
+/**
+ * Locate the React-compiler-memoized status line component — the single
+ * function body that renders BOTH the permission-mode label and the
+ * "? for shortcuts" hint.
+ *
+ * Steps 5-7 must all act on this one component: step 5 declares
+ * `currentToolset` in it, steps 6/7 read that binding. Injecting into a
+ * different component than the readers live in is a ReferenceError at render
+ * (CC 2.1.219 moved the shell-mode hint ~1.1 MB away into its own component,
+ * which is exactly the trap the old bashBorder anchor fell into).
+ */
+export const findStatusLineComponent = (
+  file: string
+): StatusLineComponent | null => {
+  const headers = Array.from(file.matchAll(compilerComponentHeader()));
+  if (headers.length === 0) return null;
+
+  const build = (header: RegExpMatchArray): StatusLineComponent | null => {
+    if (header.index === undefined) return null;
+    const braceIndex = header.index + header[0].indexOf('){') + 1;
+    const bodyEnd = matchDelimiter(file, braceIndex);
+    if (bodyEnd === null) return null;
+    return {
+      name: header[1],
+      cacheVar: header[2],
+      braceIndex,
+      bodyStart: braceIndex + 1,
+      bodyEnd,
+    };
+  };
+
+  // Once step 5 has run, the declaration itself is the definitive anchor —
+  // steps 6/7 rewrite the mode label, which would otherwise destroy the
+  // discovery anchor below and send step 7 off into another component.
+  for (const header of headers) {
+    if (!header[0].includes('let currentToolset=')) continue;
+    const comp = build(header);
+    if (comp) return comp;
+  }
+
+  const candidates: StatusLineComponent[] = [];
+  for (const site of file.matchAll(modeLabelPattern())) {
+    if (site.index === undefined) continue;
+
+    let header: RegExpMatchArray | null = null;
+    for (const h of headers) {
+      if (h.index !== undefined && h.index < site.index) header = h;
+      else break;
+    }
+    if (!header) continue;
+
+    const comp = build(header);
+    if (!comp || site.index > comp.bodyEnd) continue;
+    if (candidates.some(c => c.braceIndex === comp.braceIndex)) continue;
+
+    candidates.push(comp);
+  }
+
+  if (candidates.length === 0) return null;
+
+  // Prefer the component that also owns the "? for shortcuts" hint — that is
+  // the status line rather than any other mode-labelled surface.
+  return (
+    candidates.find(
+      c => file.slice(c.bodyStart, c.bodyEnd).indexOf(SHORTCUTS_LABEL) !== -1
+    ) ?? candidates[0]
+  );
+};
+
+/**
+ * The React compiler wraps most of the status line's JSX in memo guards:
+ *   let xX;if(bm[35]!==dne||bm[36]!==EWf)xX=<jsx/>,bm[35]=dne,...;else xX=bm[38];
+ * A guard that does not compare `currentToolset` would keep serving the
+ * element built for the previous toolset, so /toolset would appear to do
+ * nothing until an unrelated dep changed. The memo cache is a pure
+ * optimisation, so widening the guard to always recompute is safe.
+ *
+ * Returns the index of the guard's closing ')' (where `||!0` gets spliced in),
+ * or null when the site is not inside a cache guard (nothing to do).
+ */
+const findCacheGuardConditionEnd = (
+  file: string,
+  comp: StatusLineComponent,
+  siteIndex: number
+): number | null => {
+  const ifIndex = file.lastIndexOf('if(', siteIndex);
+  if (ifIndex < comp.bodyStart) return null;
+  if (!file.startsWith(`${comp.cacheVar}[`, ifIndex + 3)) return null;
+  const close = matchDelimiter(file, ifIndex + 2);
+  if (close === null || close >= siteIndex) return null;
+  return close;
+};
+
+interface Splice {
+  start: number;
+  end: number;
+  text: string;
+}
+
+const applySplices = (file: string, splices: Splice[]): string => {
+  let out = file;
+  for (const s of [...splices].sort((a, b) => b.start - a.start)) {
+    out = out.slice(0, s.start) + s.text + out.slice(s.end);
+  }
+  return out;
+};
+
+/**
+ * Rewrite every occurrence of `label` inside the status line component,
+ * widening the enclosing memo guard of each so the new text stays live.
+ */
+const rewriteStatusLineLabels = (
+  oldFile: string,
+  comp: StatusLineComponent,
+  sites: { start: number; end: number; text: string }[]
+): string | null => {
+  if (sites.length === 0) return null;
+
+  const splices: Splice[] = [];
+  const guardsSeen = new Set<number>();
+  for (const site of sites) {
+    splices.push({ start: site.start, end: site.end, text: site.text });
+    const guardEnd = findCacheGuardConditionEnd(oldFile, comp, site.start);
+    if (guardEnd !== null && !guardsSeen.has(guardEnd)) {
+      guardsSeen.add(guardEnd);
+      splices.push({ start: guardEnd, end: guardEnd, text: '||!0' });
+    }
+  }
+
+  const newFile = applySplices(oldFile, splices);
+  const first = sites.reduce((a, b) => (a.start <= b.start ? a : b));
+  showDiff(oldFile, newFile, first.text, first.start, first.end);
+  return newFile;
+};
+
 /**
  * Find where to insert the app state variable getter in the statusline component
  */
@@ -845,7 +1267,20 @@ export const insertShiftTabAppStateVar = (
   oldFile: string,
   defaultToolset: string | null
 ): string | null => {
-  const insertionPoint = findShiftTabAppStateVarInsertionPoint(oldFile);
+  // Method 1 (CC >=2.1.204): declare it at the top of the React-compiler status
+  // line component, which is the same body steps 6/7 read it from.
+  const comp = findStatusLineComponent(oldFile);
+  let insertionPoint: number | null = comp ? comp.bodyStart : null;
+
+  if (comp && oldFile.startsWith('let currentToolset=', comp.bodyStart)) {
+    return oldFile;
+  }
+
+  // Method 2 (CC <2.1.204): the statusline component was found by walking back
+  // from the bash/shell mode hint, which used to live in the same component.
+  if (insertionPoint === null) {
+    insertionPoint = findShiftTabAppStateVarInsertionPoint(oldFile);
+  }
   if (insertionPoint === null) {
     console.error(
       'patch: toolsets: insertShiftTabAppStateVar: failed to find insertion point'
@@ -881,6 +1316,30 @@ export const insertShiftTabAppStateVar = (
  * Append the toolset name to the mode display text
  */
 export const appendToolsetToModeDisplay = (oldFile: string): string | null => {
+  // Method 1 (CC >=2.1.204): the label lost its `.toLowerCase()` and is now
+  // rendered from a memoized slot inside the status line component:
+  //   Que(dne)," on",EWf]},"mode"):null,bm[35]=dne,...
+  // Rewrite every mode label inside that component so the toolset shows in
+  // both the normal and the dense layout variant.
+  const comp = findStatusLineComponent(oldFile);
+  if (comp) {
+    const body = oldFile.slice(comp.bodyStart, comp.bodyEnd);
+    if (body.includes('currentToolset?` on [')) return oldFile;
+    const sites = Array.from(body.matchAll(modeLabelPattern()))
+      .filter(m => m.index !== undefined)
+      .map(m => {
+        const start = comp.bodyStart + (m.index as number);
+        return {
+          start,
+          end: start + m[0].length,
+          text: `${m[1]},currentToolset?\` on [\${currentToolset}]\`:" on"`,
+        };
+      });
+    const patched = rewriteStatusLineLabels(oldFile, comp, sites);
+    if (patched) return patched;
+  }
+
+  // Method 2 (CC <2.1.204): the mode name was lower-cased inline.
   // Find the pattern where mode text is rendered
   // Looking for: tl(Y).toLowerCase(), " on"
   // We want to change it to: tl(Y).toLowerCase(), " on: ", currentToolset || "undefined"
@@ -903,14 +1362,12 @@ export const appendToolsetToModeDisplay = (oldFile: string): string | null => {
   // insertShiftTabAppStateVar provides the definition for currentToolset.
   const newText = `${tlFunction}(${modeVar}).toLowerCase(),currentToolset?\` on [\${currentToolset}]\`:""`;
 
-  const newFile = oldFile.replace(oldText, newText);
-
-  if (newFile === oldFile) {
-    console.error(
-      'patch: toolsets: appendToolsetToModeDisplay: failed to modify mode display'
-    );
-    return null;
-  }
+  // Splice by index: String.replace would reinterpret '$' sequences in both the
+  // needle and the replacement, and minified identifiers routinely contain '$'.
+  const newFile =
+    oldFile.slice(0, match.index) +
+    newText +
+    oldFile.slice(match.index + oldText.length);
 
   showDiff(
     oldFile,
@@ -929,6 +1386,31 @@ export const appendToolsetToModeDisplay = (oldFile: string): string | null => {
 export const appendToolsetToShortcutsDisplay = (
   oldFile: string
 ): string | null => {
+  // Method 1 (CC >=2.1.204): "? for shortcuts" occurs in several unrelated
+  // components (the REPL footer, the transcript footer, ...). Only the ones
+  // inside the status line component may reference `currentToolset`; rewriting
+  // the last occurrence in the file — as Method 2 does — lands ~2.9 MB away in
+  // a component where that binding does not exist (ReferenceError at render).
+  const comp = findStatusLineComponent(oldFile);
+  if (comp) {
+    const body = oldFile.slice(comp.bodyStart, comp.bodyEnd);
+    if (body.includes('currentToolset?`? for shortcuts [')) return oldFile;
+    const sites: { start: number; end: number; text: string }[] = [];
+    let at = body.indexOf(SHORTCUTS_LABEL);
+    while (at !== -1) {
+      const start = comp.bodyStart + at;
+      sites.push({
+        start,
+        end: start + SHORTCUTS_LABEL.length,
+        text: `currentToolset?\`? for shortcuts [\${currentToolset}]\`:${SHORTCUTS_LABEL}`,
+      });
+      at = body.indexOf(SHORTCUTS_LABEL, at + SHORTCUTS_LABEL.length);
+    }
+    const patched = rewriteStatusLineLabels(oldFile, comp, sites);
+    if (patched) return patched;
+  }
+
+  // Method 2 (CC <2.1.204): a single statusline component owned the hint.
   const shortcutsPattern = /"\? for shortcuts"/g;
   const matches = Array.from(oldFile.matchAll(shortcutsPattern));
 
@@ -945,13 +1427,12 @@ export const appendToolsetToShortcutsDisplay = (
   const oldText = match[0];
   const newText = `currentToolset?\`? for shortcuts [\${currentToolset}]\`:"? for shortcuts"`;
 
-  const newFile = oldFile.replace(oldText, newText);
-  if (newFile === oldFile) {
-    console.error(
-      'patch: toolsets: appendToolsetToShortcutsDisplay: failed to modify shortcuts display'
-    );
-    return null;
-  }
+  // Splice by index: String.replace with a string needle rewrites the FIRST
+  // occurrence, not the last one this method deliberately selected.
+  const newFile =
+    oldFile.slice(0, match.index) +
+    newText +
+    oldFile.slice(match.index + oldText.length);
 
   showDiff(
     oldFile,
@@ -1002,13 +1483,16 @@ export const writeSlashCommandDefinition = (oldFile: string): string | null => {
 /**
  * Find the tool change component scope
  * Pattern: X(Y,function(Z){W("tengu_ext_at_mentioned",{});
+ * CC >=2.1.219 folded the following statement into a sequence expression, so
+ * the call can be terminated by ',' instead of ';':
+ *   Wai(I,function(Wt){M("tengu_ext_at_mentioned",{}),eQ(Gai(Wt,te[xe-1]))});
  * Returns the start index
  */
 export const findToolChangeComponentScope = (
   fileContents: string
 ): number | null => {
   const pattern =
-    /[\w$]+\([\w$]+,function\([\w$]+\)\{[\w$]+\("tengu_ext_at_mentioned",\{\}\);/;
+    /[\w$]+\([\w$]+,function\([\w$]+\)\{[\w$]+\("tengu_ext_at_mentioned",\{\}\)[;,]/;
   const match = fileContents.match(pattern);
 
   if (!match || match.index === undefined) {

@@ -6,6 +6,11 @@ export const writeSuppressRateLimitOptions = (
   oldFile: string
 ): string | null => {
   const patterns = [
+    // Method 3 (CC >= 2.1.186): the React jsx() runtime replaced
+    // createElement, so the message-list props object is now built by
+    // `X.jsx(Y,{...,showAllInTranscript:A,agentDefinitions:B,onOpenRateLimitOptions:CB`
+    // (agentDefinitions and showAllInTranscript appear in either order).
+    /\.jsx\([$\w]+,\{.{0,800}?showAllInTranscript:[$\w!.]+,.{0,240}?onOpenRateLimitOptions:([$\w]+)/g,
     /\.createElement.{0,500},showAllInTranscript:[$\w]+,agentDefinitions:[$\w]+,onOpenRateLimitOptions:([$\w]+)/g,
     /\.createElement\([\w$]+,\{messages:[\w$]+,tools:[\w$]+,commands:[\w$]+,verbose:!0,toolJSX:null,inProgressToolUseIDs:[\w$]+,isMessageSelectorVisible:!1,conversationId:[\w$]+,screen:[\w$]+,agentDefinitions:[\w$]+,streamingToolUses:[\w$]+,showAllInTranscript:[\w$]+,onOpenRateLimitOptions:([\w$]+)/g,
   ];
@@ -33,6 +38,7 @@ export const writeSuppressRateLimitOptions = (
   }
 
   if (replacements === 0) {
+    if (oldFile.includes('onOpenRateLimitOptions:()=>{}')) return oldFile;
     console.error(
       'patch: suppressRateLimitOptions: failed to find onOpenRateLimitOptions pattern'
     );

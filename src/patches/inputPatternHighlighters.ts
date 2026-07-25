@@ -36,7 +36,71 @@ const buildChalkChain = (
 // ======================================================================
 
 const writeCustomHighlighterImpl = (oldFile: string): string | null => {
-  // CC <2.1.83: if(N.highlight?.color)return createElement(T,{key:E},color:N.highlight.color,...)
+  // Idempotency: the augmented renderer (any method) is the only place that
+  // emits this exact guard, so a second pass is a no-op instead of a failure.
+  if (
+    oldFile.includes('.highlight?.style?void 0:') ||
+    oldFile.includes('.highlight?.style??(typeof ')
+  ) {
+    return oldFile;
+  }
+
+  // Method 1 — CC >=2.1.186 (jsx runtime). React.createElement was replaced by
+  // jsx()/jsxs() with children passed inline as a `children:` prop and the key
+  // moved to the third argument:
+  //   return JSX.jsx(TEXT,{color:SEG.highlight?.color,dimColor:SEG.highlight
+  //     ?.dimColor,inverse:SEG.highlight?.inverse,children:JSX.jsx(INNER,
+  //     {children:SEG.text})},KEY)
+  // The sibling shimmer branch is now gated on `highlight?.shimmerColor`
+  // (which our pushed ranges never set), so no shimmer guard is needed here.
+  const jsxRegex =
+    /return ([$\w]+)\.jsx\(([$\w]+),\{color:([$\w]+)\.highlight\?\.color,dimColor:\3\.highlight\?\.dimColor,inverse:\3\.highlight\?\.inverse,children:\1\.jsx\(([$\w]+),\{children:\3\.text\}\)\},([$\w]+)\)/;
+
+  const jsxMatch = oldFile.match(jsxRegex);
+  if (jsxMatch && jsxMatch.index !== undefined) {
+    const [, jsxVar, textComp, segVar, innerComp, keyVar] = jsxMatch;
+
+    // A highlight carries either a chalk `style` fn (what this patch pushes) or
+    // — for legacy configs — a callable `color`. Either one renders the text
+    // itself, so the Ink colour props must be suppressed to avoid double
+    // styling and to keep a function from reaching `color=`.
+    const styleFn =
+      `(${segVar}.highlight?.style??` +
+      `(typeof ${segVar}.highlight?.color==="function"?` +
+      `${segVar}.highlight.color:void 0))`;
+    const off = (prop: string): string =>
+      `,${prop}:${styleFn}?void 0:${segVar}.highlight?.${prop}`;
+
+    const replacement =
+      `return ${jsxVar}.jsx(${textComp},{` +
+      `${off('color').slice(1)}` +
+      off('backgroundColor') +
+      `,dimColor:${segVar}.highlight?.dimColor` +
+      off('inverse') +
+      off('bold') +
+      off('italic') +
+      off('underline') +
+      off('strikethrough') +
+      `,children:${jsxVar}.jsx(${innerComp},{children:${styleFn}?` +
+      `${styleFn}(${segVar}.text):${segVar}.text})},${keyVar})`;
+
+    const newFile =
+      oldFile.slice(0, jsxMatch.index) +
+      replacement +
+      oldFile.slice(jsxMatch.index + jsxMatch[0].length);
+
+    showDiff(
+      oldFile,
+      newFile,
+      replacement,
+      jsxMatch.index,
+      jsxMatch.index + jsxMatch[0].length
+    );
+
+    return newFile;
+  }
+
+  // Method 2 — CC <2.1.83: if(N.highlight?.color)return createElement(T,{key:E},color:N.highlight.color,...)
   const oldRegex =
     /(if\(([$\w]+)\.highlight\?\.color\))((return [$\w]+\.createElement\([$\w]+,\{key:[$\w]+),color:[$\w]+\.highlight\.color(\},[$\w]+\.createElement\([$\w]+,null,)([$\w]+\.text)(\)\)));/;
 
@@ -71,7 +135,7 @@ const writeCustomHighlighterImpl = (oldFile: string): string | null => {
     return newFile;
   }
 
-  // CC >=2.1.83: return createElement(T,{key:E,color:N.highlight?.color,...},createElement(IK,null,N.text))
+  // Method 3 — CC >=2.1.83: return createElement(T,{key:E,color:N.highlight?.color,...},createElement(IK,null,N.text))
   // No if guard — color is passed as optional chain prop
   const newRegex =
     /(return ([$\w]+)\.createElement\(([$\w]+),\{key:([$\w]+)),color:([$\w]+)\.highlight\?\.color,dimColor:\5\.highlight\?\.dimColor,inverse:\5\.highlight\?\.inverse\},(\2\.createElement\([$\w]+,null,\5\.text\))\)/;

@@ -28,6 +28,69 @@ const getRoundingBase = (rounding: number | { threshold?: number }): number => {
   return rounding.threshold ?? 1000;
 };
 
+interface SpliceParts {
+  fullMatch: string;
+  pre: string;
+  partToWrap: string;
+  post: string;
+  startIndex: number;
+}
+
+/**
+ * CC >=2.1.186 renders the spinner's token count through the jsx() runtime, so
+ * the `key:"tokens"` prop the older patterns anchored on became a positional
+ * key argument and the children are inlined:
+ *
+ * ```
+ * Ae=yd(ve),...,jsxs(h,{dimColor:!0,children:[Ae," tokens"]})]},"tokens")
+ * ```
+ *
+ * Anchor on the surviving key literal first and only then search a bounded
+ * window backwards for the formatter call. Running the whole shape as one
+ * regex over the 21MB bundle is both slow and prone to false starts, since
+ * `VAR=FUNC(` matches at millions of offsets.
+ */
+const matchJsxRuntimeShape = (
+  oldFile: string,
+  simpleExpression: string
+): SpliceParts | null => {
+  const anchor = oldFile.match(
+    /children:\[([$\w]+)," tokens"\][^]{0,80}?,"tokens"\)/
+  );
+  if (!anchor || anchor.index === undefined) return null;
+
+  const escapedVar = anchor[1].replace(/\$/g, '\\$');
+  const regionStart = Math.max(0, anchor.index - 4000);
+  const region = oldFile.slice(regionStart, anchor.index + anchor[0].length);
+
+  // The count variable is assigned once in a minified `let` chain, but anchor on
+  // the last assignment before the render so a re-binding can never be wrapped.
+  const starts = [
+    ...region.matchAll(new RegExp(`(?<![$\\w])${escapedVar}=[$\\w]+\\(`, 'g')),
+  ];
+  const shape = new RegExp(
+    `(${escapedVar}=[$\\w]+\\()(${simpleExpression})` +
+      `(\\)[^]{0,4000}?children:\\[${escapedVar}," tokens"\\])`,
+    'y'
+  );
+
+  let m: RegExpExecArray | null = null;
+  for (const start of starts.reverse()) {
+    shape.lastIndex = start.index;
+    m = shape.exec(region);
+    if (m) break;
+  }
+  if (!m) return null;
+
+  return {
+    fullMatch: m[0],
+    pre: m[1],
+    partToWrap: m[2],
+    post: m[3],
+    startIndex: regionStart + m.index,
+  };
+};
+
 export const writeTokenCountRounding = (
   oldFile: string,
   roundingBaseConfig: number | { threshold?: number }
@@ -45,42 +108,52 @@ export const writeTokenCountRounding = (
   // a TDZ crash where `M$` is referenced while initializing itself.
   const simpleExpression = '[$\\w]+(?:\\?\\.[$\\w]+)*(?:\\([^()]*\\))?';
 
-  // Pattern 1 (CC >=2.1.83): Direct match on formatter call near key:"tokens"
-  // Matches: VAR=FUNC(EXPR),...key:"tokens"...,VAR," tokens"
-  const m1 = oldFile.match(
-    new RegExp(
-      `(([$\\w]+)=[$\\w]+\\()(${simpleExpression})(\\),.{0,2000}key:"tokens".{0,200},\\2," tokens")`
-    )
-  );
+  // Pattern 0 (CC >=2.1.186): React's createElement->jsx() migration turned the
+  // element key into a positional argument, so `key:"tokens"` is gone and the
+  // children are inlined. Shape (verified 2.1.219 / 2.1.220):
+  //   VAR=FUNC(EXPR),...jsxs(h,{dimColor:!0,children:[VAR," tokens"]})]},"tokens")
+  const m0 = matchJsxRuntimeShape(oldFile, simpleExpression);
 
-  if (m1 && m1.index !== undefined) {
-    [fullMatch, pre, , partToWrap, post] = m1;
-    startIndex = m1.index;
+  if (m0) {
+    ({ fullMatch, pre, partToWrap, post, startIndex } = m0);
   } else {
-    // Pattern 2 (CC <2.1.83): overrideMessage anchor nearby
-    const m2 = oldFile.match(
+    // Pattern 1 (CC >=2.1.83): Direct match on formatter call near key:"tokens"
+    // Matches: VAR=FUNC(EXPR),...key:"tokens"...,VAR," tokens"
+    const m1 = oldFile.match(
       new RegExp(
-        `(overrideMessage:.{0,10000},([$\\w]+)=[$\\w]+\\()(${simpleExpression})(\\),.{0,1000}key:"tokens".{0,200},\\2," tokens")`
+        `(([$\\w]+)=[$\\w]+\\()(${simpleExpression})(\\),.{0,2000}key:"tokens".{0,200},\\2," tokens")`
       )
     );
 
-    if (m2 && m2.index !== undefined) {
-      [fullMatch, pre, , partToWrap, post] = m2;
-      startIndex = m2.index;
+    if (m1 && m1.index !== undefined) {
+      [fullMatch, pre, , partToWrap, post] = m1;
+      startIndex = m1.index;
     } else {
-      // Pattern 3 (CC 1.x): older format
-      const m3 = oldFile.match(
-        /(overrideMessage:.{0,10000},key:"tokens".{0,200}[$\w]+\()(Math\.round\(.+?\))(\))/
+      // Pattern 2 (CC <2.1.83): overrideMessage anchor nearby
+      const m2 = oldFile.match(
+        new RegExp(
+          `(overrideMessage:.{0,10000},([$\\w]+)=[$\\w]+\\()(${simpleExpression})(\\),.{0,1000}key:"tokens".{0,200},\\2," tokens")`
+        )
       );
 
-      if (m3 && m3.index !== undefined) {
-        [fullMatch, pre, partToWrap, post] = m3;
-        startIndex = m3.index;
+      if (m2 && m2.index !== undefined) {
+        [fullMatch, pre, , partToWrap, post] = m2;
+        startIndex = m2.index;
       } else {
-        console.error(
-          'patch: tokenCountRounding: cannot find token count pattern in any CC format'
+        // Pattern 3 (CC 1.x): older format
+        const m3 = oldFile.match(
+          /(overrideMessage:.{0,10000},key:"tokens".{0,200}[$\w]+\()(Math\.round\(.+?\))(\))/
         );
-        return null;
+
+        if (m3 && m3.index !== undefined) {
+          [fullMatch, pre, partToWrap, post] = m3;
+          startIndex = m3.index;
+        } else {
+          console.error(
+            'patch: tokenCountRounding: cannot find token count pattern in any CC format'
+          );
+          return null;
+        }
       }
     }
   }

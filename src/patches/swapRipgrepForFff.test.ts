@@ -36,6 +36,22 @@ const BASH_DESC =
   `${BT}- \\\`timeout\\\` is in ms.${BT}];` +
   `var bashHelp2=[${BT}- Avoid cat/head/tail. Prefer dedicated tools over \${o} when one fits.${BT}];`;
 
+// CC 2.1.215+ shape: the Grep description template carries a `${cond?`…`:""}`
+// interpolation with a NESTED template. A naive "next unescaped backtick" scan
+// stops on that nested template's OPENING backtick and splices into the ternary
+// consequent, yielding `?  - Use …` → SyntaxError.
+const GREP_DESC_NESTED =
+  ';function gVr(e){return' +
+  BT +
+  'A powerful search tool built on ripgrep.\\n  - "count" shows match counts\\n' +
+  '${vW()==="default"?' +
+  BT +
+  '  - Use ${qo} tool (if available) for open-ended searches\\n' +
+  BT +
+  ':""}  - Pattern syntax: rg-flavored\\n' +
+  BT +
+  '}';
+
 const COMBINED = SHADOW + RESOLVER + GREP_DESC + BASH_DESC;
 
 const countOf = (s: string, sub: string) => s.split(sub).length - 1;
@@ -68,6 +84,33 @@ describe('swapRipgrepForFff', () => {
     // the structured Grep tool has no --fuzzy flag, so its desc must NOT mention it
     const grepNote = out.slice(out.indexOf('Search backend note (fff):'));
     expect(grepNote.slice(0, 120)).not.toContain('--fuzzy');
+  });
+
+  it('splices at the TRUE closing backtick past a nested ${…} template', () => {
+    const out = writeSwapRipgrepForFff(SHADOW + GREP_DESC_NESTED, WRAPPER)!;
+    const fn = out.slice(out.indexOf('function gVr'));
+    expect(() => new Function(fn)).not.toThrow();
+    expect(countOf(out, 'Search backend note (fff):')).toBe(1);
+    // the note lands after the whole ternary, not inside its consequent
+    expect(out.indexOf('Search backend note (fff):')).toBeGreaterThan(
+      out.indexOf('Pattern syntax: rg-flavored')
+    );
+  });
+
+  it('refuses to splice when the template never closes', () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const file = SHADOW + ';var d=' + BT + 'unterminated, built on ripgrep';
+      const out = writeSwapRipgrepForFff(file, WRAPPER)!;
+      expect(out).not.toBeNull();
+      expect(out).not.toContain('Search backend note (fff):');
+      expect(out).toContain('unterminated, built on ripgrep');
+      expect(errSpy).toHaveBeenCalledWith(
+        expect.stringContaining('no balanced closing backtick')
+      );
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 
   it('is idempotent (no-op when already applied)', () => {

@@ -1,6 +1,6 @@
 {
   "name": "tweakcc-fixed",
-  "version": "2.7.9",
+  "version": "2.7.12",
   "type": "module",
   "description": "Maintained fork of tweakcc — patch an installed Claude Code (npm or native binary) with curated system-prompt overrides, system-reminder overrides, and fork-only patches. Pairs with skrabe/lobotomized-claude-code.",
   "main": "dist/lib/index.mjs",
@@ -25,6 +25,7 @@
     "test": "vitest run",
     "test:dev": "vitest",
     "test:matcher": "TWEAKCC_MATCHER_CORPUS=1 vitest run --testTimeout=300000 src/systemPromptPieceMatcherCorpus.test.ts",
+    "test:pristine": "TWEAKCC_PRISTINE_PATCHES=1 vitest run --testTimeout=600000 --hookTimeout=600000 src/patches/allPatchesAgainstPristine.test.ts",
     "pretest": "node tools/generateIdentifierUnion.mjs",
     "format": "prettier --write src",
     "version-bump:report": "node tools/versionBumpReport.js",

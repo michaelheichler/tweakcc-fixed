@@ -4,6 +4,27 @@ import { writeContextLimit } from './contextLimit';
 const OVERRIDE = '(+process.env.CLAUDE_CODE_CONTEXT_LIMIT||200000)';
 
 describe('writeContextLimit', () => {
+  it('overrides BOTH 200000 constants in the CC >=2.1.21x five-constant shape', () => {
+    // CC ~2.1.21x dropped the 20000 constant and appended the 1e6 (1M-context)
+    // ceiling; the trailing three must survive verbatim.
+    const input =
+      'q=1;var _er=200000,bRe=200000,$Rg=32000,URg=128000,jRg=1e6;z=2;';
+    const out = writeContextLimit(input);
+    expect(out).toBe(
+      `q=1;var _er=${OVERRIDE},bRe=${OVERRIDE},$Rg=32000,URg=128000,jRg=1e6;z=2;`
+    );
+  });
+
+  it('preserves $-prefixed minified identifiers verbatim in the replacement', () => {
+    // `$$` and `$1` are special in a String.replace replacement string, so the
+    // writer must use a replacer function.
+    const input = 'var $a=200000,$$b=200000,$c=32000,$1=128000,$e=1e6;';
+    const out = writeContextLimit(input);
+    expect(out).toBe(
+      `var $a=${OVERRIDE},$$b=${OVERRIDE},$c=32000,$1=128000,$e=1e6;`
+    );
+  });
+
   it('overrides BOTH 200000 constants in the CC >=2.1.18x two-constant shape', () => {
     // The window is min(o-from-fkt, KQ), so both must be overridden or the
     // override would be capped by the un-overridden one.

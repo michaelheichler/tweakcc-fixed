@@ -136,9 +136,19 @@ const patchPermissionRelay = (file: string): string | null => {
 };
 
 /**
- * Patch 4: Suppress the ChannelsNotice "Experimental" warning banner.
+ * Patch 4: Suppress the ChannelsNotice experimental / prompt-injection banner.
  *
- * The ChannelsNotice component renders:
+ * Method 1 (CC >= 2.1.216 at least — jsx runtime + React-compiler memoized):
+ * the banner is a jsxs children ARRAY with the server descriptor and the flag
+ * as separate array elements, so the old single-string anchor cannot match:
+ *   jsxs(h,{dimColor:!0,children:["Channels (experimental) messages from ",
+ *     APe," inject directly in this session \xB7 restart without ",RPe,
+ *     " to stop"]})
+ * We rewrite only the two string literals and keep the array structure and
+ * both interpolated identifiers. The middle dot is written as the literal
+ * escape `\xB7` (backslash, x, B, 7) so no non-ASCII byte enters the bundle.
+ *
+ * Method 2 (older CC) — the original single concatenated string:
  *   "Experimental · inbound messages will be pushed into this session, this
  *    carries prompt injection risks. Restart Claude Code without {flag} to
  *    disable."
@@ -148,28 +158,47 @@ const patchPermissionRelay = (file: string): string | null => {
  * escaped (\xB7 / \u00B7) depending on the bundler.
  */
 const patchChannelsNotice = (file: string): string | null => {
-  // Match the warning string up to the flag interpolation break.
-  // The ·/\xB7 between "Experimental" and "inbound" varies by bundler.
-  const pattern =
-    /Experimental[^"]*?inbound messages will be pushed into this session, this carries prompt injection risks\. Restart Claude Code without /;
-  const match = file.match(pattern);
+  // Method 1: jsx children-array shape. `[^"]*` spans " inject directly in
+  // this session <dot> " regardless of how the bundler encodes the dot.
+  const jsxPattern =
+    /"Channels \(experimental\) messages from ",([$\w]+),"[^"]*restart without "/;
+  const jsxMatch = file.match(jsxPattern);
 
-  if (!match || match.index === undefined) {
-    console.error(
-      'patch: channelsMode: failed to find ChannelsNotice warning text'
-    );
-    return null;
+  if (jsxMatch && jsxMatch.index !== undefined) {
+    const replacement =
+      `"Channels active \\xB7 messages from ",${jsxMatch[1]},` +
+      '" \\xB7 restart without "';
+    const startIndex = jsxMatch.index;
+    const endIndex = startIndex + jsxMatch[0].length;
+
+    const newFile =
+      file.slice(0, startIndex) + replacement + file.slice(endIndex);
+
+    showDiff(file, newFile, replacement, startIndex, endIndex);
+    return newFile;
   }
 
-  const replacement = 'Channels active. Restart Claude Code without ';
-  const startIndex = match.index;
-  const endIndex = startIndex + match[0].length;
+  // Method 2 (older CC): a single concatenated warning string.
+  const legacyPattern =
+    /Experimental[^"]*?inbound messages will be pushed into this session, this carries prompt injection risks\. Restart Claude Code without /;
+  const legacyMatch = file.match(legacyPattern);
 
-  const newFile =
-    file.slice(0, startIndex) + replacement + file.slice(endIndex);
+  if (legacyMatch && legacyMatch.index !== undefined) {
+    const replacement = 'Channels active. Restart Claude Code without ';
+    const startIndex = legacyMatch.index;
+    const endIndex = startIndex + legacyMatch[0].length;
 
-  showDiff(file, newFile, replacement, startIndex, endIndex);
-  return newFile;
+    const newFile =
+      file.slice(0, startIndex) + replacement + file.slice(endIndex);
+
+    showDiff(file, newFile, replacement, startIndex, endIndex);
+    return newFile;
+  }
+
+  console.error(
+    'patch: channelsMode: failed to find ChannelsNotice warning text'
+  );
+  return null;
 };
 
 /**
@@ -228,9 +257,17 @@ export const writeChannelsMode = (oldFile: string): string | null => {
   newFile = patchPermissionRelay(newFile);
   if (!newFile) return null;
 
-  newFile = patchChannelsNotice(newFile) ?? newFile;
+  // Steps 4 and 5 used to be best-effort (`?? newFile`), which meant a missed
+  // anchor printed an error line and the patch still reported success — the
+  // ChannelsNotice banner rewrite silently did nothing from CC 2.1.216 (jsx
+  // children-array shape) until it was noticed at 2.1.220. Both anchors are
+  // present in every CC build this patch supports, so a miss is real drift and
+  // must fail loudly rather than half-apply.
+  newFile = patchChannelsNotice(newFile);
+  if (!newFile) return null;
 
-  newFile = patchServerDevWarning(newFile) ?? newFile;
+  newFile = patchServerDevWarning(newFile);
+  if (!newFile) return null;
 
   return newFile;
 };

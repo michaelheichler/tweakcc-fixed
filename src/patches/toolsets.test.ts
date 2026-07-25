@@ -4,11 +4,16 @@ import {
   getAppStateSelectorAndUseState,
   writeToolFetchingUseMemo,
   writeComputeToolsFilter,
+  writePrintToolsFilter,
   findSelectComponentName,
   findModeChange,
   writeModeChangeUpdateToolset,
   appendToolsetToModeDisplay,
   appendToolsetToShortcutsDisplay,
+  findToolChangeComponentScope,
+  matchDelimiter,
+  findStatusLineComponent,
+  insertShiftTabAppStateVar,
 } from './toolsets';
 import type { Toolset } from '../types';
 
@@ -163,12 +168,99 @@ describe('writeComputeToolsFilter', () => {
     expect(writeComputeToolsFilter(APP_STATE, TS, 'all')).toBeNull();
     err.mockRestore();
   });
+
+  // CC >=2.1.219: the closure gained a ref-backed memo cache and the agent
+  // branch collapsed into a ternary inside a post-filter call. Both exits
+  // (cache hit + fresh compute) must be wrapped, and the cache must keep
+  // storing the UNFILTERED list so /toolset switches take effect immediately.
+  const CT_MEMO =
+    ',$up=$NS.useCallback(()=>{let S=$ST.getState(),CH=$rf.current;' +
+    'if(CH!==null&&CH.tpc===S.toolPermissionContext&&CH.cit===IN&&CH.mtad===AG)' +
+    'return CH.result;side(S.replBridgeEnabled);' +
+    'let AS=asm(S.toolPermissionContext,S.mcp.tools,{skillTools:S.skillTools}),' +
+    'MG=mrg(IN,AS,S.toolPermissionContext.mode),' +
+    'RS=post(AG?rsl(AG,MG,!1,!0).resolvedTools:MG,S.toolPermissionContext);' +
+    'return $rf.current={tpc:S.toolPermissionContext,cit:IN,mtad:AG,result:RS},' +
+    'RS},[$ST,IN,AG])';
+  const MEMO_FIXTURE = APP_STATE + CT_MEMO;
+
+  it('wraps both exits of the CC >=2.1.219 memoized closure', () => {
+    const out = writeComputeToolsFilter(MEMO_FIXTURE, TS, 'all')!;
+    // The helper is hoisted to the top of the closure body, before the cache
+    // hit can return early.
+    expect(out).toContain(
+      '$up=$NS.useCallback(()=>{const __ts={"readonly":["Read","Grep"],"all":"*"}'
+    );
+    expect(out).toContain('__tf=(t,s)=>{const n=s.toolset??"all";');
+    expect(out).toContain('globalThis.__tweakcc_toolset=');
+    expect(out).toContain('if(a==="*")return t');
+    // Cache-hit exit and fresh-compute exit are both filtered.
+    expect(out).toContain('return __tf(CH.result,S);');
+    expect(out).toContain(',__tf(RS,S)},[$ST,IN,AG])');
+    // The cache still stores the unfiltered list.
+    expect(out).toContain('result:RS}');
+    // The unwrapped exits are gone.
+    expect(out).not.toContain('return CH.result;');
+    expect(out).not.toContain('result:RS},RS}');
+  });
+
+  it('escapes a quoted toolset name in the memoized shape too', () => {
+    const evil: Toolset[] = [{ name: 'ev"il', allowedTools: ['Read'] }];
+    const out = writeComputeToolsFilter(MEMO_FIXTURE, evil, 'ev"il')!;
+    expect(out).toContain('"ev\\"il"');
+    expect(out).not.toContain('s.toolset??"ev"il"');
+  });
+
+  it('prefers the memoized shape but still handles the legacy closure', () => {
+    const out = writeComputeToolsFilter(FIXTURE, TS, 'all')!;
+    expect(out).toContain('if(!AG)return __tf(MG);');
+  });
+});
+
+describe('writePrintToolsFilter', () => {
+  const body = 'const ctx={tools:$tv,refreshTools:()=>$cf($gs())};' as const;
+
+  it('handles the classic semicolon-terminated declaration', () => {
+    const out = writePrintToolsFilter('let $tv=$cf($sv);' + body, TS, 'all')!;
+    expect(out).toContain('let $tv=$cf($sv);const __tpts=');
+    expect(out).toContain('$tv=__tptf($tv,$sv);');
+    expect(out).toContain(
+      'refreshTools:()=>{let s=$gs();return __tptf($cf(s),s)}'
+    );
+  });
+
+  it('reopens the let when the declarator list continues with a comma', () => {
+    // CC >=2.1.219: `let TOOLS=COMPUTE(STATE),NEXT=...`
+    const out = writePrintToolsFilter(
+      'let $tv=$cf($sv),$nx=1;' + body,
+      TS,
+      'all'
+    )!;
+    // The trailing declarator keeps its binding form instead of leaking global.
+    expect(out).toContain('$tv=__tptf($tv,$sv);let $nx=1;');
+    expect(out).toContain('let $tv=$cf($sv);const __tpts=');
+    expect(out).toContain(
+      'refreshTools:()=>{let s=$gs();return __tptf($cf(s),s)}'
+    );
+  });
+
+  it('returns null when the print tools init is absent', () => {
+    const err = silenceErr();
+    expect(writePrintToolsFilter('x=1', TS, 'all')).toBeNull();
+    err.mockRestore();
+  });
 });
 
 describe('findSelectComponentName', () => {
   it('extracts the Select component name from its createElement signature', () => {
     const input =
       'q=$R.createElement($Sel,{a:1},"Yes, use recommended settings");';
+    expect(findSelectComponentName(input)).toBe('$Sel');
+  });
+
+  it('extracts the Select component name from the CC >=2.1.186 jsx call', () => {
+    const input =
+      'q=$Mb.jsx($Sel,{confirmLabel:"Yes, use recommended settings",b:1});';
     expect(findSelectComponentName(input)).toBe('$Sel');
   });
 
@@ -248,6 +340,165 @@ describe('appendToolsetToShortcutsDisplay', () => {
   it('returns null when the shortcuts label is absent', () => {
     const err = silenceErr();
     expect(appendToolsetToShortcutsDisplay('nope')).toBeNull();
+    err.mockRestore();
+  });
+});
+
+// ----------------------------------------------------------------------------
+// CC >=2.1.204 status line (React-compiler memoized).
+//
+// The mode label and the "? for shortcuts" hint live in ONE compiler-memoized
+// component (`function ctl(LpI){let bm=wOn.c(143),...`), while the shell-mode
+// hint the old anchor keyed on moved ~1.1 MB away into a different component.
+// Steps 5-7 must therefore all target this body: step 5 declares
+// `currentToolset` in it, steps 6/7 read that binding.
+// ----------------------------------------------------------------------------
+const STATUS_LINE =
+  'function ctl($L){let bm=wOn.c(143),{mode:$m}=$L;' +
+  'let uI;if(kR==="shortcuts")uI=Ln.jsx(h,{dimColor:!0,children:"? for shortcuts"});' +
+  'let xX;if(bm[35]!==dne||bm[36]!==EWf)xX=Ln.jsxs(h,{children:[Que(dne)," on",EWf]},"mode"),' +
+  'bm[35]=dne,bm[36]=EWf,bm[38]=xX;else xX=bm[38];' +
+  'let Jjt;if(bm[83]!==dne||bm[86]!==yWf)Jjt=Ln.jsxs(h,{children:[Que(dne)," on",bOn]},"mode"),' +
+  'bm[83]=dne,bm[86]=yWf,bm[87]=Jjt;else Jjt=bm[87];' +
+  'let LCe;if(bm[115]===J)LCe=Ln.jsx(h,{children:"? for shortcuts"},"shortcuts-hint"),bm[115]=LCe;' +
+  'else LCe=bm[115];return xX}';
+
+// A different compiler component that also renders the hint — it must be left
+// alone, since `currentToolset` is not in scope there.
+const OTHER_COMPONENT =
+  'function zz($q){let mm=nn.c(4),ww=1;return or.jsx(h,{children:"? for shortcuts"})}';
+
+const STATUS_LINE_FILE = APP_STATE + STATUS_LINE + OTHER_COMPONENT;
+
+describe('matchDelimiter', () => {
+  it('ignores braces inside strings, templates, comments and regexes', () => {
+    const src = 'f(){let a="}",b=`x${{y:1}}`,c=/[}]/,d;/*}*/}';
+    const open = src.indexOf('{');
+    expect(matchDelimiter(src, open)).toBe(src.length - 1);
+  });
+
+  it('returns null when the delimiter never closes', () => {
+    expect(matchDelimiter('f(){a', 3)).toBeNull();
+    expect(matchDelimiter('abc', 1)).toBeNull();
+  });
+});
+
+describe('findStatusLineComponent', () => {
+  it('locates the memoized component owning the mode + shortcuts labels', () => {
+    const comp = findStatusLineComponent(STATUS_LINE_FILE)!;
+    expect(comp.name).toBe('ctl');
+    expect(comp.cacheVar).toBe('bm');
+    const body = STATUS_LINE_FILE.slice(comp.bodyStart, comp.bodyEnd);
+    expect(body.startsWith('let bm=wOn.c(143)')).toBe(true);
+    // The competing component sits entirely outside the span.
+    expect(body).not.toContain('or.jsx');
+  });
+
+  it('re-locates the component from the injected declaration alone', () => {
+    // Steps 6/7 rewrite the mode label, destroying the discovery anchor — the
+    // `let currentToolset=` declaration has to keep the component findable.
+    const injected = insertShiftTabAppStateVar(STATUS_LINE_FILE, 'ro')!;
+    const rewritten = appendToolsetToModeDisplay(injected)!;
+    expect(rewritten).not.toContain('," on"');
+    const comp = findStatusLineComponent(rewritten)!;
+    expect(comp.name).toBe('ctl');
+  });
+
+  it('returns null when no compiler component renders a mode label', () => {
+    expect(findStatusLineComponent('var a=1;')).toBeNull();
+  });
+});
+
+describe('insertShiftTabAppStateVar', () => {
+  it('declares currentToolset at the top of the status line component', () => {
+    const out = insertShiftTabAppStateVar(STATUS_LINE_FILE, 'readonly')!;
+    expect(out).toContain(
+      'function ctl($L){let currentToolset=D8(state => state.toolset) ?? "readonly";let bm=wOn.c(143)'
+    );
+  });
+
+  it('is idempotent', () => {
+    const once = insertShiftTabAppStateVar(STATUS_LINE_FILE, 'readonly')!;
+    expect(insertShiftTabAppStateVar(once, 'readonly')).toBe(once);
+  });
+
+  it('falls back to the pre-2.1.204 shell-mode anchor', () => {
+    const legacy =
+      APP_STATE +
+      'function QQ(T){z=or.createElement(k,{color:"bashBorder"},"! for shell mode")}';
+    const out = insertShiftTabAppStateVar(legacy, null)!;
+    expect(out).toContain(
+      'function QQ(T){let currentToolset=D8(state => state.toolset) ?? undefined;'
+    );
+  });
+
+  it('returns null when neither anchor is present', () => {
+    const err = silenceErr();
+    expect(insertShiftTabAppStateVar(APP_STATE, null)).toBeNull();
+    err.mockRestore();
+  });
+});
+
+describe('appendToolsetToModeDisplay (CC >=2.1.204)', () => {
+  it('rewrites every mode label in the component and widens the memo guards', () => {
+    const out = appendToolsetToModeDisplay(STATUS_LINE_FILE)!;
+    expect(out).not.toContain('," on"');
+    expect(
+      out.match(
+        /Que\(dne\),currentToolset\?` on \[\$\{currentToolset\}\]`:" on"/g
+      )
+    ).toHaveLength(2);
+    // A guard that does not compare currentToolset would keep serving the
+    // element built for the previous toolset.
+    expect(out).toContain('if(bm[35]!==dne||bm[36]!==EWf||!0)');
+    expect(out).toContain('if(bm[83]!==dne||bm[86]!==yWf||!0)');
+  });
+
+  it('is idempotent once the declaration anchor exists', () => {
+    const injected = insertShiftTabAppStateVar(STATUS_LINE_FILE, 'readonly')!;
+    const once = appendToolsetToModeDisplay(injected)!;
+    expect(appendToolsetToModeDisplay(once)).toBe(once);
+  });
+});
+
+describe('appendToolsetToShortcutsDisplay (CC >=2.1.204)', () => {
+  it('rewrites only the hints inside the status line component', () => {
+    const out = appendToolsetToShortcutsDisplay(STATUS_LINE_FILE)!;
+    expect(
+      out.match(
+        /currentToolset\?`\? for shortcuts \[\$\{currentToolset\}\]`:"\? for shortcuts"/g
+      )
+    ).toHaveLength(2);
+    // The component that cannot see `currentToolset` is untouched.
+    expect(out).toContain('or.jsx(h,{children:"? for shortcuts"})');
+    // The compute-once sentinel guard is widened too.
+    expect(out).toContain('if(bm[115]===J||!0)');
+  });
+
+  it('is idempotent once the declaration anchor exists', () => {
+    const injected = insertShiftTabAppStateVar(STATUS_LINE_FILE, 'readonly')!;
+    const once = appendToolsetToShortcutsDisplay(injected)!;
+    expect(appendToolsetToShortcutsDisplay(once)).toBe(once);
+  });
+});
+
+describe('findToolChangeComponentScope', () => {
+  it('accepts the pre-2.1.219 statement-terminated shape', () => {
+    const src =
+      'a=1;jai(I,function(Wt){M("tengu_ext_at_mentioned",{});eQ(x)});';
+    expect(findToolChangeComponentScope(src)).toBe(src.indexOf('jai('));
+  });
+
+  it('accepts the CC >=2.1.219 sequence-expression shape', () => {
+    // The following statement folded into a comma expression.
+    const src =
+      'a=1;Wai(I,function(Wt){M("tengu_ext_at_mentioned",{}),eQ(Gai(Wt))});';
+    expect(findToolChangeComponentScope(src)).toBe(src.indexOf('Wai('));
+  });
+
+  it('returns null when the at-mention handler is absent', () => {
+    const err = silenceErr();
+    expect(findToolChangeComponentScope('var a=1;')).toBeNull();
     err.mockRestore();
   });
 });
