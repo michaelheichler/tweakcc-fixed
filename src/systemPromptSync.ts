@@ -154,6 +154,7 @@ export interface StringsPrompt {
   identifiers: number[]; // Can be numbers in JSON or strings when parsed
   identifierMap: Record<string, string>;
   version: string;
+  occurrences?: number;
 }
 
 /**
@@ -2037,15 +2038,18 @@ export const loadSystemPromptsWithRegex = async (
       );
     };
 
-    results.push({
-      promptId: jsonPrompt.id,
-      prompt: replacementPrompt,
-      regex,
-      getInterpolatedContent,
-      pieces: jsonPrompt.pieces,
-      identifiers: jsonPrompt.identifiers,
-      identifierMap: jsonPrompt.identifierMap,
-    });
+    const occurrences = jsonPrompt.occurrences ?? 1;
+    for (let index = 0; index < occurrences; index++) {
+      results.push({
+        promptId: jsonPrompt.id,
+        prompt: replacementPrompt,
+        regex,
+        getInterpolatedContent,
+        pieces: jsonPrompt.pieces,
+        identifiers: jsonPrompt.identifiers,
+        identifierMap: jsonPrompt.identifierMap,
+      });
+    }
   }
 
   return results;

@@ -46,14 +46,8 @@ export const applySystemPrompts = async (
   version: string,
   escapeNonAscii?: boolean,
   patchFilter?: string[] | null,
-  // The binary as it was BEFORE any override splicing (inline-blob, reminders).
-  // Lets us distinguish a prompt clobbered by tweakcc's own earlier splice
-  // (matched the pristine binary but not the current one → silent skip) from
-  // genuine anchor drift (never matched the pristine binary → warn). When
-  // omitted, every non-match is treated as drift (pre-existing behavior).
   pristineContent?: string
 ): Promise<SystemPromptsResult> => {
-  // Auto-detect if we should escape non-ASCII characters based on cli.js content
   const shouldEscapeNonAscii = escapeNonAscii ?? detectUnicodeEscaping(content);
 
   if (shouldEscapeNonAscii) {
@@ -62,19 +56,44 @@ export const applySystemPrompts = async (
     );
   }
 
-  // Extract BUILD_TIME from cli.js content
   const buildTime = extractBuildTime(content);
   if (buildTime) {
     debug(`Extracted BUILD_TIME from cli.js: ${buildTime}`);
   }
 
-  // Load system prompts and generate regexes
   const systemPrompts = await loadSystemPromptsWithRegex(
     version,
     shouldEscapeNonAscii,
     buildTime
   );
   debug(`Loaded ${systemPrompts.length} system prompts with regexes`);
+  const firstPristineById = new Map<string, string>();
+  const promptSiteCounts = new Map<string, number>();
+  for (const entry of systemPrompts) {
+    promptSiteCounts.set(
+      entry.promptId,
+      (promptSiteCounts.get(entry.promptId) ?? 0) + 1
+    );
+    if (!firstPristineById.has(entry.promptId)) {
+      firstPristineById.set(
+        entry.promptId,
+        reconstructContentFromPieces(
+          entry.pieces,
+          entry.identifiers,
+          entry.identifierMap
+        ).trim()
+      );
+    }
+  }
+  const pristinePromptIds = new Set(
+    systemPrompts
+      .filter(
+        entry =>
+          (promptSiteCounts.get(entry.promptId) ?? 0) > 1 &&
+          entry.prompt.content.trim() === firstPristineById.get(entry.promptId)
+      )
+      .map(entry => entry.promptId)
+  );
   const matchSpecs = new Map<string, PromptMatchSpec>();
   for (const entry of systemPrompts) {
     matchSpecs.set(entry.regex, {
@@ -100,19 +119,8 @@ export const applySystemPrompts = async (
   let contentChanged =
     pristineContent !== undefined && pristineContent !== content;
 
-  // The set of every tweakcc human-name the leaf has ever used as a
-  // placeholder, unioned across all bundled prompt JSONs. Used below to detect
-  // a leaked (unsubstituted) human-name surviving into a backtick template
-  // literal. Loaded once per apply.
   const identifierMapUnion = await loadIdentifierMapUnion();
 
-  // Per-id union of identifierMap names across same-id entries. A prompt that
-  // exists at multiple code-sites yields one entry per site sharing one id and
-  // one .md; when the sites have different shapes (e.g. a template wrapper vs
-  // plain string copies), an .md authored against the richer shape carries
-  // placeholders the plain entries cannot resolve — injecting it there writes
-  // the placeholder names as literal text into the binary (silent content
-  // corruption; quote contexts never crash). Used below to skip those sites.
   const groupNames = new Map<string, Set<string>>();
   for (const sp of systemPrompts) {
     let names = groupNames.get(sp.promptId);
@@ -142,7 +150,6 @@ export const applySystemPrompts = async (
   const appliedHashUpdates: Record<string, string> = {};
   const hashResultIndexes: number[] = [];
 
-  // Search for and replace each prompt in cli.js
   for (const [promptIndex, entry] of systemPrompts.entries()) {
     for (const expired of expiringMatches.get(promptIndex - 1) ?? []) {
       matchCatalog.delete(expired);
@@ -156,7 +163,6 @@ export const applySystemPrompts = async (
       identifiers,
       identifierMap,
     } = entry;
-    // Skip prompts not in the filter (if filter is provided)
     if (patchFilter && !patchFilter.includes(promptId)) {
       results.push({
         id: promptId,
@@ -168,18 +174,27 @@ export const applySystemPrompts = async (
       continue;
     }
 
+    if (pristinePromptIds.has(promptId)) {
+      const resultIndex = results.length;
+      appliedHashUpdates[promptId] = computeMD5Hash(prompt.content);
+      results.push({
+        id: promptId,
+        name: prompt.name,
+        group: PatchGroup.SYSTEM_PROMPTS,
+        applied: false,
+        skipped: true,
+        details: 'unchanged',
+      });
+      hashResultIndexes.push(resultIndex);
+      continue;
+    }
+
     debug(`Applying system prompt: ${prompt.name}`);
     // 's' for dotAll. No 'i': escapeNonAsciiForRegex already matches both hex
     // casings of a `\uXXXX` escape, and a case-insensitive prompt regex
     // over-matches its own prose (see foldPromptMatchContent).
     const pattern = new RegExp(regex, 's');
 
-    // Some short prompts (e.g. tool-description-bash-git-never-skip-hooks) hold
-    // text that Anthropic also inlines verbatim into a longer prompt
-    // (PowerShell tool description). The first occurrence in cli.js is the
-    // inlined one; the standalone variable lives later. Pick the match that
-    // looks like a complete string-literal value (surrounded by matching
-    // " ' or ` delimiters) when more than one occurrence exists.
     const allMatches = await matchCatalog.matchCurrent(regex, working);
     const multiplicity = groupMultiplicity.get(regex) ?? 1;
     const retained = groupRetained.get(regex) ?? 0;
@@ -278,49 +293,16 @@ export const applySystemPrompts = async (
         continue;
       }
 
-      // Check the delimiter character before the match to determine string type
       const matchIndex = match.index;
       const delimiter = working.charAt(matchIndex - 1);
 
-      // Guard: a tweakcc human-name placeholder that survives interpolation into
-      // a `${...}` template-literal slot is invalid JS and ReferenceErrors at
-      // launch (or when the prompt's code path first runs). This happens when the
-      // prompt-data identifierMap vocabulary changed between CC versions (e.g.
-      // PROMPT_VAR_N -> *_TOOL_NAME at 2.1.168, or a renamed semantic name like
-      // OPTIONAL_TAIL_NOTE) while the markdown still references the old name, so
-      // applyIdentifierMapping finds nothing to substitute and leaves the
-      // placeholder verbatim. Detect a surviving `${NAME}` whose NAME is a member
-      // of the identifierMap union (the set of every human-name the leaf has ever
-      // used as a placeholder) and that appears unchanged in BOTH the markdown
-      // source and the interpolated output. Validating against the union -- rather
-      // than guessing an ALL_CAPS_WITH_UNDERSCORE grammar -- catches single-word
-      // names like ${VERSION} the grammar missed and never false-positives on real
-      // minified vars (e.g. `${HL7}`), which are never human-names. Only dangerous
-      // inside backtick template literals; the same token in a plain '...'/"..."
-      // string is inert. Skip the prompt and keep CC's original blob rather than
-      // shipping a binary that won't boot.
       {
-        // Only UNescaped `${NAME}` is dangerous: a backslash-escaped
-        // `\${NAME}` is intentional literal text (e.g. the env-var docs
-        // `\${CLAUDE_PLUGIN_ROOT}` in the cowork plugin prompts, which have an
-        // empty identifierMap) and survives into the template literal verbatim.
-        // The negative lookbehind excludes those so they aren't false-flagged.
-        // The name is captured wherever a `${...}` slot OPENS with it, not just
-        // when a `}` follows: `${NAME.prop}`, `${NAME(arg)}` and
-        // `${NAME.x||"y"}` are equally undefined identifiers inside a template
-        // literal. Anchoring on `\}` missed exactly those — CC 2.1.206 shipped
-        // `${SYSTEM_PROMPT_AGENT_RESUMED_WAS_STOPPED_COMPLETED_VAR_2.finalText
-        // ||"(no text output)"}` into the binary because of it.
         const leaked = leakedPromptPlaceholders(
           interpolatedContent,
           prompt.content,
           identifierMapUnion
         );
 
-        // Every leaked name resolvable by a same-id sibling entry (and none by
-        // this one) means the .md is authored against a different shape of
-        // this multi-site prompt. Expected per-site situation, not drift:
-        // leave this site pristine, quietly.
         const ownNames = new Set(Object.values(identifierMap));
         const siblingNames = groupNames.get(promptId);
         if (
@@ -341,12 +323,6 @@ export const applySystemPrompts = async (
           continue;
         }
 
-        // A leaked name this entry should have resolved (or that no sibling
-        // can): genuine vocabulary drift. Inside a backtick template literal
-        // it is invalid JS that ReferenceErrors at launch — skip loudly. In
-        // '…'/"…" strings the same token is inert text and can be intentional
-        // (e.g. data-anthropic-cli's literal ${VERSION}), so it passes through
-        // unchanged there.
         if (delimiter === '`' && leaked.length > 0) {
           console.log(
             chalk.red(
@@ -429,16 +405,10 @@ export const applySystemPrompts = async (
         continue;
       }
       if (encoded.autoEscaped) {
-        // Successful auto-repair, not an actionable condition: the override
-        // applies correctly. Keep it out of the apply log (0-warnings bar).
         debug(`Auto-escaped unescaped backticks in "${prompt.name}"`);
       }
       const replacementContent = encoded.content;
 
-      // Replace the matched content with the interpolated content from the markdown file.
-      // Splice at the match offset (rather than `content.replace(pattern, fn)`)
-      // so the disambiguation above isn't undone by replace() always matching
-      // the first hit.
       if (replacementContent !== match[0]) {
         groupSpliced.set(regex, (groupSpliced.get(regex) ?? 0) + 1);
         working.splice(
@@ -458,11 +428,9 @@ export const applySystemPrompts = async (
         groupRetained.set(regex, retained + 1);
       }
 
-      // Store the hash of the applied prompt content
       const appliedHash = computeMD5Hash(prompt.content);
       appliedHashUpdates[promptId] = appliedHash;
 
-      // Show diff in debug mode
       if (verboseOldContent !== null) {
         showDiff(
           verboseOldContent,
@@ -473,7 +441,6 @@ export const applySystemPrompts = async (
         );
       }
 
-      // Track this prompt's result
       const charDiff = originalLength - newLength;
       const applied = replacementContent !== match[0];
 
@@ -496,21 +463,6 @@ export const applySystemPrompts = async (
       });
       hashResultIndexes.push(resultIndex);
     } else {
-      // Shadowed prompts (owned by inline-blob, system-reminders, or a wider
-      // named-prompt) are filtered upstream in loadSystemPromptsWithRegex via
-      // the `shadows:` frontmatter on the owning override.
-      //
-      // A prompt can also be shadowed implicitly: its text lives inside a
-      // region an inline-blob/reminder override already replaced this apply
-      // (e.g. a "## Types of memory" array element, a "# System" bullet). The
-      // override author may not have enumerated every named id its region
-      // consumes. Detect this by re-matching against the pristine snapshot:
-      // if the regex matched the binary BEFORE any splicing but not now, our
-      // own earlier override clobbered it — its curated content was
-      // intentionally superseded, so skip silently (no drift warning, no
-      // spurious "Could not find"). Only a prompt that matched neither the
-      // pristine nor the current binary is genuine anchor drift worth
-      // surfacing.
       let clobberedByEarlierSplice = false;
       if (pristineContent !== undefined && contentChanged) {
         try {
@@ -538,8 +490,6 @@ export const applySystemPrompts = async (
         continue;
       }
 
-      // Genuine drift — a regex anchor that no longer matches the binary
-      // shape. Surface it so the owning override can be fixed.
       if (
         !prompt.name.startsWith('Data:') &&
         prompt.name !== 'Skill: Build with Claude API'

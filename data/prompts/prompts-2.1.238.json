@@ -2055,7 +2055,7 @@
       "identifierMap": {
         "0": "ASK_USER_QUESTION_TOOL_NAME",
         "1": "CRON_CREATE_TOOL_NAME",
-        "2": "TASK_TOOL_NAME",
+        "2": "SKILL_TOOL_NAME",
         "3": "BASH_TOOL_NAME"
       },
       "version": "2.1.101"
@@ -15776,7 +15776,7 @@
         0
       ],
       "identifierMap": {
-        "0": "SCRATCHPAD_DIR_FN"
+        "0": "SCRATCHPAD_DIR"
       },
       "version": "2.1.178"
     },
@@ -68666,7 +68666,7 @@
         0
       ],
       "identifierMap": {
-        "0": "TASK_TOOL_NAME"
+        "0": "AGENT_TOOL_NAME"
       },
       "version": "2.1.53"
     },

@@ -49,10 +49,6 @@ describe('applySafetyHarness: harnessVerdict', () => {
   });
 });
 
-// Every injection surface escapes non-ASCII to \uXXXX before splicing; a raw
-// codepoint that survives into the patched binary mojibakes under Bun's Latin-1
-// module storage (2.0.13 incident). The check is a per-codepoint DELTA so the
-// pristine's own non-ASCII can never trip it.
 describe('applySafetyHarness: introducedRawNonAscii', () => {
   it('reports nothing when the patch escaped its non-ASCII', () => {
     const pristine = 'x=`use a — dash`;';
@@ -109,11 +105,6 @@ describe('applySafetyHarness: introducedRawNonAscii', () => {
   });
 });
 
-// A `${shortvar}` slot is a K9-class UNRESOLVED binary ident only when nothing binds
-// it in its OWN enclosing scope. The bind-discount is scoped per-slot (a window that
-// reaches the enclosing function params / module const), NOT counted file-wide —
-// counting file-wide nets out on common names like `q`/`e` and either hides a leak or
-// cries wolf on a legitimately-bound `${q}` (the 2.1.218 false positive).
 describe('applySafetyHarness: introducedUnresolvedSlots', () => {
   const flags = (o, p) =>
     [...introducedUnresolvedSlots(o, p)].map(([v, n]) => `${v}(+${n})`);
@@ -135,6 +126,13 @@ describe('applySafetyHarness: introducedUnresolvedSlots', () => {
     const filler = 'a'.repeat(900);
     const orig = 'x=1;';
     const patched = `function build(e,r,t){${filler}return \`\${e}/v1/oauth/token\`}`;
+    expect(flags(orig, patched)).toEqual([]);
+  });
+
+  it('does not reclassify an unchanged slot when earlier prompt text grows', () => {
+    const prefix = 'a'.repeat(1400);
+    const orig = `function build(r){${prefix}return \`value: \${r}\`}`;
+    const patched = orig.replace('return', `${'b'.repeat(500)}return`);
     expect(flags(orig, patched)).toEqual([]);
   });
 
