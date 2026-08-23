@@ -12407,6 +12407,28 @@
       "identifiers": [],
       "identifierMap": {},
       "version": "2.1.241"
+    },
+    {
+      "name": "Tool Description: TaskList — the id field",
+      "id": "tool-description-task-list-id-field",
+      "description": "Documents the id field returned by TaskList and the tools that consume it, TaskGet and TaskUpdate.",
+      "pieces": [
+        "- **id**: Task identifier (use with TaskGet, TaskUpdate)"
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.241"
+    },
+    {
+      "name": "Tool Result: MCP task output — read the truncated remainder",
+      "id": "tool-result-mcp-task-output-read-truncated-remainder",
+      "description": "Tells the model to use Read on the saved output file to retrieve the portion truncated out of the tool result.",
+      "pieces": [
+        "use Read to retrieve the portion truncated above"
+      ],
+      "identifiers": [],
+      "identifierMap": {},
+      "version": "2.1.241"
     }
   ]
 }
