@@ -329,3 +329,31 @@ describe('verify-plan reminder removed-feature handling', () => {
     expect(verifyPlan.apply(drifted, 'body', false)).toBeNull();
   });
 });
+
+describe('compact-time file reference note read-tool-name slot', () => {
+  const compactFileRef = REMINDER_REGISTRY.find(
+    r => r.id === 'compact-file-reference'
+  )!;
+  const BODY = 'Note: ${H.filename} is too large. Use ${oO.name}.';
+
+  const MOCK_NAME_PROPERTY =
+    'compact_file_reference:(e)=>l_([Rn({content:`Note: ${e.filename} was read before the last conversation was summarized, but the contents are too large to include. Use ${oO.name} tool if you need to access it.`,isMeta:!0})])';
+
+  // Regression: the resolver only matched `.name` expressions, so this bare-identifier shape
+  // (introduced in 2.1.241) returned null and failed the whole patch.
+  const MOCK_BARE_IDENTIFIER =
+    'compact_file_reference:(e)=>l_([Rn({content:`Note: ${Nle(e.filename)} was read before the last conversation was summarized, but the contents are too large to include. Use ${As} tool if you need to access it.`,isMeta:!0})])';
+
+  it('resolves the pre-2.1.241 `.name` property shape', () => {
+    const result = compactFileRef.apply(MOCK_NAME_PROPERTY, BODY, false);
+    expect(result).not.toBeNull();
+    expect(result).toContain('${oO.name}');
+  });
+
+  it('resolves the 2.1.241 bare-identifier shape instead of failing null', () => {
+    const result = compactFileRef.apply(MOCK_BARE_IDENTIFIER, BODY, false);
+    expect(result).not.toBeNull();
+    expect(result).toContain('${As}');
+    expect(result).toContain('${Nle(e.filename)}');
+  });
+});
