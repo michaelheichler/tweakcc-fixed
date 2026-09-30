@@ -4,6 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const parser = require('@babel/parser');
+const {
+  splitModuleBundle,
+  parseModuleSegment,
+} = require('./lib/moduleBundle.cjs');
+const { buildSettingsIndex } = require('./lib/settingsSchema.cjs');
 
 function slugify(text) {
   return text
@@ -84,7 +89,161 @@ const WORKFLOW_SCRIPT_IDENTIFIER_MAP = {
 //   [5] i  = cross-session peers bullet (mentions ${cy}=ListAgents inside it)
 //   [6] l  = e?TW_:"briefly tell the user what you launched"
 //   [7] o  = "Workers have access to …" intro text
+// system-prompt-coordinator-mode on CC 2.1.257 (37 uses, 12 distinct vars),
+// re-derived from `Yxr(e)`:
+//   [0] e   = comms-tool channel flag  `${e?Se:"Every message you send is to the user."}`
+//   [1] Se  = the comms-tool channel note (bare text does not reach the user)
+//   [2] yt  = Agent          "- **${yt}** - Spawn a new worker"
+//   [3] eo  = SendMessage    "- **${eo}** - Continue an existing worker"
+//   [4] dy  = TaskStop       "- **${dy}** - Stop a running worker"
+//   [5] h   = Workflow bullet (vc() gated)
+//   [6] l   = Skill bullet (F3t() gated)
+//   [7] p   = cross-session peers bullet (Vo() gated)
+//   [8] f   = worker model-parameter guidance
+//   [9] Ae  = comms-tool "launched X" note  `${e?Ae:"briefly tell the user…"}`
+//   [10] ibt = "[SYSTEM NOTIFICATION - NOT USER INPUT]"
+//   [11] d  = "Workers have access to …" intro
+// The 2.1.252 catalogue carried a map shifted by two from this (AGENT_TOOL_NAME
+// on the flag, TASKSTOP on Agent, …) and named BOTH [5] and [10]
+// WORKER_TOOLS_INTRO_TEXT, so the override could not address them apart.
+const COORDINATOR_MODE_2_1_257_MAP = {
+  0: 'IS_COMMS_TOOL_CHANNEL_FLAG',
+  1: 'COMMS_TOOL_CHANNEL_NOTE',
+  2: 'AGENT_TOOL_NAME',
+  3: 'SENDMESSAGE_TOOL_NAME',
+  4: 'TASKSTOP_TOOL_NAME',
+  5: 'WORKFLOW_CONDITIONAL_TOOL_NOTE',
+  6: 'SKILL_TOOL_CONDITIONAL_NOTE',
+  7: 'CROSS_SESSION_PEERS_NOTE',
+  8: 'WORKER_MODEL_PARAMETER_NOTE',
+  9: 'COMMS_TOOL_LAUNCH_ANNOUNCE_NOTE',
+  10: 'SYSTEM_REMINDER_OPENING_TEXT',
+  11: 'WORKER_TOOLS_INTRO_TEXT',
+};
+
 const CURATED_IDENTIFIER_MAPS = {
+  'system-reminder-prefetched-artifact-type-instruction-files': [
+    {
+      // CC 2.1.277 turned slot 1 from the planned-read boolean into the
+      // resolved sentence about reading the artifact's url. Upstream's map is
+      // from 2.1.275 and still names the boolean.
+      identifiers: [0, 1, 2, 3],
+      identifierMap: {
+        0: 'PREFETCHED_ARTIFACT_TYPE_FILES',
+        1: 'ARTIFACT_URL_READ_NOTE',
+        2: 'ARTIFACT_READ_INCLUDES_TYPE_SKILL',
+        3: 'TYPE_REFERENCE_PAGE_READ_COMMANDS',
+      },
+    },
+  ],
+  'system-prompt-harness-instructions': [
+    {
+      // CC 2.1.274 hoisted the intro ternary into a local, so slot 0 is its
+      // resolved value, then security policy (H9e), reminder-guidance fn,
+      // tool context, and a new tengu_virtual_pancake-gated pasted-content
+      // bullet. Upstream's map for this shape names slots 0/1/4 wrongly and
+      // adoption runs after NEW_PROMPT_ASSIGNMENTS, so it must be curated.
+      identifiers: [0, 1, 2, 3, 4],
+      identifierMap: {
+        0: 'AGENT_INTRO_LINE',
+        1: 'SECURITY_POLICY_INSTRUCTIONS',
+        2: 'SYSTEM_REMINDER_TAG_GUIDANCE_FN',
+        3: 'TOOL_CONTEXT',
+        4: 'PASTED_CONTENT_GUIDANCE_BULLET',
+      },
+    },
+  ],
+  'tool-description-code-review-command': [
+    {
+      // CC 2.1.274 reworded the body, so fuzzy carryover dropped the id and the
+      // classification cache restored it with generated slot names. The slots
+      // are unchanged: the cloud-review gate fn, then the claude.ai access fn.
+      identifiers: [0, 1],
+      identifierMap: {
+        0: 'IS_CLOUD_CODE_REVIEW_ENABLED_FN',
+        1: 'HAS_CLAUDE_AI_ACCESS_FN',
+      },
+    },
+  ],
+  'tool-description-claude-in-chrome-bridge-timeout-error': [
+    {
+      // CC 2.1.274 moved the trailing advice out of this template; the one slot
+      // is still the Chrome tool name, but the reword dropped the carried map.
+      identifiers: [0],
+      identifierMap: { 0: 'CHROME_TOOL_NAME' },
+    },
+  ],
+  'system-prompt-worker-agent': [
+    {
+      // CC 2.1.273 reversed 2.1.269: the commit/PR-skill routing ternary is
+      // gone and the commit line is plain literal text, so the three leading
+      // slots left and only the spawn-depth predicate and the Agent tool name
+      // remain. The map carries by INDEX, so the 2.1.269 names landed on the
+      // wrong two slots and the override rendered the fan-out bullet off the
+      // skill flag. Resolved from the binary, not from position: the site is a
+      // code-split module importing `bE` from chunk-6bqmgxzc.js (returns
+      // CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH, else the GrowthBook value) and
+      // `St` from chunk-x4zvdyx6.js (the literal "Agent").
+      identifiers: [0, 1],
+      identifierMap: {
+        0: 'MAX_SUBAGENT_SPAWN_DEPTH_FN',
+        1: 'AGENT_TOOL_NAME',
+      },
+    },
+    {
+      // CC 2.1.269 wrapped the commit line in the commit/PR-skill routing
+      // ternary `${q0e()?`…\`/${kP}\` skill…\`/${zR}\` skill…`:"…"}`, which
+      // puts three NEW distinct vars AHEAD of the spawn-depth predicate. The
+      // carried 2-slot map then named the routing flag
+      // MAX_SUBAGENT_SPAWN_DEPTH_FN and the commit skill name AGENT_TOOL_NAME:
+      // valid names on the wrong slots, so the override rendered the fan-out
+      // bullet off the skill flag. Site: `You are a worker agent executing a
+      // task assigned by the coordinator`; distinct vars in first-seen order:
+      // q0e (shipSkillsInvocable), kP ("commit"), zR ("pr"), gw, ht.
+      identifiers: [0, 1, 2, 3, 4],
+      identifierMap: {
+        0: 'COMMIT_AND_PR_SKILLS_CONFIG_FN',
+        1: 'COMMIT_SKILL_NAME',
+        2: 'CREATE_PR_SKILL_NAME',
+        3: 'MAX_SUBAGENT_SPAWN_DEPTH_FN',
+        4: 'AGENT_TOOL_NAME',
+      },
+    },
+  ],
+  'system-prompt-memory-instructions': [
+    {
+      // CC 2.1.247 hoisted the memory-file size-cap note into a new conditional
+      // on the linking-instructions line — `${ll.join(`\n`)}${b?` ${sr}`:""}` —
+      // where `b` is `skipIndex || noPrivateDir` and `sr` is the cap note. That
+      // inserts TWO slots at 2 and 3, taking the array from 10 to 12, so every
+      // carried label from slot 4 on slides by two. Nothing else sees it: the
+      // apply is clean, four zeros are green and the smoke boots, while the
+      // deployed override renders `${b}` — a bare boolean — as prompt text and
+      // silently drops the save-exclusions, recalled-memory-verification and
+      // project-skill-upkeep blocks. Roles resolved from the definitions in
+      // module _601, not from position: Br is the type descriptions, Xt the
+      // size cap, Pr the save exclusions, Yr the recalled-memory verification,
+      // Ht the skill-upkeep text, qt the predicate that gates it.
+      // Site: `Each memory is one file holding one fact`, function cl(e);
+      // distinct vars in first-seen order: m, ll, b, sr, tn, p, v, er, rn, g,
+      // Jn, Xn.
+      identifiers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      identifierMap: {
+        0: 'MEMORY_LOCATION_CONTEXT',
+        1: 'MEMORY_LINKING_INSTRUCTIONS',
+        2: 'HAS_NO_INDEX_OR_PRIVATE_DIR',
+        3: 'MEMORY_FILE_SIZE_CAP_NOTE',
+        4: 'MEMORY_TYPE_DESCRIPTIONS',
+        5: 'TEAM_MEMORY_SCOPE_NOTE',
+        6: 'MEMORY_INDEX_POINTER_INSTRUCTIONS',
+        7: 'MEMORY_SAVE_EXCLUSIONS',
+        8: 'RECALLED_MEMORY_VERIFICATION_GUIDANCE',
+        9: 'MEMORY_CITATION_INSTRUCTIONS',
+        10: 'HAS_PROJECT_SKILL_UPKEEP_INSTRUCTIONS_FN',
+        11: 'PROJECT_SKILL_UPKEEP_INSTRUCTIONS',
+      },
+    },
+  ],
   'tool-description-edit': [
     {
       // CC 2.1.237 turned the Edit description's leading ternary from
@@ -109,6 +268,67 @@ const CURATED_IDENTIFIER_MAPS = {
     },
   ],
   'system-prompt-coordinator-mode': [
+    {
+      // CC 2.1.269 appended three distinct vars after the 2.1.257 twelve, so
+      // slots 0-11 keep their names: S (the `Commit${S}` suffix naming the
+      // commit skill), A (the `draft PR${A}` suffix) and v (the git
+      // skill-routing bullet after the QA note). Names match upstream's
+      // system-prompt-coordinator-mode-orchestration at the same slots.
+      identifiers: [
+        0, 1, 2, 3, 4, 5, 6, 7, 2, 8, 3, 0, 9, 2, 10, 3, 2, 11, 3, 4, 2, 3, 2,
+        4, 3, 2, 2, 2, 12, 3, 2, 3, 3, 12, 3, 12, 13, 12, 12, 14, 2, 2, 10, 3,
+        12,
+      ],
+      identifierMap: {
+        ...COORDINATOR_MODE_2_1_257_MAP,
+        12: 'WORKER_COMMIT_INSTRUCTION_SUFFIX',
+        13: 'WORKER_PR_CREATION_INSTRUCTION_SUFFIX',
+        14: 'WORKER_GIT_SKILL_ROUTING_NOTE',
+      },
+    },
+    {
+      // 2.1.257 shape — see COORDINATOR_MODE_2_1_257_MAP.
+      identifiers: [
+        0, 1, 2, 3, 4, 5, 6, 7, 2, 8, 3, 0, 9, 2, 10, 3, 2, 11, 3, 4, 2, 3, 2,
+        4, 3, 2, 2, 2, 3, 2, 3, 3, 3, 2, 2, 10, 3,
+      ],
+      identifierMap: COORDINATOR_MODE_2_1_257_MAP,
+    },
+    {
+      // CC 2.1.239 inserted the comms-mode gate's SECOND use — the launch-announce
+      // ternary `${e?FjS:"briefly tell the user what you launched"}` — which adds
+      // two positions and one distinct slot, taking the array from 33/10 to 35/11.
+      // The 2.1.238 entry below then stops matching and the GENERATED map takes
+      // over, and it is wrong at every slot for the usual reason: slot 0 is the
+      // comms-mode CONDITION (`e`), not a tool, so every carried label slides.
+      // Rendered, `${SENDMESSAGE_TOOL_NAME}` bound to `NjS` — which is not a tool
+      // name at all but the whole comms-mode note — and the tool list read
+      // `- **Your bare assistant text does NOT reach the user...** - Continue an
+      // existing worker`. Wrong content, no crash: the apply is clean and only the
+      // apply-safety harness sees it, and then only once the override actually
+      // applies (it had been skipped entirely on an unbound label, so it never did).
+      // Derived from the builder at `You are Claude Code, an AI assistant that
+      // orchestrates software engineering tasks`, distinct vars in first-seen
+      // order: e, NjS, Oi, Xm, nz, a, i, s, FjS, _xa, o — each named for what its
+      // own pristine context shows it to be, not for the position it used to hold.
+      identifiers: [
+        0, 1, 2, 3, 4, 5, 6, 7, 2, 3, 0, 8, 2, 9, 2, 10, 3, 4, 2, 3, 2, 4, 3, 2,
+        2, 2, 3, 2, 3, 3, 3, 2, 2, 9, 3,
+      ],
+      identifierMap: {
+        0: 'COMMS_MODE_FLAG',
+        1: 'EVERY_MESSAGE_TO_USER_NOTE',
+        2: 'AGENT_TOOL_NAME',
+        3: 'SENDMESSAGE_TOOL_NAME',
+        4: 'TASKSTOP_TOOL_NAME',
+        5: 'WORKFLOW_CONDITIONAL_TOOL_NOTE',
+        6: 'SKILL_TOOL_CONDITIONAL_NOTE',
+        7: 'CROSS_SESSION_PEERS_NOTE',
+        8: 'LAUNCH_ANNOUNCE_NOTE',
+        9: 'SYSTEM_REMINDER_OPENING_TEXT',
+        10: 'WORKER_TOOLS_INTRO_TEXT',
+      },
+    },
     {
       // CC 2.1.238 inserted a conditional Skill-tool bullet (`i`) between the
       // workflow note and the cross-session peers note, taking the prompt from
@@ -203,6 +423,38 @@ const CURATED_IDENTIFIER_MAPS = {
   // responses (legacy)…':""}`, so t = the cross-session recipient rows, n = the
   // "## Cross-session" section, and e = the legacy-protocol flag at slot 2.
   // Upstream does not ship this prompt, so auditMisbinds had no reference.
+  // 2.1.280 inserted a parallel-worktree note ahead of the remote-isolation
+  // predicate: `…returned in the result.${B?`\n- ${B}`:""}${C3t()?'…remote…':""}
+  // ${h6()?`…`:Aa()?`…`:""}${j}${he}\n\n${M?_e:Me}` in `w8r`, where B is the
+  // "give EACH `isolation: \"worktree\"`" sentence. Fuzzy carryover kept every
+  // later label on its old slot number, so each one named its left neighbour.
+  'tool-description-agent-usage-notes': [
+    {
+      identifiers: [
+        0, 1, 2, 2, 3, 2, 4, 5, 6, 4, 7, 8, 6, 9, 9, 10, 11, 12, 13, 14, 4, 15,
+        16,
+      ],
+      identifierMap: {
+        0: 'TOOL_BASE_DESCRIPTION',
+        1: 'WHEN_NOT_TO_USE_NOTE',
+        2: 'CAN_RUN_BACKGROUND_AGENTS',
+        3: 'IS_FORK_SUBAGENT_FEATURE_ENABLED',
+        4: 'CAN_FORK_CONTEXT',
+        5: 'SEND_MESSAGE_TOOL_NAME',
+        6: 'AGENT_TOOL_NAME',
+        7: 'PROCESS_ENV',
+        8: 'IS_DEFAULT_SUBAGENT_STEERING_MODE',
+        9: 'PARALLEL_WORKTREE_ISOLATION_NOTE',
+        10: 'IS_REMOTE_ISOLATION_AVAILABLE_FN',
+        11: 'IS_IN_PROCESS_TEAMMATE_CONTEXT_FN',
+        12: 'IS_TEAMMATE_CONTEXT_FN',
+        13: 'FORK_USAGE_GUIDELINES',
+        14: 'WRITING_SUBAGENT_PROMPTS_GUIDANCE',
+        15: 'FORK_CAPABLE_SUBAGENT_DELEGATION_EXAMPLES',
+        16: 'NON_FORK_SUBAGENT_DELEGATION_EXAMPLES',
+      },
+    },
+  ],
   'tool-description-sendmessagetool': [
     {
       identifiers: [0, 1, 2],
@@ -231,6 +483,158 @@ const CURATED_IDENTIFIER_MAPS = {
       10: 'PR_COMMON_OPERATIONS_NOTE',
     },
   },
+  'tool-parameter-artifact-supporting-files-2': [
+    {
+      // New in CC 2.1.261: the Artifact `files` parameter grew a second, longer
+      // description for the copy-from surface, and its one slot is the cap on
+      // how many source Artifact versions a single publish may copy from
+      // (`at most ${xfe} source Artifact versions per publish`, @13389301).
+      // The generated map came back EMPTY for it, so `syncPrompt` stubbed the
+      // override with `${UNKNOWN_0}` — an unbound label, which makes the whole
+      // override inert (the apply skips the file). Named from the binary site.
+      identifiers: [0],
+      identifierMap: {
+        0: 'MAX_SOURCE_ARTIFACT_VERSIONS_PER_PUBLISH',
+      },
+    },
+  ],
+  // CC 2.1.284 moved /loop's status-update timing into shared helpers
+  // (chunk-4expsfkw.js `Nln`, the loop skill's `O()` steps34/rearmUpdate) and
+  // added PR Steward gates, inserting slots ahead of existing ones in the seven
+  // prompts below. The by-index carry bound valid names to the wrong vars.
+  // Every map is resolved from the module's definitions and the identifiers
+  // arrays were reproduced from the templates' distinct vars.
+  'system-prompt-monitor-fallback-heartbeat-guidance': [
+    {
+      // Autonomous-tick module chunk-s3c3fm9y.js `d()`: Tl ("Monitor"),
+      // Dw ("TaskList"), n (local "Immediately before/After re-arming, …"
+      // sentence), Nln (status-update visibility fn), Cl ("ScheduleWakeup"),
+      // ug ("TaskStop"). Names match upstream's 2.1.285 map, which labels
+      // slot 4 as the ScheduleWakeup tool (the `call … with stop: true` one).
+      identifiers: [0, 1, 0, 2, 3, 4, 5, 1],
+      identifierMap: {
+        0: 'MONITOR_TOOL_NAME',
+        1: 'TASK_LIST_TOOL_NAME',
+        2: 'REARM_STATUS_UPDATE_INSTRUCTION',
+        3: 'LOOP_STATUS_UPDATE_VISIBILITY_GUIDANCE_FN',
+        4: 'SCHEDULE_WAKEUP_TOOL_NAME',
+        5: 'TASK_STOP_TOOL_NAME',
+      },
+    },
+  ],
+  'skill-loop-slash-command-dynamic-mode': [
+    {
+      // Loop skill chunk-b82ys6y1.js `C()`: s (PR Steward label-check block or
+      // ""), R (cloud-first offer fn), x (cron table), e_ ("CronCreate"), Phe
+      // (recurringMaxAgeMs in days), iA ("CronDelete"), M (confirmation
+      // suffix fn), h (dynamic-mode instructions), e (user input).
+      identifiers: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      identifierMap: {
+        0: 'PR_STEWARD_LABEL_CHECK_BLOCK',
+        1: 'ADDITIONAL_PARSING_NOTES_FN',
+        2: 'CRON_CONVERSION_RULES',
+        3: 'CRON_CREATE_TOOL_NAME',
+        4: 'CANCEL_TIMEFRAME_DAYS',
+        5: 'CRON_DELETE_TOOL_NAME',
+        6: 'LOOP_CONFIRMATION_SUFFIX_FN',
+        7: 'DYNAMIC_MODE_INSTRUCTIONS',
+        8: 'USER_INPUT',
+      },
+    },
+  ],
+  'agent-prompt-agent-hook': [
+    {
+      // Hook agent XOt(): Et (task intro), Y (transcript path), F
+      // (`h.remoteCall!==void 0`, the new served-for-another-machine branch),
+      // bi ("StructuredOutput", chunk-1pns8tdv.js).
+      identifiers: [0, 1, 1, 2, 3],
+      identifierMap: {
+        0: 'HOOK_EVALUATION_TASK_PROMPT',
+        1: 'TRANSCRIPT_PATH',
+        2: 'IS_REMOTE_HOOK_CALL',
+        3: 'STRUCTURED_OUTPUT_TOOL_NAME',
+      },
+    },
+  ],
+  'agent-prompt-pr-follow-up-cron': [
+    {
+      // /autofix-pr Xe(u,t,o,h): Ie ("Babysit PR "), u (PR ref owner/repo#N;
+      // upstream's label kept), o (PR number), t (owner/repo), D (gTn():
+      // tengu_federated_flask PR Steward gate, adds `,labels`), iA
+      // ("CronDelete"), M (PR Steward label-handling note or ""), h (custom
+      // autofix-instructions note).
+      identifiers: [0, 1, 2, 3, 4, 3, 2, 5, 6, 7],
+      identifierMap: {
+        0: 'PR_INSTRUCTIONS_PREFIX',
+        1: 'PR_GENERATED_WITH_CLAUDE_CODE',
+        2: 'PR_NUMBER',
+        3: 'GITHUB_REPOSITORY',
+        4: 'IS_PR_STEWARD_ENABLED',
+        5: 'CRON_DELETE_TOOL_NAME',
+        6: 'PR_STEWARD_LABEL_HANDLING_NOTE',
+        7: 'PR_COMMON_OPERATIONS_NOTE',
+      },
+    },
+  ],
+  'skill-dynamic-pacing-loop-execution': [
+    {
+      // Loop skill chunk-b82ys6y1.js `g()` dynamic branch: h (task label), Tl
+      // ("Monitor"), v (arming fn), Cl ("ScheduleWakeup"), b (re-arm fn), E
+      // (O().steps34: confirm + decide steps 3-4), I (O().rearmUpdate fn), m
+      // (dynamic sentinel), ug ("TaskStop"), Dw ("TaskList"), k (loop-outcome
+      // report fn), w (away-user outcome fn).
+      identifiers: [0, 1, 2, 3, 4, 5, 6, 3, 7, 1, 3, 8, 1, 9, 10, 11],
+      identifierMap: {
+        0: 'TASK_RUN_LABEL',
+        1: 'MONITOR_TOOL_NAME',
+        2: 'MONITOR_ARMING_GUIDANCE_FN',
+        3: 'SCHEDULE_WAKEUP_TOOL_NAME',
+        4: 'MONITOR_REARM_GUIDANCE_FN',
+        5: 'LOOP_CONFIRM_AND_DECIDE_STEPS',
+        6: 'REARM_UPDATE_ORDER_FN',
+        7: 'DYNAMIC_MODE_SENTINEL',
+        8: 'TASK_STOP_TOOL_NAME',
+        9: 'TASK_LIST_TOOL_NAME',
+        10: 'LOOP_OUTCOME_REPORT_FN',
+        11: 'ADDITIONAL_INFO_FN',
+      },
+    },
+  ],
+  'skill-loop-self-pacing-mode': [
+    {
+      // Loop skill chunk-b82ys6y1.js `C()` `h`: Tl, v, Cl, b, r (O().steps34),
+      // n (O().rearmUpdate fn), ug, Dw, k, w — same roles as the dynamic
+      // pacing prompt above.
+      identifiers: [0, 1, 2, 3, 4, 5, 2, 0, 2, 6, 0, 7, 8, 9],
+      identifierMap: {
+        0: 'MONITOR_TOOL_NAME',
+        1: 'MONITOR_ARMING_GUIDANCE_FN',
+        2: 'SCHEDULE_WAKEUP_TOOL_NAME',
+        3: 'MONITOR_REARM_GUIDANCE_FN',
+        4: 'LOOP_CONFIRM_AND_DECIDE_STEPS',
+        5: 'REARM_UPDATE_ORDER_FN',
+        6: 'TASK_STOP_TOOL_NAME',
+        7: 'TASK_LIST_TOOL_NAME',
+        8: 'LOOP_OUTCOME_REPORT_FN',
+        9: 'ADDITIONAL_INFO_FN',
+      },
+    },
+  ],
+  'agent-prompt-security-monitor-for-autonomous-agent-actions': [
+    {
+      // g$e(e=ah): AZe (host-context line guidance), n (`_Ho[e]`, the
+      // baseline/candidate wording object read as .boundBullet,
+      // .classifierBypassTail, …), g (`XP()?` ${mkt}`:""`), r and s (both "").
+      identifiers: [0, 1, 2, 3, 4, 1, 1, 1, 1],
+      identifierMap: {
+        0: 'HOST_CONTEXT_LINE_GUIDANCE',
+        1: 'CLASSIFIER_WORDING_VARIANT',
+        2: 'PASTED_CONTENT_TRUST_RULE_BLOCK',
+        3: 'EMPTY_STRING',
+        4: 'EMPTY_SESSION_RULE_SLOT',
+      },
+    },
+  ],
 };
 
 const NEW_PROMPT_ASSIGNMENTS = [
@@ -417,9 +821,12 @@ const NEW_PROMPT_ASSIGNMENTS = [
   // merged prompt extracts anonymous (its opening is now the intro ternary, not
   // "# Harness", so fuzzy carryover misses). Piebald keeps the id
   // `system-prompt-harness-instructions` for it; we match, so the harness override
-  // stays bound. identifiers [0,1,2,3] == Piebald's, so adopt their full map
-  // (OUTPUT_STYLE_CONFIG / SECURITY_NOTE / SYSTEM_REMINDER_TAG_GUIDANCE_FN /
-  // TOOL_CONTEXT). This is the opus-4-8 live arm (lean gate true).
+  // stays bound. The map below is the 2.1.274 five-slot shape: the intro
+  // ternary moved into a local, so slot 0 is its resolved value; then the
+  // security policy, reminder-guidance fn, tool context, and a new flag-gated
+  // (tengu_virtual_pancake) pasted-content bullet. Upstream's map for this
+  // shape names slots 0/1/4 wrongly. overlayAssignmentMap refuses it if the
+  // live shape moves again.
   {
     matcher: t =>
       t.includes('# Harness') &&
@@ -431,11 +838,23 @@ const NEW_PROMPT_ASSIGNMENTS = [
     description:
       'Core interactive-agent identity and harness instructions for the lean system-prompt arm: terminal Markdown output, permission modes, hook feedback, parallel tools, clickable file refs.',
     identifierMap: {
-      0: 'OUTPUT_STYLE_CONFIG',
-      1: 'SECURITY_NOTE',
+      0: 'AGENT_INTRO_LINE',
+      1: 'SECURITY_POLICY_INSTRUCTIONS',
       2: 'SYSTEM_REMINDER_TAG_GUIDANCE_FN',
       3: 'TOOL_CONTEXT',
+      4: 'PASTED_CONTENT_GUIDANCE_BULLET',
     },
+  },
+  // 2.1.257 — the region-anchor row of the artifact comment list. Its text is a
+  // near-copy of the path-anchor row, so fuzzy carryover binds it to that
+  // sibling's id and mints a positional `-2` suffix; name it for what it is.
+  {
+    matcher: t =>
+      t.includes('over part of which the commenter drew a rectangle'),
+    name: 'Tool Result: Artifact Comment Anchor Region Data Warning',
+    id: 'tool-result-artifact-comments-anchor-region-data-warning',
+    description:
+      'Marks anchor-region rows (a rectangle the commenter drew over part of an element) in artifact comment results as viewer-influenced data rather than instructions.',
   },
   // 2.1.211 — fuzzy-carryover misses. Both prompts are still in the binary with
   // a bound override; Anthropic only edited their OPENING (inside FUZZY_PREFIX's
@@ -584,7 +1003,12 @@ const NEW_PROMPT_ASSIGNMENTS = [
       'Model-facing SendUserFile tool_result confirming N file(s) were delivered to the user. 2.1.204 emission-shape change (subset-shadowed by the message-delivered result) dropped it from capture; force-restore.',
   },
   {
-    matcher: t => t.includes('File unchanged since last read'),
+    // Anchored at the start, not `includes`: the release-notes changelog quotes
+    // this exact phrase in a /rewind bug-fix note, and a curated assignment
+    // outranks every other gate, so a bare `includes` force-captured a 95KB
+    // document under this id. Any assignment whose phrase Anthropic might quote
+    // in release notes needs the same treatment.
+    matcher: t => t.startsWith('File unchanged since last read'),
     name: 'Read File-Unchanged Result',
     id: 'tool-result-read-file-unchanged',
     description:
@@ -1092,7 +1516,11 @@ const NEW_PROMPT_ASSIGNMENTS = [
     id: 'system-reminder-lines-selected-in-ide',
     description:
       'Reminder injected when the user selects lines in their IDE, giving the file, line range, and selected content',
-    identifierMap: { 0: 'ATTACHMENT_OBJECT', 1: 'TRUNCATED_CONTENT' },
+    identifierMap: {
+      0: 'ATTACHMENT_OBJECT',
+      1: 'ESCAPE_UNTRUSTED_TEXT_FN',
+      2: 'TRUNCATE_CONTENT_FN',
+    },
   },
   {
     // 2.1.186 net-new: injected into the message content array (U.push(Ln({
@@ -1879,7 +2307,11 @@ const NEW_PROMPT_ASSIGNMENTS = [
     name: 'System Reminder: Compact file reference',
     id: 'system-reminder-compact-file-reference',
     description: 'Reference to file read before conversation summarization',
-    identifierMap: { 0: 'ATTACHMENT_OBJECT', 1: 'READ_TOOL_OBJECT' },
+    identifierMap: {
+      0: 'ESCAPE_UNTRUSTED_TEXT_FN',
+      1: 'ATTACHMENT_OBJECT',
+      2: 'READ_TOOL_NAME',
+    },
   },
   {
     matcher: t =>
@@ -1907,9 +2339,10 @@ const NEW_PROMPT_ASSIGNMENTS = [
     id: 'system-reminder-file-truncated',
     description: 'Notification that file was truncated due to size',
     identifierMap: {
-      0: 'ATTACHMENT_OBJECT',
-      1: 'MAX_LINES_CONSTANT',
-      2: 'READ_TOOL_OBJECT',
+      0: 'ESCAPE_UNTRUSTED_TEXT_FN',
+      1: 'ATTACHMENT_OBJECT',
+      2: 'MAX_LINES_CONSTANT',
+      3: 'READ_TOOL_NAME',
     },
   },
   {
@@ -2522,14 +2955,7 @@ const NEW_PROMPT_ASSIGNMENTS = [
     id: 'system-prompt-coordinator-mode',
     description:
       'Top-level CC system prompt when coordinator mode is active — orchestrates worker subagents through Agent/SendMessage/TaskStop, with optional cross-session peer discovery and workflow tool guidance',
-    identifierMap: {
-      0: 'AGENT_TOOL_NAME',
-      1: 'SENDMESSAGE_TOOL_NAME',
-      2: 'TASKSTOP_TOOL_NAME',
-      3: 'WORKFLOW_CONDITIONAL_TOOL_NOTE',
-      4: 'LISTAGENTS_TOOL_NAME',
-      5: 'WORKER_TOOLS_INTRO_TEXT',
-    },
+    identifierMap: COORDINATOR_MODE_2_1_257_MAP,
   },
   {
     matcher: t =>
@@ -2540,7 +2966,9 @@ const NEW_PROMPT_ASSIGNMENTS = [
     id: 'system-prompt-worker-agent',
     description:
       'System prompt for a worker subagent in coordinator mode — scoped execution, reports back to the coordinator (not the user) via task-note output',
-    identifierMap: { 0: 'AGENT_TOOL_NAME' },
+    // Upstream carries this prompt under a different id, so the shared-id map
+    // adoption never corrects it; the per-shape map lives in
+    // CURATED_IDENTIFIER_MAPS.
   },
 
   // 2.1.151/2.1.152 — /code-review --fix extension. The --fix flag appends
@@ -2604,7 +3032,99 @@ const NEW_PROMPT_ASSIGNMENTS = [
     description:
       'Requires confirmation for irreversible or outward-facing actions, checking targets before destructive edits, and truthful reporting of outcomes',
   },
+  // The two strings the coverage gate reports missing on 2.1.276, both reaching
+  // the model. Named after the ids upstream (Piebald) uses, so the gate and the
+  // reference catalogue agree on what to call them.
+  {
+    matcher: t =>
+      t.startsWith('You are an agent for Claude Code, Anthropic') &&
+      t.includes('When you complete the task, respond with a concise report') &&
+      !t.includes('Your strengths') &&
+      t.trimEnd().endsWith('so it only needs the essentials.'),
+    name: 'Agent Prompt: General task agent',
+    id: 'agent-prompt-general-task-agent',
+    description:
+      "Instructs a Claude Code task agent to complete the user's request fully and report the essential outcome",
+  },
+  {
+    matcher: t => t.includes('will be announced here once they connect'),
+    name: 'System Reminder: MCP servers connecting without ToolSearch',
+    id: 'system-reminder-mcp-servers-connecting-without-toolsearch',
+    description:
+      'Lists MCP servers still connecting when ToolSearch is absent and tells the agent to await tool announcements rather than report the capability unavailable',
+  },
+  // 2.1.280 — two string concatenations whose head alone clears the capture
+  // floor; the tail ("…or have the shape of an agent id", "does not accept —
+  // nothing was sent.") is a separate literal. Named like the sibling
+  // changed-recipient-after-approval head, which is catalogued the same way.
+  {
+    // Agent tool `name` refine: `…"user" or '+'"system", in any spelling) …`
+    matcher: t =>
+      t.startsWith('name must not be a reserved name ("main", "team-lead"'),
+    name: 'Tool Result: Agent name is reserved',
+    id: 'tool-result-agent-name-reserved',
+    description:
+      'Validation error returned when a spawned agent is given a reserved name (main, team-lead, user, system) or an agent-id-shaped name.',
+  },
+  {
+    matcher: t =>
+      t.startsWith(
+        'The permission handler narrowed the input to a shape SendMessage'
+      ),
+    name: 'Tool Result: SendMessage permission handler narrowed the input',
+    id: 'tool-result-send-message-permission-handler-narrowed-input',
+    description:
+      'SendMessage refusal when a permission handler rewrote the input into a shape the tool does not accept, so nothing was sent.',
+  },
 ];
+
+// Overlay a NEW_PROMPT_ASSIGNMENTS identifierMap onto a carried/generated one,
+// but only when the result still names every live slot once. An assignment
+// map is written against ONE shape of a prompt and rots when Anthropic adds
+// slots: on CC 2.1.257 `system-prompt-harness-instructions` carried the
+// correct 7-slot map from 2.1.252, and a stale 4-slot assignment overlaid
+// slots 1–3 with names that belonged to the 2.1.216 shape. The result named
+// two slots `SYSTEM_REMINDER_TAG_GUIDANCE_FN` and two `TOOL_CONTEXT`, the
+// override's `OUTPUT_STYLE_AGENT_INTRO_FN()` no longer resolved, the raw
+// identifier shipped into a template literal, and every interactive turn
+// ended with 0 tokens on a swallowed ReferenceError. A stale assignment must
+// lose to a complete carried map, loudly.
+function overlayAssignmentMap(base, assigned, identifiers, label) {
+  if (!assigned) return base;
+  const merged = { ...(base || {}), ...assigned };
+  const slots = [...new Set((identifiers || []).map(String))];
+  const dupes = duplicateSlotNames(merged, slots);
+  // A partial assignment that RENAMES a slot the carried map already names is
+  // written against another shape; one that only fills blanks or agrees is
+  // fine. A complete assignment is trusted for this shape (it is the fix).
+  const renames = Object.keys(assigned).filter(
+    k => base && base[k] && base[k] !== assigned[k]
+  );
+  const partial = Object.keys(assigned).length < slots.length;
+  if (dupes.length > 0 || (partial && renames.length > 0)) {
+    console.warn(
+      `Warning: NEW_PROMPT_ASSIGNMENTS identifierMap for "${label}" is stale ` +
+        `(${Object.keys(assigned).length} named vs ${slots.length} live slots` +
+        (dupes.length ? `; overlay would duplicate ${dupes.join(', ')}` : '') +
+        (renames.length ? `; would rename slot(s) ${renames.join(', ')}` : '') +
+        `) — keeping the ${base ? 'carried' : 'generated'} map. Update the assignment.`
+    );
+    return base;
+  }
+  return merged;
+}
+
+// Names that would label more than one DISTINCT slot. Two slots sharing a name
+// cannot both be addressed by an override, so this is always a catalogue bug.
+function duplicateSlotNames(map, slots) {
+  const seen = new Map();
+  for (const k of new Set(slots)) {
+    const n = map && map[k];
+    if (!n) continue;
+    seen.set(n, (seen.get(n) || 0) + 1);
+  }
+  return [...seen].filter(([, c]) => c > 1).map(([n]) => n);
+}
 
 function lookupNewPromptAssignment(content) {
   for (const a of NEW_PROMPT_ASSIGNMENTS) {
@@ -2721,9 +3241,10 @@ function leadShowsModelFacingContext(lead, text = '') {
   // inputSchema param descriptions (audit gap G3: ~61 of 70 missed because Zod's
   // JSON shape is generated at RUNTIME, so statically only `.describe("…")` exists,
   // not the flat {description,type} the rule above matches). This broadens capture;
-  // the classification cache then drops settings/CLI `.describe()` as
-  // facing:'internal' (the §6.5 broaden-capture-then-classify doctrine, safe via
-  // the cache KEEP/DROP at the capture site).
+  // the classification cache then drops SDK control-protocol and CLI `.describe()`
+  // as facing:'internal'. Settings-schema descriptions are model-facing (the model
+  // reads the whole schema via /update-config and settings validation errors) and
+  // are captured structurally by lib/settingsSchema.cjs, ahead of the cache.
   if (/\.describe\(\s*$/.test(tail)) return true;
   // Usage-nudge catalog fields ({id, situation, feature, action}): the catalog
   // is injected into the model's context so IT can decide when a nudge applies.
@@ -2861,9 +3382,11 @@ const CLASSIFICATION_CACHE_PATH = path.join(
   'prompt-classification.json'
 );
 let _classificationCache = null;
+let _classificationCacheInjected = false;
 // Test seam: inject a cache object (pass null to restore file-backed loading).
 function _setClassificationCacheForTests(obj) {
   _classificationCache = obj;
+  _classificationCacheInjected = !!obj;
 }
 function loadClassificationCache() {
   if (_classificationCache) return _classificationCache;
@@ -3009,9 +3532,59 @@ const normalizeBuildTime = s =>
     }
   );
 
-function classifyByCache(body) {
-  const cache = loadClassificationCache();
-  const sha = s => crypto.createHash('sha1').update(s).digest('hex');
+// Inside each `${…}` slot, a bare-identifier bracket index (`[Ye]`) becomes
+// `[]`. The cacheBody keeps member/index access, so a minifier rename of an
+// index variable between builds (Ye→Xe) changes the sha1 of an otherwise
+// byte-identical prompt and silently strands its verdict. Numeric, quoted and
+// operator indexes (`[0]`, `["x"]`, `[P-1]`) are a different class and stay.
+function normalizeBracketIndexes(body) {
+  const BARE = /\[[A-Za-z_$][\w$]*\]/g;
+  let out = '';
+  let i = 0;
+  while (i < body.length) {
+    if (body[i] === '$' && body[i + 1] === '{' && body[i - 1] !== '\\') {
+      let depth = 1;
+      let j = i + 2;
+      let seg = '';
+      let segStart = j;
+      const flush = end => {
+        seg += body.slice(segStart, end).replace(BARE, '[]');
+      };
+      while (j < body.length && depth > 0) {
+        const c = body[j];
+        if (c === "'" || c === '"' || c === '`') {
+          flush(j);
+          let k = j + 1;
+          while (k < body.length && body[k] !== c)
+            k += body[k] === '\\' ? 2 : 1;
+          const lit = body.slice(j, k + 1);
+          seg +=
+            c === '`'
+              ? '`' + normalizeBracketIndexes(lit.slice(1, -1)) + lit.slice(-1)
+              : lit;
+          j = k + 1;
+          segStart = j;
+          continue;
+        }
+        if (c === '{') depth += 1;
+        else if (c === '}') depth -= 1;
+        j += 1;
+      }
+      flush(j);
+      out += '${' + seg;
+      i = j;
+      continue;
+    }
+    out += body[i];
+    i += 1;
+  }
+  return out;
+}
+
+const sha1Hex = s => crypto.createHash('sha1').update(s).digest('hex');
+
+// Every raw (un-normalized) form a body is looked up under.
+function rawCacheForms(body) {
   const forms = [body];
   if (_ccVersionForCache) {
     if (body.includes(_ccVersionForCache))
@@ -3025,11 +3598,90 @@ function classifyByCache(body) {
     if (_buildTimeForCache && form.includes('<<BUILD_TIME>>'))
       forms.push(form.split('<<BUILD_TIME>>').join(_buildTimeForCache));
   }
-  for (const form of forms) {
-    const hit = cache[sha(form)];
+  return forms;
+}
+
+function classifyByCache(body) {
+  const cache = loadClassificationCache();
+  const raw = rawCacheForms(body);
+  for (const form of raw) {
+    const hit = cache[sha1Hex(form)];
+    if (hit) return hit;
+  }
+  for (const form of raw) {
+    const nf = normalizeBracketIndexes(form);
+    if (nf === form) continue;
+    const hit = cache[sha1Hex(nf)];
     if (hit) return hit;
   }
   return null;
+}
+
+// Serialize the cache in the repo's canonical one-entry-per-line format (the
+// showtime driver's classify-merge writes the same bytes).
+function serializeClassificationCache(cache) {
+  const parts = [];
+  for (const [k, v] of Object.entries(cache)) {
+    const keys = Object.keys(v);
+    let val;
+    if (keys.length === 1) {
+      val = `{ "facing": ${JSON.stringify(v.facing)} }`;
+    } else {
+      const lines = ['facing', 'id', 'name', 'desc']
+        .filter(f => f in v)
+        .map(f => `    ${JSON.stringify(f)}: ${JSON.stringify(v[f])}`);
+      val = `{\n${lines.join(',\n')}\n  }`;
+    }
+    parts.push(`  ${JSON.stringify(k)}: ${val}`);
+  }
+  return `{\n${parts.join(',\n')}\n}\n`;
+}
+
+// For each prompt whose body has a bare-identifier bracket index and whose
+// verdict was recorded under a raw key, return the cache with an alias
+// `sha1(normalized) -> same verdict` inserted directly after its source entry,
+// so the file diff is insertions only. Returns {cache, added}.
+function withBracketAliases(prompts, cache) {
+  const aliases = new Map();
+  for (const p of prompts) {
+    const body = (p.pieces || []).filter(x => typeof x === 'string').join('');
+    for (const form of rawCacheForms(body)) {
+      const nf = normalizeBracketIndexes(form);
+      if (nf === form) continue;
+      const srcKey = sha1Hex(form);
+      const aliasKey = sha1Hex(nf);
+      if (!cache[srcKey] || cache[aliasKey] || aliases.has(aliasKey)) continue;
+      aliases.set(aliasKey, { srcKey, verdict: { ...cache[srcKey] } });
+    }
+  }
+  if (!aliases.size) return { cache, added: 0 };
+  const bySrc = new Map();
+  for (const [aliasKey, { srcKey, verdict }] of aliases)
+    bySrc.set(srcKey, [...(bySrc.get(srcKey) || []), [aliasKey, verdict]]);
+  const next = {};
+  for (const [k, v] of Object.entries(cache)) {
+    next[k] = v;
+    for (const [ak, av] of bySrc.get(k) || []) next[ak] = av;
+  }
+  return { cache: next, added: aliases.size };
+}
+
+// Writes to `cachePath` (default: the real file). A cache injected through the
+// test seam is never persisted to the default path.
+function backfillCacheAliases(prompts, cachePath) {
+  if (!cachePath && _classificationCacheInjected) return 0;
+  const file = cachePath || CLASSIFICATION_CACHE_PATH;
+  const cache = cachePath
+    ? JSON.parse(fs.readFileSync(file, 'utf-8'))
+    : loadClassificationCache();
+  const { cache: next, added } = withBracketAliases(prompts, cache);
+  if (!added) return 0;
+  fs.writeFileSync(file, serializeClassificationCache(next));
+  if (!cachePath) _classificationCache = next;
+  console.log(
+    `Added ${added} classification-cache alias key(s) for bracket-indexed slots`
+  );
+  return added;
 }
 
 // Structural excludes that win even over a classification-cache 'model'
@@ -3037,7 +3689,84 @@ function classifyByCache(body) {
 // that ARE model-facing but can never be independently overridden, so
 // cataloguing them only manufactures "Could not find" warnings at --apply).
 // Everything here is also the first gate inside validateInput.
+// The template's text with every `${…}` slot replaced by the contents of the
+// string literals inside it. Balanced-brace walk; nested templates recurse.
+function proseOutsideSlots(text) {
+  let out = '';
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === '$' && text[i + 1] === '{' && text[i - 1] !== '\\') {
+      let depth = 1;
+      let j = i + 2;
+      while (j < text.length && depth > 0) {
+        const c = text[j];
+        if (c === "'" || c === '"') {
+          let k = j + 1;
+          while (k < text.length && text[k] !== c)
+            k += text[k] === '\\' ? 2 : 1;
+          out += ' ' + text.slice(j + 1, k) + ' ';
+          j = k + 1;
+          continue;
+        }
+        if (c === '`') {
+          let k = j + 1;
+          while (k < text.length && text[k] !== '`')
+            k += text[k] === '\\' ? 2 : 1;
+          out += ' ' + proseOutsideSlots(text.slice(j + 1, k)) + ' ';
+          j = k + 1;
+          continue;
+        }
+        if (c === '{') depth += 1;
+        else if (c === '}') depth -= 1;
+        j += 1;
+      }
+      i = j;
+      continue;
+    }
+    out += text[i];
+    i += 1;
+  }
+  return out;
+}
+
 function isHardExcluded(text) {
+  // No prose at all — a template that is only interpolation scaffolding
+  // (`${x}\n\n${y()}`, `${a}, ${b}`). Nothing model-facing is authored here,
+  // so an override can only ever be "unchanged", while the regex built from
+  // punctuation-only pieces matches EVERY site of that shape in the bundle:
+  // on CC 2.1.257 the four-site `tool-result-readmcpresourcedir-listing`
+  // entry absorbed the Workflow tool description's `${t}\n\n${ain()}` and
+  // the shared override spliced `ain(…_VAR_2)` — a bare identifier — into it.
+  // `text` is the raw template source. Prose counts outside the `${…}`
+  // slots and inside any string literal within them (`${x??"rejected as too
+  // large…"}` is model-facing); identifiers and operators inside a slot do
+  // not (`ain`, `content`, `command` are not prose).
+  // A lone glyph prefix (`⚠ ${e.content}`, stored as `\u26a0` in the Bun
+  // bundle) is still authored text; keep it.
+  if (!/[A-Za-z]{3,}|[^ -~\s]|\\u[0-9a-fA-F]{4}/.test(proseOutsideSlots(text)))
+    return true;
+  // The release-notes changelog (`Inn()` -> computeUpdateSummary -> the startup
+  // "what's new" notice). It is a DOCUMENT, not a prompt: no system prompt, tool
+  // schema or tool result ever carries it, and at 95KB it is by far the largest
+  // string in the bundle.
+  //
+  // It is hard-excluded rather than left to a cache verdict because it is the one
+  // string guaranteed to QUOTE other prompts: release notes describe prompt-level
+  // fixes by quoting the prompt. On CC 2.1.266 the note `Fixed /rewind leaving
+  // stale file-read tracking … which caused "File unchanged since last read"
+  // stubs` made it match the NEW_PROMPT_ASSIGNMENTS matcher for
+  // `tool-result-read-file-unchanged` — and a curated assignment outranks both the
+  // classification cache and the prose gate, so a `ui` verdict could not suppress
+  // it. It was captured under that prompt's id, pushed the real 154-char prompt to
+  // a `-2` suffix, and shipped a 95KB "override" nobody could have meant.
+  //
+  // Keyed on the shape, not on any one release's text: a leading `## <semver>`
+  // heading plus several more of them. No prompt looks like that.
+  if (
+    /^## \d+\.\d+\.\d+\s*\n/.test(text) &&
+    (text.match(/\n## \d+\.\d+\.\d+\s*\n/g) || []).length >= 5
+  )
+    return true;
   // Bundled skill build-tooling / spawned-subprocess scripts — executable
   // JS/MJS source shipped inside a skill, not prompt text.
   if (text.startsWith('#!/usr/bin/env node')) return true;
@@ -3061,21 +3790,25 @@ function isHardExcluded(text) {
     )
   )
     return true;
-  // Two general-purpose-agent fragments with no working override target
-  // (nested/clobbered spans — see the inline notes in validateInput's history).
+  // A general-purpose-agent fragment with no working override target (a
+  // nested/clobbered span; see the inline notes in validateInput's history).
   if (
     text.startsWith(
       'Your strengths:\n- Searching for code, configurations, and patterns across large codebases'
     )
   )
     return true;
+  // The standalone general-task agent prompt. Upstream catalogues it and the
+  // coverage gate flags it, so a curated NEW_PROMPT_ASSIGNMENTS entry names it;
+  // this rule yields to that entry and otherwise keeps the fragment dropped.
   if (
     text.startsWith('You are an agent for Claude Code, Anthropic') &&
     text.includes(
       'When you complete the task, respond with a concise report'
     ) &&
     !text.includes('Your strengths') &&
-    text.trimEnd().endsWith('so it only needs the essentials.')
+    text.trimEnd().endsWith('so it only needs the essentials.') &&
+    !lookupNewPromptAssignment(text)
   )
     return true;
   // Anything that interpolates the inline ${{ISSUES_EXPLAINER, ..., GIT_SHA,
@@ -3172,6 +3905,10 @@ function shouldCapture(text, cacheBody, lead, minLength, opts = {}) {
   // the cache and the prose gate alike. Hard structural excludes still win over
   // it, exactly as they do over a cached 'model'.
   if (opts.slotLiteral) return !isHardExcluded(text);
+  // A settings-schema description is found structurally (the model reads the
+  // whole schema via /update-config and settings validation errors), which
+  // survives a reword that would orphan any per-string cache row.
+  if (opts.settingsDescription) return !isHardExcluded(text);
   const cls = classifyByCache(cacheBody);
   if (cls) {
     if (isHardExcluded(text)) return false;
@@ -3187,7 +3924,8 @@ function shouldCapture(text, cacheBody, lead, minLength, opts = {}) {
     // tool description: the model reads it on every session that exposes the
     // tool. Naming a prompt in NEW_PROMPT_ASSIGNMENTS is a human decision about
     // one specific string, so it wins; everything else still defers to the cache.
-    if (cls.facing !== 'model' && !lookupNewPromptAssignment(text)) return false;
+    if (cls.facing !== 'model' && !lookupNewPromptAssignment(text))
+      return false;
     if (cls.facing === 'model') return true;
   }
   const signalled = leadShowsModelFacingContext(lead, text);
@@ -3808,11 +4546,19 @@ function backfillIdenticalSites(stringData, ast, code) {
 function extractStrings(filepath, minLength = 500) {
   _gateCandidates.clear(); // idempotent across calls
   const code = fs.readFileSync(filepath, 'utf-8');
+  const settingsIndex = buildSettingsIndex(code);
+  const settingsAt = node => {
+    const hit = settingsIndex.get(node.start);
+    return hit && hit.safe ? hit : null;
+  };
 
-  const ast = parser.parse(code, {
-    sourceType: 'module',
-    plugins: ['jsx', 'typescript'],
-  });
+  const segments = splitModuleBundle(code);
+  const ast = segments
+    ? null
+    : parser.parse(code, {
+        sourceType: 'module',
+        plugins: ['jsx', 'typescript'],
+      });
 
   const stringData = [];
 
@@ -3831,7 +4577,9 @@ function extractStrings(filepath, minLength = 500) {
             Math.max(0, frag.start - 600),
             frag.start
           );
-          return shouldCapture(v, v, fragLead, minLength);
+          return shouldCapture(v, v, fragLead, minLength, {
+            settingsDescription: Boolean(settingsAt(frag)),
+          });
         });
         const lead = code.slice(Math.max(0, node.start - 600), node.start);
         // Model-facing if a sibling already made it into the catalogue, or if
@@ -3895,8 +4643,19 @@ function extractStrings(filepath, minLength = 500) {
       // keys sit beyond a long preceding string value.
       const lead = code.slice(Math.max(0, node.start - 600), node.start);
       const slotLiteral = Boolean(slotLiteralVerdict(node.value));
-      dumpCandidate({ start: node.start, end: node.end, kind: 'string', cacheBody: node.value });
-      if (shouldCapture(node.value, node.value, lead, minLength, { slotLiteral })) {
+      const settings = settingsAt(node);
+      dumpCandidate({
+        start: node.start,
+        end: node.end,
+        kind: 'string',
+        cacheBody: node.value,
+      });
+      if (
+        shouldCapture(node.value, node.value, lead, minLength, {
+          slotLiteral,
+          settingsDescription: Boolean(settings),
+        })
+      ) {
         stringData.push({
           name: '',
           id: '',
@@ -3907,6 +4666,7 @@ function extractStrings(filepath, minLength = 500) {
           start: node.start,
           end: node.end,
           slotLiteral,
+          ...(settings && { settings }),
         });
       }
     }
@@ -4069,8 +4829,19 @@ function extractStrings(filepath, minLength = 500) {
       const slotLiteral = (node.quasis || []).some(q =>
         Boolean(slotLiteralVerdict(q.value.cooked ?? q.value.raw))
       );
-      dumpCandidate({ start: node.start, end: node.end, kind: 'template', cacheBody: tbody });
-      if (shouldCapture(fullContent, tbody, lead, minLength, { slotLiteral })) {
+      const settings = settingsAt(node);
+      dumpCandidate({
+        start: node.start,
+        end: node.end,
+        kind: 'template',
+        cacheBody: tbody,
+      });
+      if (
+        shouldCapture(fullContent, tbody, lead, minLength, {
+          slotLiteral,
+          settingsDescription: Boolean(settings),
+        })
+      ) {
         stringData.push({
           name: '',
           id: '',
@@ -4081,6 +4852,7 @@ function extractStrings(filepath, minLength = 500) {
           start: node.start,
           end: node.end,
           slotLiteral,
+          ...(settings && { settings }),
         });
       }
     }
@@ -4098,8 +4870,30 @@ function extractStrings(filepath, minLength = 500) {
     }
   };
 
-  traverse(ast);
-  backfillIdenticalSites(stringData, ast, code);
+  if (segments) {
+    // Two passes, each discarding its AST, because holding 1,400 ASTs at once
+    // costs several GB. The second pass is what keeps `backfillIdenticalSites`
+    // cross-module: it needs the full capture set before it can look for
+    // identical sites of it.
+    let parsed = 0;
+    for (const seg of segments) {
+      const segAst = parseModuleSegment(seg);
+      if (!segAst) continue;
+      parsed++;
+      traverse(segAst);
+    }
+    console.log(
+      `extractStrings: parsed ${parsed}/${segments.length} bundle modules`
+    );
+    for (const seg of segments) {
+      const segAst = parseModuleSegment(seg);
+      if (!segAst) continue;
+      backfillIdenticalSites(stringData, segAst, code);
+    }
+  } else {
+    traverse(ast);
+    backfillIdenticalSites(stringData, ast, code);
+  }
 
   // Filter out strings that are subsets of other strings
   // Step 1: Sort by start index (ascending), then by end index (descending)
@@ -4238,9 +5032,107 @@ function applySlotLiteralNames(prompts) {
     }
   }
   if (named.length) {
-    console.log(`Named ${named.length} slot-literal capture(s) from the allowlist`);
+    console.log(
+      `Named ${named.length} slot-literal capture(s) from the allowlist`
+    );
   }
   return prompts;
+}
+
+// Name the settings-schema descriptions from their key path. Runs after the
+// other namers, so an id the catalogue already carries always wins (renaming
+// one would orphan its overrides). A description the reference catalogue
+// already holds takes its id as-is, because shared prompts must keep the
+// reference ids for identifierMap adoption and the mis-bind audit. The same
+// text at several schema sites (a sub-schema reused under several keys) is one
+// multi-site prompt, so it gets one id, named from the path its sites share.
+function applySettingsDescriptionNames(prompts, upstreamPrompts = []) {
+  const norm = s => s.replace(/\\(['"`\\])/g, '$1');
+  const body = p =>
+    (p.pieces || []).filter(x => typeof x === 'string').join('');
+  const upstreamByBody = new Map();
+  for (const u of upstreamPrompts) {
+    if (u.id) upstreamByBody.set(norm(body(u)), u);
+  }
+  const groups = new Map();
+  for (const p of prompts) {
+    if (p.id || !p.settings) continue;
+    const b = body(p);
+    if (!groups.has(b)) groups.set(b, []);
+    groups.get(b).push(p);
+  }
+  let adopted = 0;
+  let generated = 0;
+  for (const [b, group] of groups) {
+    const up = upstreamByBody.get(norm(b));
+    let id, name, description;
+    if (up) {
+      ({ id, name, description } = up);
+      adopted++;
+    } else {
+      const { keyPath, part, parts } = sharedSettingsPath(
+        group.map(p => p.settings)
+      );
+      const slug = keyPath
+        .replace(/[()]/g, '')
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      const partSuffix = parts > 1 ? `-part-${part}` : '';
+      id = `data-settings-${slug}-description${partSuffix}`;
+      name = `Data: ${keyPath} setting description${parts > 1 ? ` (part ${part} of ${parts})` : ''}`;
+      description =
+        `Description of the \`${keyPath}\` setting in Claude Code's settings ` +
+        'JSON schema. The model reads it through /update-config and settings ' +
+        'validation errors; it is also shown to users in the settings help.';
+      generated++;
+    }
+    for (const p of group) {
+      p.id = id;
+      p.name = name || '';
+      p.description = description || '';
+    }
+  }
+  if (adopted || generated) {
+    console.log(
+      `Named ${adopted + generated} settings description(s): ${adopted} from the reference catalogue, ${generated} from their key path`
+    );
+  }
+  return prompts;
+}
+
+// One name for a text found at several key paths: keep the leading segments
+// all paths share, then the final key when they agree on it.
+function sharedSettingsPath(sites) {
+  const paths = sites.map(s => s.keyPath.split('.'));
+  const common = [];
+  for (let i = 0; i < Math.min(...paths.map(p => p.length)); i++) {
+    if (paths.every(p => p[i] === paths[0][i])) common.push(paths[0][i]);
+    else break;
+  }
+  const last = paths[0][paths[0].length - 1];
+  if (
+    common[common.length - 1] !== last &&
+    paths.every(p => p[p.length - 1] === last)
+  ) {
+    common.push(last);
+  }
+  return {
+    keyPath: common.join('.') || 'root',
+    part: sites[0].part,
+    parts: sites[0].parts,
+  };
+}
+
+function loadUpstreamPrompts() {
+  const file = process.env.TWEAKCC_UPSTREAM_JSON;
+  if (!file || !fs.existsSync(file)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf-8')).prompts || [];
+  } catch {
+    return [];
+  }
 }
 
 // Disambiguate DIFFERENT-content strings that landed on the SAME id (a below-floor
@@ -4449,10 +5341,12 @@ function mergeWithExisting(newData, oldData, currentVersion) {
       // post-rename JSONs. Without this, a report/greenfield extraction seeded
       // from an older JSON silently resurrects the old id.
       const assignedFromMap = lookupNewPromptAssignment(newContent);
-      const overlaidIdentifierMap =
-        assignedFromMap && assignedFromMap.identifierMap
-          ? { ...matchingOld.identifierMap, ...assignedFromMap.identifierMap }
-          : matchingOld.identifierMap;
+      const overlaidIdentifierMap = overlayAssignmentMap(
+        matchingOld.identifierMap,
+        assignedFromMap && assignedFromMap.identifierMap,
+        newItem.identifiers,
+        (assignedFromMap && assignedFromMap.id) || matchingOld.id
+      );
       return {
         ...newItem,
         name: (assignedFromMap && assignedFromMap.name) || matchingOld.name,
@@ -4464,6 +5358,9 @@ function mergeWithExisting(newData, oldData, currentVersion) {
           (assignedFromMap && assignedFromMap.description) ||
           matchingOld.description,
         identifierMap: overlaidIdentifierMap,
+        // Platform tags (tools/tagPlatforms.mjs) carry over until the next
+        // tagging run re-derives them from the other platforms' bundles.
+        ...(matchingOld.platforms ? { platforms: matchingOld.platforms } : {}),
         version: matchingOld.version || currentVersion,
       };
     }
@@ -4479,10 +5376,12 @@ function mergeWithExisting(newData, oldData, currentVersion) {
         `Fuzzy-matched item ${idx} to "${fuzzyOld.name || fuzzyOld.id}" (${oldLen} → ${newContent.length} chars)`
       );
       const assignedFromMap = lookupNewPromptAssignment(newContent);
-      const overlaidIdentifierMap =
-        assignedFromMap && assignedFromMap.identifierMap
-          ? { ...fuzzyOld.identifierMap, ...assignedFromMap.identifierMap }
-          : fuzzyOld.identifierMap;
+      const overlaidIdentifierMap = overlayAssignmentMap(
+        fuzzyOld.identifierMap,
+        assignedFromMap && assignedFromMap.identifierMap,
+        newItem.identifiers,
+        (assignedFromMap && assignedFromMap.id) || fuzzyOld.id
+      );
       return {
         ...newItem,
         name: (assignedFromMap && assignedFromMap.name) || fuzzyOld.name,
@@ -4494,6 +5393,7 @@ function mergeWithExisting(newData, oldData, currentVersion) {
           (assignedFromMap && assignedFromMap.description) ||
           fuzzyOld.description,
         identifierMap: overlaidIdentifierMap,
+        ...(fuzzyOld.platforms ? { platforms: fuzzyOld.platforms } : {}),
         version: currentVersion,
       };
     }
@@ -4527,9 +5427,12 @@ function mergeWithExisting(newData, oldData, currentVersion) {
       // If the assignment provides identifierMap (semantic names for the
       // ${var.field} interpolations), use it. Override files reference these
       // semantic names — without them, syncPrompt falls back to UNKNOWN_<idx>.
-      const finalIdentifierMap = assigned.identifierMap
-        ? { ...newItem.identifierMap, ...assigned.identifierMap }
-        : newItem.identifierMap;
+      const finalIdentifierMap = overlayAssignmentMap(
+        newItem.identifierMap,
+        assigned.identifierMap,
+        newItem.identifiers,
+        assigned.id
+      );
       return {
         ...newItem,
         name: assigned.name,
@@ -4673,7 +5576,12 @@ if (require.main === module) {
     version
   );
   mergedResult.prompts = applyCacheNames(mergedResult.prompts);
+  backfillCacheAliases(mergedResult.prompts);
   mergedResult.prompts = applySlotLiteralNames(mergedResult.prompts);
+  mergedResult.prompts = applySettingsDescriptionNames(
+    mergedResult.prompts,
+    loadUpstreamPrompts()
+  );
   mergedResult.prompts = normalizeIdGroups(mergedResult.prompts);
   mergedResult.prompts = disambiguateIdCollisions(
     mergedResult.prompts,
@@ -4686,6 +5594,28 @@ if (require.main === module) {
   // prompts (upstream lacks them) keep our carried/curated names. This is what
   // keeps an override's `${NAME}` landing on the slot it means. Point
   // TWEAKCC_UPSTREAM_JSON at upstream's prompts-<ver>.json.
+  //
+  // The step is NOT optional. A run without it regenerates every adopted map
+  // from carried/generated names — on CC 2.1.257 that silently moved the slot
+  // names of eight prompts whose shape had not changed, and every override
+  // written against the adopted names stopped resolving. Refuse to run without
+  // an upstream JSON unless the caller says so explicitly (TWEAKCC_NO_UPSTREAM=1,
+  // for a greenfield extraction with nothing to adopt from).
+  if (
+    !process.env.TWEAKCC_NO_UPSTREAM &&
+    !(
+      process.env.TWEAKCC_UPSTREAM_JSON &&
+      fs.existsSync(process.env.TWEAKCC_UPSTREAM_JSON)
+    )
+  ) {
+    console.error(
+      'FATAL: TWEAKCC_UPSTREAM_JSON is unset or missing. Point it at the newest ' +
+        'upstream prompts-<ver>.json (git show upstream/main:data/prompts/…) so ' +
+        'shared identifierMaps are adopted; set TWEAKCC_NO_UPSTREAM=1 only for a ' +
+        'deliberate extraction with no upstream to adopt from.'
+    );
+    process.exit(1);
+  }
   if (
     process.env.TWEAKCC_UPSTREAM_JSON &&
     fs.existsSync(process.env.TWEAKCC_UPSTREAM_JSON)
@@ -4756,6 +5686,13 @@ if (require.main === module) {
   // Curated/real names always win (this only fills blanks).
   for (const p of mergedResult.prompts) {
     if (!p.identifierMap) continue;
+    // Two sites of one collision-disambiguated id inherit the SAME carried map
+    // object by reference, so the slot-pruning below runs twice over one object:
+    // the site with fewer slots deletes names its sibling still uses, and that
+    // sibling's override then binds nothing and is skipped whole. Seen 2.1.273
+    // on tool-description-artifact-watching-unavailable, whose `-2` site
+    // (identifiers [0,1,2]) deleted VAR_3 from the 4-slot base site.
+    p.identifierMap = { ...p.identifierMap };
     const slug =
       String(p.id || 'prompt')
         .replace(/[^A-Za-z0-9]+/g, '_')
@@ -4769,11 +5706,37 @@ if (require.main === module) {
     for (const lbl of p.identifiers || []) {
       if (!(lbl in p.identifierMap)) p.identifierMap[lbl] = '';
     }
+    // The reverse case: a slot that LEFT the prompt keeps its carried name
+    // otherwise, and the sync then writes a phantom `variables:` entry that an
+    // override can reference with nothing behind it (git-guidance-block on
+    // 2.1.257 carried a VAR_3 for a fourth slot that no longer existed).
+    const live = new Set((p.identifiers || []).map(String));
+    for (const k of Object.keys(p.identifierMap)) {
+      if (!live.has(String(k))) delete p.identifierMap[k];
+    }
     for (const k of Object.keys(p.identifierMap)) {
       if (!p.identifierMap[k]) {
         p.identifierMap[k] = `${slug}_VAR_${k}`;
       }
     }
+  }
+
+  // A name that labels two distinct slots of one prompt is unaddressable from an
+  // override and has already shipped a ReferenceError once (2.1.257). Refuse to
+  // write a catalogue that carries one.
+  const dupReport = mergedResult.prompts
+    .map(p => [
+      p.id,
+      duplicateSlotNames(p.identifierMap, (p.identifiers || []).map(String)),
+    ])
+    .filter(([, d]) => d.length > 0);
+  if (dupReport.length > 0) {
+    for (const [id, d] of dupReport) {
+      console.error(
+        `FATAL: "${id}" names ${d.join(', ')} on more than one slot`
+      );
+    }
+    process.exit(1);
   }
 
   // Sort prompts by lexicographic order of pieces joined together (without interpolated vars)
@@ -4783,9 +5746,9 @@ if (require.main === module) {
     return contentA.localeCompare(contentB);
   });
 
-  // Remove start/end fields before writing
+  // Remove extraction bookkeeping before writing
   mergedResult.prompts = mergedResult.prompts.map(
-    ({ start, end, ...rest }) => rest
+    ({ start, end, settings, ...rest }) => rest
   );
 
   // Add version as top-level field
@@ -4837,12 +5800,20 @@ module.exports.ADMIT_FLOOR = ADMIT_FLOOR;
 module.exports.shouldCapture = shouldCapture;
 module.exports.looksLikeEnglishProse = looksLikeEnglishProse;
 module.exports.isHardExcluded = isHardExcluded;
+// Exposed so a test can assert that no curated assignment claims a document that
+// merely QUOTES a prompt — the failure mode that force-captured the changelog.
+module.exports.lookupNewPromptAssignment = lookupNewPromptAssignment;
 module.exports.setCcVersionForCacheLookups = setCcVersionForCacheLookups;
 module.exports._setClassificationCacheForTests =
   _setClassificationCacheForTests;
 // Test seam: fuzzy-carryover collision policy (same-id multi-site vs
 // genuinely-ambiguous cross-id) is behavior worth locking down.
 module.exports.mergeWithExisting = mergeWithExisting;
+module.exports.classifyByCache = classifyByCache;
+module.exports.normalizeBracketIndexes = normalizeBracketIndexes;
+module.exports.withBracketAliases = withBracketAliases;
+module.exports.backfillCacheAliases = backfillCacheAliases;
+module.exports.serializeClassificationCache = serializeClassificationCache;
 module.exports.templateKey = templateKey;
 module.exports.sameVarPattern = sameVarPattern;
 module.exports.IDENTICAL_SITE_FLOOR = IDENTICAL_SITE_FLOOR;
@@ -4852,3 +5823,4 @@ module.exports._setSlotLiteralsForTests = _setSlotLiteralsForTests;
 module.exports.slotLiteralCandidates = slotLiteralCandidates;
 module.exports.slotLiteralVerdict = slotLiteralVerdict;
 module.exports.applySlotLiteralNames = applySlotLiteralNames;
+module.exports.applySettingsDescriptionNames = applySettingsDescriptionNames;

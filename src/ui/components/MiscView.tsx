@@ -65,6 +65,8 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     increaseFileReadLimit: false,
     suppressLineNumbers: false,
     suppressRateLimitOptions: false,
+    suppressRateLimitWarning: false,
+    sessionColor: false,
     mcpConnectionNonBlocking: true,
     mcpServerBatchSize: null as number | null,
     statuslineThrottleMs: null as number | null,
@@ -82,6 +84,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     suppressNativeInstallerWarning: false,
     filterScrollEscapeSequences: false,
     enableWorktreeMode: true,
+    unlockResponsiveMode: false,
     swapRipgrepForFff: false,
     allowCustomAgentModels: false,
     enableContextLimitOverride: false,
@@ -91,7 +94,9 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     enableChannelsMode: false,
     maxEffortDefault: false,
     autonomousOperationAllModels: false,
-    adhdOutputStyle: false,
+    refusalFallbackModel: false,
+    refusalFallbackRoutes: {},
+    refusalFallbackMaxReturns: 1 as number | null,
     outputStyleTurnReminder: false,
     autoModeClassifierModel: 'default' as AutoModeClassifierModel,
     suppressDeferredTools: false,
@@ -200,7 +205,10 @@ export function MiscView({ onSubmit }: MiscViewProps) {
         toggle: () => {
           updateSettings(settings => {
             if (!settings.inputBox) {
-              settings.inputBox = { removeBorder: false };
+              settings.inputBox = {
+                removeBorder: false,
+                chevronIdleThemeColor: null,
+              };
             }
             settings.inputBox.removeBorder = !settings.inputBox.removeBorder;
           });
@@ -358,6 +366,33 @@ export function MiscView({ onSubmit }: MiscViewProps) {
         },
       },
       {
+        id: 'suppressRateLimitWarning',
+        title: 'Suppress rate limit warning banners',
+        description:
+          'Hides rate limit warning banners in the status bar. Error messages when limits are actually reached are still shown.',
+        getValue: () => settings.misc?.suppressRateLimitWarning ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.suppressRateLimitWarning =
+              !settings.misc!.suppressRateLimitWarning;
+          });
+        },
+      },
+      {
+        id: 'sessionColor',
+        title: 'Session color from TWEAKCC_SESSION_COLOR',
+        description:
+          'Colors the session prompt bar from the TWEAKCC_SESSION_COLOR env var, read at each launch, so concurrent sessions can be told apart. Accepts red, blue, green, yellow, purple, orange, pink or cyan; any other value leaves the bar alone.',
+        getValue: () => settings.misc?.sessionColor ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.sessionColor = !settings.misc!.sessionColor;
+          });
+        },
+      },
+      {
         id: 'mcpNonBlocking',
         title: 'Non-blocking MCP startup',
         description:
@@ -437,6 +472,20 @@ export function MiscView({ onSubmit }: MiscViewProps) {
             ensureMisc();
             settings.misc!.enableWorktreeMode =
               !settings.misc!.enableWorktreeMode;
+          });
+        },
+      },
+      {
+        id: 'unlockResponsiveMode',
+        title: 'Unlock responsive mode (bundled plugin)',
+        description:
+          "Make Claude Code's bundled responsive-mode plugin selectable in /plugin by dropping the tengu_quiet_ember flag check. Responsive mode makes Claude answer in a sentence before it thinks or uses a tool, and adds a system-prompt section against stock AI phrasing. It stays OFF until you enable it in /plugin.",
+        getValue: () => settings.misc?.unlockResponsiveMode ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.unlockResponsiveMode =
+              !settings.misc!.unlockResponsiveMode;
           });
         },
       },
@@ -789,15 +838,16 @@ export function MiscView({ onSubmit }: MiscViewProps) {
         },
       },
       {
-        id: 'adhdOutputStyle',
-        title: 'ADHD-friendly output style (experimental)',
+        id: 'refusalFallbackModel',
+        title: 'Route the refusal fallback, then switch back',
         description:
-          'EXPERIMENTAL, and it may not visibly change your output. Prompt wording is a weak and inconsistent lever: Claude can ignore it, the effect varies between one reply and the next, and on some tasks nothing measurable changes. Picked by blind ranking over roughly 900 generated replies, where it came last in 1 of 16 comparisons and the unmodified prompt came last in 10 - an average, not a promise about any single reply. Rewrites the always-on "# Communicating with the user" prompt for skim-first reading, with no word limit anywhere in it: answer in the first line; show the command, path or value rather than describing it; say each thing once; keep both sides of a count and every qualifier such as "in the browser only"; bold the key terms and keep paragraphs short. Removes the three clauses that drive Claude-speak: the "load-bearing" update cue, the "readable matters more" ranking, and the "in prose, not headers and sections" rule. Also restates the rules in the per-turn CLAUDE.md reminder, where recency makes them stick, and drops that reminder\'s "may or may not be relevant" hedge.',
-        getValue: () => settings.misc?.adhdOutputStyle ?? false,
+          'When safeguards flag a message, Claude Code retries it on a fallback model from its own route table, keyed by the flagged model and the refusal category, and keeps the session there. With this on, refusalFallbackRoutes in config.json is merged over that table: a category you leave out keeps its stock route, one you route falls back to the stock route when none of your models is usable, and a route is a model id or a chain of them. Once the flagged turn is answered, the session switches back to its own model and the transcript says so. refusalFallbackMaxReturns in config.json (default 1, null for no limit) caps consecutive returns, so a conversation that keeps being flagged stays on the fallback rather than paying for a refusal and a retry every turn.',
+        getValue: () => settings.misc?.refusalFallbackModel ?? false,
         toggle: () => {
           updateSettings(settings => {
             ensureMisc();
-            settings.misc!.adhdOutputStyle = !settings.misc!.adhdOutputStyle;
+            settings.misc!.refusalFallbackModel =
+              !settings.misc!.refusalFallbackModel;
           });
         },
       },

@@ -6,7 +6,7 @@
 
 [![npm](https://img.shields.io/npm/v/tweakcc-fixed?color=cb3837&label=npm&logo=npm&style=flat-square)](https://www.npmjs.com/package/tweakcc-fixed)
 [![downloads](https://img.shields.io/npm/dt/tweakcc-fixed?color=cb3837&style=flat-square)](https://www.npmjs.com/package/tweakcc-fixed)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-2.0.98%20%E2%86%92%202.1.238-d97757?style=flat-square)](https://github.com/anthropics/claude-code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-2.0.98%20%E2%86%92%202.1.285-d97757?style=flat-square)](https://github.com/anthropics/claude-code)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](#credit--license)
 
 **[Install](#install) · [Customize](#what-you-can-customize) · [The fork](#what-this-fork-adds) · [How it works](#how-it-works)**
@@ -37,7 +37,7 @@ npx -y tweakcc-fixed@latest --restore  # revert from the backup
 npx -y tweakcc-fixed@latest --validate-system-prompts  # dry-run the apply preflight over your overrides
 ```
 
-Nothing to clone or build. Prompt data is pulled from this repo at runtime, so a new Claude Code release works the moment its version bump lands here. Updating Claude Code overwrites the patches, so you just re-run `--apply` — your configuration in `~/.tweakcc/config.json` is untouched either way.
+Nothing to clone or build. Prompt data is pulled at runtime from the release tag of the version you are running, so a new Claude Code release works once a tweakcc-fixed release carries its prompts. Updating Claude Code overwrites the patches, so you just re-run `--apply` — your configuration in `~/.tweakcc/config.json` is untouched either way.
 
 > Versions ≤ 1.0.5 on npm came from a different, unmaintained fork. 2.0.0 onward is this one.
 
@@ -53,22 +53,22 @@ It works the same on npm and native (Bun-compiled) installs, every change is a t
 
 tweakcc-fixed is a strict superset of the original: everything above still applies, on the same latest Claude Code target. What it adds is reach.
 
-The biggest difference is coverage. Its extractor pulls over four times the prompt surface upstream does — every model-facing string at any length: tool results, system reminders, utility-agent prompts, slash-command descriptions, and the short fragments the base skips. Every candidate string is classified by its emission site (model-facing vs UI vs internal) with verdicts cached content-addressed, so coverage is complete by construction, not by heuristic. That is what makes serious prompt editing possible in the first place.
+The biggest difference is coverage. Its extractor pulls over ten times the prompt surface upstream does — every model-facing string at any length: tool results, system reminders, utility-agent prompts, slash-command descriptions, and the short fragments the base skips. Every candidate string is classified by its emission site (model-facing vs UI vs internal) with verdicts cached content-addressed, so coverage is complete by construction, not by heuristic. That is what makes serious prompt editing possible in the first place.
 
 |                              | tweakcc-fixed | upstream  |
 | ---------------------------- | :-----------: | :-------: |
-| Prompt sites (CC 2.1.238)    |   **4,854**   |    690    |
-| Unique prompt IDs            |   **4,528**   |    690    |
-| Patches                      |    **61**     |    45     |
+| Prompt sites (CC 2.1.285)    |   **9,613**   |    808    |
+| Unique prompt IDs            |   **9,141**   |    808    |
+| Patches                      |    **64**     |    49     |
 | Overrides on native installs |    **yes**    | gated off |
 
 That reach shows up in a few mechanisms the base doesn't have. The `<system-reminder>` injections that fire per turn — and never surface as named prompts — become editable: blank one out to drop it, or rewrite it. Each connected MCP server's instruction block can be dropped or rewritten the same way. And where upstream gates system-prompt overrides off for native installs, this fork applies them. It pairs with [lobotomized-claude-code](https://github.com/skrabe/lobotomized-claude-code), a set of per-model override packs tuned against exactly this extraction.
 
 The extra patches cluster around a few themes: **memory** (a dream-mode consolidation pass, leaner memory types), **reasoning** (Opus defaulting to max effort, plus the experimental complexity router), **search** (the experimental fff backend), and a run of **correctness fixes** — an honest rewind-summary header, a "summarize from here" that actually starts at the rewind point, quieter empty system-reminders, and more.
 
-Two of those are worth calling out, and both ship off by default. **fff-first Bash search** routes Claude's grep, find, and rg through [fff](https://github.com/dmtrKovalenko/fff) and a warm-index daemon, so results come back ranked; it serves a query only when the result is provably identical to the real tool and falls back to the embedded ripgrep/ugrep on anything it can't match exactly, so correctness never rides on it. **The complexity router** reads how hard each task is and routes reasoning effort to match — routine work runs low, the hardest runs max — without switching models or churning the prompt cache, and an explicit `/effort` or `CLAUDE_CODE_EFFORT_LEVEL` always wins.
+Two of those are worth calling out, and both ship off by default. **fff-first Bash search** routes Claude's grep, find, and rg through [fff](https://github.com/dmtrKovalenko/fff) and a warm-index daemon, so results come back ranked; it serves a query only when the result is provably identical to the real tool and falls back to the embedded ripgrep/ugrep on anything it can't match exactly, so correctness never rides on it. **The complexity router** chooses reasoning effort for each user message without switching the main model. It supports Haiku routing or opt-in Jev decisions with asynchronous Haiku conversation summaries. See the [effort router setup and behavior](docs/effort-router.md), including credential storage, context sharing, and fallback behavior.
 
-Newest is **Better Claude in Chrome** — a menu item, not a patch, that installs [claude-browser-bridge](https://github.com/skrabe/claude-browser-bridge) and points Claude Code at your real, logged-in browser over the Chrome DevTools Protocol. It sees and _claims_ your existing signed-in tabs — a fuller, self-hosted take on Claude in Chrome, driven through a `/browser` skill and a programmable `run` primitive (script a whole flow — locate, fill, click, wait, read — in one call). Pick it and it fetches the bridge, wires up the MCP server and the skill, walks you through loading the extension once, and disables the built-in Claude in Chrome so you have one browser surface. Pure config plus a fetched repo, no `cli.js` patch; Reinstall and Uninstall live in the same menu.
+Newest is **Better Claude in Chrome** — a menu item, not a patch, that installs [claude-browser-bridge](https://github.com/skrabe/claude-browser-bridge) and points Claude Code at your real, logged-in browser over the Chrome DevTools Protocol. It sees and _claims_ your existing signed-in tabs — a fuller, self-hosted take on Claude in Chrome, driven through a `/browser` skill and a programmable `run` primitive (script a whole flow — locate, fill, click, wait, read — in one call). Pick it and it fetches the bridge, wires up the MCP server and the skill, walks you through loading the extension once, and disables the built-in Claude in Chrome — in the CLI and the Claude desktop app — so you have one browser surface. Pure config plus a fetched repo, no `cli.js` patch; Reinstall and Uninstall live in the same menu.
 
 <details>
 <summary>Every patch the fork adds</summary>
@@ -86,7 +86,7 @@ Each patch is tagged with how it behaves on `--apply`: **`[default on]`** applie
 **Reasoning**
 
 - `max-effort-default` **`[opt-in]`** — Opus defaults to max reasoning effort
-- `complexity-router` **`[opt-in]`** — route reasoning effort by task difficulty _(experimental)_
+- `complexity-router` **`[opt-in]`** — opt-in Opus 5.5 / Fable 5.1 model entries that route reasoning effort by task difficulty _(experimental)_
 
 **Search**
 
@@ -105,6 +105,7 @@ Each patch is tagged with how it behaves on `--apply`: **`[default on]`** applie
 
 - `autonomous-operation-all-models` **`[opt-in]`** — apply the Fable/Mythos autonomous prompt set to every model
 - `auto-mode-classifier-model` **`[opt-in]`** — pin the auto-mode safety classifier to a cheaper model
+- `refusal-fallback-model` **`[opt-in]`** — route a safeguard-flagged message by your own table, then switch back to your model once that turn is answered. `settings.misc.refusalFallbackRoutes` maps a refusal category to a model id or a chain of them and is merged over Claude Code's own routes, which stay behind yours as a backstop when none of your models is usable; `settings.misc.refusalFallbackMaxReturns` caps consecutive returns (default `1`, `null` for no limit)
 
 </details>
 

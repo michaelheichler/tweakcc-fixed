@@ -11,8 +11,16 @@
 //   git show upstream/main:data/prompts/prompts-<ver>.json > /tmp/pieb-<ver>.json
 //   node tools/auditMisbinds.mjs [ourJson] [upstreamJson] [overridesDir]
 // Defaults target the local showtime layout.
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
+
+const require = createRequire(import.meta.url);
+const {
+  parseOverrideArgs,
+  appliedPromptsDir,
+  printAuditedSets,
+} = require('./lib/overrideSets.cjs');
 
 // Default to the newest committed prompts JSON. A hardcoded old version silently
 // audits the wrong release (or skips entirely) long after that version is gone.
@@ -29,12 +37,22 @@ const latestCommittedVer = () => {
   return vers[vers.length - 1];
 };
 
+const parsed = parseOverrideArgs(process.argv.slice(2));
 const VER = process.env.CC_VER || latestCommittedVer();
-const ourJson = process.argv[2] || `data/prompts/prompts-${VER}.json`;
-const upstreamJson = process.argv[3] || `/tmp/pieb-${VER}.json`;
-const overridesDir =
-  process.argv[4] ||
-  `${process.env.HOME}/.tweakcc/lobotomized-claude-code/system-prompts-opus-4-8`;
+const ourJson = parsed.rest[0] || `data/prompts/prompts-${VER}.json`;
+const upstreamJson = parsed.rest[1] || `/tmp/pieb-${VER}.json`;
+// Default to whatever the live symlink names, not a set that may be retired.
+let overridesDir = parsed.rest[2];
+if (!overridesDir) {
+  const applied = appliedPromptsDir();
+  try {
+    overridesDir = fs.realpathSync(applied);
+  } catch {
+    console.error(`no override folder at ${applied}, nothing to audit`);
+    process.exit(parsed.requireSets ? 2 : 0);
+  }
+}
+printAuditedSets([{ dir: overridesDir, name: path.basename(overridesDir) }]);
 
 const OURS = JSON.parse(fs.readFileSync(ourJson, 'utf8'));
 // Upstream reference is required. On a box without the `upstream` remote (e.g. a
@@ -66,8 +84,15 @@ try {
 // slots 7/8/9, so the LCC override's ${PR_GENERATED_WITH_CLAUDE_CODE} bound to a
 // FUNCTION and the patcher rendered its source text into the Bash tool
 // description. Verified against the pristine 2.1.206 cli.js.
+//
+// system-prompt-harness-instructions: upstream's 2.1.274 map puts the security
+// policy at slot 4 and output-style names on slots 0/1; the builder's template
+// emits the hoisted intro, then the security-policy const, then the reminder
+// guidance call, tool context, and the pasted-content bullet. Verified against
+// the pristine 2.1.274 cli.js.
 const CURATED_DIVERGENCES = new Set([
   'tool-description-bash-git-commit-and-pr-creation-instructions',
+  'system-prompt-harness-instructions',
 ]);
 
 const invert = m => {

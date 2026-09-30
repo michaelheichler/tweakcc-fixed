@@ -1,5 +1,6 @@
 // Please see the note about writing patches in ./index
 import {
+  escapeIdent,
   findBoxComponent,
   findChalkVar,
   findTextComponent,
@@ -20,6 +21,246 @@ import { escapeNonAscii } from '../utils';
  */
 export const escapeForTemplateLiteral = (s: string): string =>
   s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+
+const MODULE_MARK = '/*@@TWEAKCC_MODULE:';
+const USER_PROMPT_ERR = 'No content found in user prompt message';
+
+interface JsxParentBoxMatch {
+  index: number;
+  end: number;
+  prefix: string;
+  messageVar: string;
+  callExpr: string;
+  originalBoxAttrs: string;
+  childrenKeyword: string;
+}
+
+const moduleSliceAround = (file: string, at: number): string => {
+  const markAt = file.lastIndexOf(MODULE_MARK, at);
+  if (markAt === -1) return file;
+  const next = file.indexOf(MODULE_MARK, markAt + MODULE_MARK.length);
+  return file.slice(markAt, next === -1 ? file.length : next);
+};
+
+/**
+ * CC ≥ 2.1.246 ESM-split: jsx/jsxs are imported bindings, so the user-message
+ * render is `o(Ff,{text:MSG,...})` / `o(Box,{flexDirection:"column",...,children:T})`
+ * rather than `MOD.jsx(...)`. `.` is not an identifier char, so a dotted
+ * `.jsx(` call must not match here (that is Method 1).
+ */
+const findImportedJsxUserMessage = (
+  oldFile: string
+): JsxParentBoxMatch | null => {
+  let from = 0;
+  while (true) {
+    const errAt = oldFile.indexOf(USER_PROMPT_ERR, from);
+    if (errAt === -1) return null;
+
+    const afterErr = errAt + USER_PROMPT_ERR.length;
+    const nextFn = oldFile.indexOf('function ', afterErr);
+    const regionEnd = nextFn === -1 ? oldFile.length : nextFn;
+    const region = oldFile.slice(errAt, regionEnd);
+
+    const childRe =
+      /(?<![.$\w])([$\w]+)\([$\w]+,\{text:([$\w]+),useBriefLayout:[$\w]+,timestamp:[$\w]+(?:,[$\w]+:[$\w!.]+)*\}\)/;
+    const child = childRe.exec(region);
+    if (!child || child.index === undefined) {
+      from = afterErr;
+      continue;
+    }
+
+    const helper = child[1];
+    const messageVar = child[2];
+    const afterChild = region.slice(child.index + child[0].length);
+    const parentRe = new RegExp(
+      `(?<![.$\\w])${escapeIdent(helper)}\\([$\\w]+,(\\{flexDirection:"column"[^{}]*?)(,children:)([$\\w]+)(\\})\\)`
+    );
+    const parent = parentRe.exec(afterChild);
+    if (!parent || parent.index === undefined) {
+      from = afterErr;
+      continue;
+    }
+
+    const parentAbs = child.index + child[0].length + parent.index;
+    const commaBrace = parent[0].indexOf(',{');
+    if (commaBrace === -1) {
+      from = afterErr;
+      continue;
+    }
+    const prefixEnd = parentAbs + commaBrace + 1;
+    const matchEnd = parentAbs + parent[0].length;
+    return {
+      index: errAt,
+      end: errAt + matchEnd,
+      prefix: region.slice(0, prefixEnd),
+      messageVar,
+      callExpr: helper,
+      originalBoxAttrs: parent[1],
+      childrenKeyword: parent[2],
+    };
+  }
+};
+
+const findLocalTextComponent = (
+  file: string,
+  at: number,
+  helper: string
+): string | undefined => {
+  const slice = moduleSliceAround(file, at);
+  const re = new RegExp(
+    `(?<![.$\\w])${escapeIdent(helper)}\\(([$\\w]+),\\{color:"text"`
+  );
+  return slice.match(re)?.[1];
+};
+
+const jsxRuntimeMatchToParentBox = (
+  match: RegExpMatchArray
+): JsxParentBoxMatch => ({
+  index: match.index!,
+  end: match.index! + match[0].length,
+  prefix: match[1],
+  messageVar: match[2],
+  callExpr: `${match[3]}.jsx`,
+  originalBoxAttrs: match[4],
+  childrenKeyword: match[5],
+});
+
+const extraBoxAttrList = (config: UserMessageDisplayConfig): string[] => {
+  const extraBoxAttrs: string[] = [];
+
+  if (config.borderStyle !== 'none') {
+    const isCustomBorder = config.borderStyle.startsWith('topBottom');
+    if (isCustomBorder) {
+      let customBorder = '';
+      if (config.borderStyle === 'topBottomSingle') {
+        customBorder =
+          '{top:"─",bottom:"─",left:" ",right:" ",topLeft:" ",topRight:" ",bottomLeft:" ",bottomRight:" "}';
+      } else if (config.borderStyle === 'topBottomDouble') {
+        customBorder =
+          '{top:"═",bottom:"═",left:" ",right:" ",topLeft:" ",topRight:" ",bottomLeft:" ",bottomRight:" "}';
+      } else if (config.borderStyle === 'topBottomBold') {
+        customBorder =
+          '{top:"━",bottom:"━",left:" ",right:" ",topLeft:" ",topRight:" ",bottomLeft:" ",bottomRight:" "}';
+      }
+      extraBoxAttrs.push(`borderStyle:${escapeNonAscii(customBorder)}`);
+    } else {
+      extraBoxAttrs.push(`borderStyle:"${config.borderStyle}"`);
+    }
+    const borderDigits = config.borderColor.match(/\d+/g);
+    if (borderDigits) {
+      extraBoxAttrs.push(`borderColor:"rgb(${borderDigits.join(',')})"`);
+    }
+  }
+
+  if (config.paddingX !== 'default' && config.paddingX > 0) {
+    extraBoxAttrs.push(`paddingX:${config.paddingX}`);
+  }
+  if (config.paddingY !== 'default' && config.paddingY > 0) {
+    extraBoxAttrs.push(`paddingY:${config.paddingY}`);
+  }
+  if (config.fitBoxToContent) {
+    extraBoxAttrs.push(`alignSelf:"flex-start"`);
+  }
+
+  return extraBoxAttrs;
+};
+
+const rewriteJsxParentBox = (
+  oldFile: string,
+  found: JsxParentBoxMatch,
+  config: UserMessageDisplayConfig,
+  textComponent: string
+): string => {
+  const {
+    prefix,
+    messageVar,
+    callExpr,
+    originalBoxAttrs,
+    childrenKeyword,
+    index,
+    end,
+  } = found;
+
+  let mutableBoxAttrs = originalBoxAttrs.slice(1);
+
+  const bgAttrRegex = /backgroundColor:[$\w]+/;
+
+  if (config.backgroundColor === null) {
+    mutableBoxAttrs = mutableBoxAttrs
+      .replace(new RegExp(`,?${bgAttrRegex.source}`), '')
+      .replace(/^,|,$/g, '');
+  } else if (config.backgroundColor !== 'default') {
+    const bgDigits = config.backgroundColor.match(/\d+/g);
+    if (bgDigits) {
+      const bgLiteral = `backgroundColor:"rgb(${bgDigits.join(',')})"`;
+      mutableBoxAttrs = bgAttrRegex.test(mutableBoxAttrs)
+        ? mutableBoxAttrs.replace(bgAttrRegex, bgLiteral)
+        : mutableBoxAttrs
+          ? `${mutableBoxAttrs},${bgLiteral}`
+          : bgLiteral;
+    }
+  }
+
+  const extraBoxAttrs = extraBoxAttrList(config);
+  if (extraBoxAttrs.length > 0) {
+    mutableBoxAttrs = mutableBoxAttrs
+      ? `${mutableBoxAttrs},${extraBoxAttrs.join(',')}`
+      : extraBoxAttrs.join(',');
+  }
+
+  const textAttrs: string[] = [];
+
+  if (config.foregroundColor === 'default') {
+    textAttrs.push('color:"text"');
+  } else {
+    const fgDigits = config.foregroundColor.match(/\d+/g);
+    if (fgDigits) {
+      textAttrs.push(`color:"rgb(${fgDigits.join(',')})"`);
+    }
+  }
+
+  if (config.backgroundColor !== 'default' && config.backgroundColor !== null) {
+    const bgDigits = config.backgroundColor.match(/\d+/g);
+    if (bgDigits) {
+      textAttrs.push(`backgroundColor:"rgb(${bgDigits.join(',')})"`);
+    }
+  } else if (config.backgroundColor === 'default') {
+    textAttrs.push('backgroundColor:"userMessageBackground"');
+  }
+
+  if (config.styling.includes('bold')) textAttrs.push('bold:!0');
+  if (config.styling.includes('italic')) textAttrs.push('italic:!0');
+  if (config.styling.includes('underline')) textAttrs.push('underline:!0');
+  if (config.styling.includes('strikethrough'))
+    textAttrs.push('strikethrough:!0');
+  if (config.styling.includes('inverse')) textAttrs.push('inverse:!0');
+
+  const textAttrsPrefix = textAttrs.length > 0 ? `${textAttrs.join(',')},` : '';
+
+  const unwrappedMessageExpr =
+    `(typeof ${messageVar}==="object"&&${messageVar}!==null?` +
+    `${messageVar}.head+"\\n("+${messageVar}.hiddenLines+" line"+` +
+    `(${messageVar}.hiddenLines===1?"":"s")+" hidden)\\n"+${messageVar}.tail:` +
+    `${messageVar})`;
+  const formattedMessage =
+    '`' +
+    escapeForTemplateLiteral(config.format).replace(
+      /\{\}/g,
+      () => '${' + unwrappedMessageExpr + '}'
+    ) +
+    '`';
+
+  const innerText =
+    `${callExpr}(${textComponent},` +
+    `{${textAttrsPrefix}children:${formattedMessage}})`;
+
+  const replacement =
+    prefix + `{${mutableBoxAttrs}` + childrenKeyword + innerText + '})';
+
+  const newFile = oldFile.slice(0, index) + replacement + oldFile.slice(end);
+  showDiff(oldFile, newFile, replacement, index, end);
+  return newFile;
+};
 
 /**
  * CC 0.2.9:
@@ -197,20 +438,6 @@ export const writeUserMessageDisplay = (
   oldFile: string,
   config: UserMessageDisplayConfig
 ): string | null => {
-  const textComponent = findTextComponent(oldFile);
-  if (!textComponent) {
-    console.error('patch: userMessageDisplay: failed to find Text component');
-    return null;
-  }
-
-  const boxComponent = findBoxComponent(oldFile);
-
-  const chalkVar = findChalkVar(oldFile);
-  if (!chalkVar) {
-    console.error('patch: userMessageDisplay: failed to find chalk variable');
-    return null;
-  }
-
   // ────────────────────────────────────────────────────────────────────────
   // Legacy pattern (CC ≤2.1.21): outer Box + optional ">" subcomponent +
   // inner Box wrapping a Text that directly receives the message string.
@@ -253,21 +480,24 @@ export const writeUserMessageDisplay = (
   // `T=` child memo assignment becomes an unused (but harmless) computation.
   //
   // Captures: 1=prefix through `…MOD.jsx(BOX,`, 2=message var (from the child's
-  // `text:MSG`), 3=Box attrs (leading `{`, no trailing `}`), 4=`,children:`,
-  // 5=child var (discarded), 6=`})`.
+  // `text:MSG`), 3=jsx module, 4=Box attrs (leading `{`, no trailing `}`),
+  // 5=`,children:`, 6=child var (discarded), 7=`})`.
   // ────────────────────────────────────────────────────────────────────────
   const jsxRuntimePattern =
-    /(No content found in user prompt message[\s\S]{0,400}?\.jsx\([$\w]+,\{text:([$\w]+),useBriefLayout:[$\w]+,timestamp:[$\w]+\}\)[\s\S]{0,200}?([$\w]+)\.jsx\([$\w]+,)(\{flexDirection:"column"[^{}]*?)(,children:)([$\w]+)(\}\))/;
+    /(No content found in user prompt message[\s\S]{0,400}?\.jsx\([$\w]+,\{text:([$\w]+),useBriefLayout:[$\w]+,timestamp:[$\w]+(?:,[$\w]+:[$\w!.]+)*\}\)[\s\S]{0,200}?([$\w]+)\.jsx\([$\w]+,)(\{flexDirection:"column"[^{}]*?)(,children:)([$\w]+)(\}\))/;
 
-  // The JSX-runtime shape wins when present; it never matches createElement-era
-  // binaries (it requires `.jsx(…)` and a `children:` prop), so older versions
-  // fall through to the patterns below at zero cost.
-  const jsxRuntimeMatch = oldFile.match(jsxRuntimePattern);
+  // Method 0 (CC ≥ 2.1.246): imported jsx helpers, not `MOD.jsx`. Tried first.
+  const importedJsxMatch = findImportedJsxUserMessage(oldFile);
+
+  const jsxRuntimeMatch = importedJsxMatch
+    ? null
+    : oldFile.match(jsxRuntimePattern);
 
   // Try the modern (attribute-preserving) pattern next — the legacy
   // pattern's `{text:VAR}` alternative ALSO matches CC 2.1.79+ shapes, so if
   // we checked legacy first the modern path would never run.
-  const modernMatch = jsxRuntimeMatch ? null : oldFile.match(modernPattern);
+  const modernMatch =
+    importedJsxMatch || jsxRuntimeMatch ? null : oldFile.match(modernPattern);
 
   // CC ≥2.1.138: the child display is memoized (`VAR=createElement(child,{text,
   // useBriefLayout,timestamp})`) before the parent Box call. Rewrite only that
@@ -275,17 +505,20 @@ export const writeUserMessageDisplay = (
   // over the broad legacy tree-replacement (whose `{text:VAR}` alternative also
   // matches this shape) when present.
   const memoizedChildPattern =
-    /(No content found in user prompt message.{0,1200}?)([$\w]+)=([$\w]+(?:\.default)?\.createElement)\([$\w]+,\{text:([$\w]+),useBriefLayout:[$\w]+,timestamp:[$\w]+\}\)/;
+    /(No content found in user prompt message.{0,1200}?)([$\w]+)=([$\w]+(?:\.default)?\.createElement)\([$\w]+,\{text:([$\w]+),useBriefLayout:[$\w]+,timestamp:[$\w]+(?:,[$\w]+:[$\w!.]+)*\}\)/;
   const memoizedChildMatch =
-    jsxRuntimeMatch || modernMatch ? null : oldFile.match(memoizedChildPattern);
+    importedJsxMatch || jsxRuntimeMatch || modernMatch
+      ? null
+      : oldFile.match(memoizedChildPattern);
 
   // Fall back to legacy only when no newer shape applies.
   const legacyMatch =
-    jsxRuntimeMatch || modernMatch || memoizedChildMatch
+    importedJsxMatch || jsxRuntimeMatch || modernMatch || memoizedChildMatch
       ? null
       : oldFile.match(legacyPattern);
 
   if (
+    !importedJsxMatch &&
     !jsxRuntimeMatch &&
     !modernMatch &&
     (!memoizedChildMatch || memoizedChildMatch.index === undefined) &&
@@ -294,7 +527,52 @@ export const writeUserMessageDisplay = (
     console.error(
       'patch: userMessageDisplay: failed to find user message display pattern'
     );
-    return oldFile;
+    // Returning the file unchanged reports a FAILURE as a clean no-op: the
+    // apply log carries the error, but the pristine sweep scores the patch
+    // "applied, 0 bytes" and passes, so a dead anchor survives a green gate.
+    // Patches in this repo return null on failure so the harness tags them.
+    return null;
+  }
+
+  if (importedJsxMatch) {
+    // ESM-split: Text lives in this module as an import (`t` from ink), not
+    // as the globally-first Text function (which is a different module's
+    // binding and would be a ReferenceError if spliced in here).
+    // The global-first Text is only a legitimate fallback on a single-module
+    // bundle. On a code-split one it names a DIFFERENT module's binding, so
+    // splicing it here is a ReferenceError the moment the row renders.
+    const textComponent =
+      findLocalTextComponent(
+        oldFile,
+        importedJsxMatch.index,
+        importedJsxMatch.callExpr
+      ) ??
+      (oldFile.includes(MODULE_MARK) ? undefined : findTextComponent(oldFile));
+    if (!textComponent) {
+      console.error('patch: userMessageDisplay: failed to find Text component');
+      return null;
+    }
+    return rewriteJsxParentBox(
+      oldFile,
+      importedJsxMatch,
+      config,
+      textComponent
+    );
+  }
+
+  const textComponent = findTextComponent(oldFile);
+  if (!textComponent) {
+    console.error('patch: userMessageDisplay: failed to find Text component');
+    return null;
+  }
+
+  if (jsxRuntimeMatch) {
+    return rewriteJsxParentBox(
+      oldFile,
+      jsxRuntimeMatchToParentBox(jsxRuntimeMatch),
+      config,
+      textComponent
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -315,160 +593,6 @@ export const writeUserMessageDisplay = (
     `${messageVar}.head+"\\n("+${messageVar}.hiddenLines+" line"+` +
     `(${messageVar}.hiddenLines===1?"":"s")+" hidden)\\n"+${messageVar}.tail:` +
     `${messageVar})`;
-
-  if (jsxRuntimeMatch) {
-    // ──────────────────────────────────────────────────────────────────────
-    // JSX-runtime path (CC ≥2.1.186): attribute-preserving rewrite of the
-    // PARENT Box's `MOD.jsx(BOX,{…,children:CHILD})` call, mirroring the
-    // modern path's semantics but emitting `.jsx(...)` (the runtime module
-    // has no `.createElement`) and passing children as a `children:` prop.
-    // ──────────────────────────────────────────────────────────────────────
-    const prefix = jsxRuntimeMatch[1]; // …;return …)y=MOD.jsx(BOX,
-    const messageVar = jsxRuntimeMatch[2]; // the child's text prop var (m)
-    const jsxModule = jsxRuntimeMatch[3]; // react/jsx-runtime interop (Jpo)
-    const originalBoxAttrs = jsxRuntimeMatch[4]; // {flexDirection:"column",…
-    const childrenKeyword = jsxRuntimeMatch[5]; // ,children:
-    // jsxRuntimeMatch[6] is the original child var (e.g. T) — discarded; we
-    // splice our own Text element in its place.
-
-    // The captured Box attrs have a leading `{` but NO trailing `}` (the
-    // closing brace lives in capture group 6, `})`, which we re-emit at the
-    // end after appending `children:`). Peel the leading `{` to edit the CSV.
-    let mutableBoxAttrs = originalBoxAttrs.slice(1);
-
-    // Unlike the 2.1.79 modern shape, the bg ternary is hoisted into a local
-    // var, so the native attr is `backgroundColor:IDENT` (a bare identifier
-    // value) rather than an inline `j?…:…` ternary.
-    const bgAttrRegex = /backgroundColor:[$\w]+/;
-
-    if (config.backgroundColor === null) {
-      // "none": drop the whole backgroundColor attr (and its leading comma)
-      // so no rectangle paints; the Text bg is also omitted below.
-      mutableBoxAttrs = mutableBoxAttrs
-        .replace(new RegExp(`,?${bgAttrRegex.source}`), '')
-        .replace(/^,|,$/g, '');
-    } else if (config.backgroundColor !== 'default') {
-      // Custom rgb: replace `backgroundColor:IDENT` with the user's rgb
-      // literal. (The hoisted var folded CC's mode ternary, so this tints
-      // every mode — matching the legacy path's flat-bg behavior.)
-      const bgDigits = config.backgroundColor.match(/\d+/g);
-      if (bgDigits) {
-        const bgLiteral = `backgroundColor:"rgb(${bgDigits.join(',')})"`;
-        mutableBoxAttrs = bgAttrRegex.test(mutableBoxAttrs)
-          ? mutableBoxAttrs.replace(bgAttrRegex, bgLiteral)
-          : mutableBoxAttrs
-            ? `${mutableBoxAttrs},${bgLiteral}`
-            : bgLiteral;
-      }
-    }
-    // 'default': leave `backgroundColor:IDENT` untouched (native theme).
-
-    // Append tweakcc's extras (border, extra padding, fit-to-content) — same
-    // logic and ordering as the modern path.
-    const extraBoxAttrs: string[] = [];
-
-    if (config.borderStyle !== 'none') {
-      const isCustomBorder = config.borderStyle.startsWith('topBottom');
-      if (isCustomBorder) {
-        let customBorder = '';
-        if (config.borderStyle === 'topBottomSingle') {
-          customBorder =
-            '{top:"─",bottom:"─",left:" ",right:" ",topLeft:" ",topRight:" ",bottomLeft:" ",bottomRight:" "}';
-        } else if (config.borderStyle === 'topBottomDouble') {
-          customBorder =
-            '{top:"═",bottom:"═",left:" ",right:" ",topLeft:" ",topRight:" ",bottomLeft:" ",bottomRight:" "}';
-        } else if (config.borderStyle === 'topBottomBold') {
-          customBorder =
-            '{top:"━",bottom:"━",left:" ",right:" ",topLeft:" ",topRight:" ",bottomLeft:" ",bottomRight:" "}';
-        }
-        extraBoxAttrs.push(`borderStyle:${escapeNonAscii(customBorder)}`);
-      } else {
-        extraBoxAttrs.push(`borderStyle:"${config.borderStyle}"`);
-      }
-      const borderDigits = config.borderColor.match(/\d+/g);
-      if (borderDigits) {
-        extraBoxAttrs.push(`borderColor:"rgb(${borderDigits.join(',')})"`);
-      }
-    }
-
-    if (config.paddingX !== 'default' && config.paddingX > 0) {
-      extraBoxAttrs.push(`paddingX:${config.paddingX}`);
-    }
-    if (config.paddingY !== 'default' && config.paddingY > 0) {
-      extraBoxAttrs.push(`paddingY:${config.paddingY}`);
-    }
-    if (config.fitBoxToContent) {
-      extraBoxAttrs.push(`alignSelf:"flex-start"`);
-    }
-
-    if (extraBoxAttrs.length > 0) {
-      mutableBoxAttrs = mutableBoxAttrs
-        ? `${mutableBoxAttrs},${extraBoxAttrs.join(',')}`
-        : extraBoxAttrs.join(',');
-    }
-
-    // Build the inner Text attrs (Ink native props — same as the modern path).
-    const textAttrs: string[] = [];
-
-    if (config.foregroundColor === 'default') {
-      textAttrs.push('color:"text"');
-    } else {
-      const fgDigits = config.foregroundColor.match(/\d+/g);
-      if (fgDigits) {
-        textAttrs.push(`color:"rgb(${fgDigits.join(',')})"`);
-      }
-    }
-
-    if (
-      config.backgroundColor !== 'default' &&
-      config.backgroundColor !== null
-    ) {
-      const bgDigits = config.backgroundColor.match(/\d+/g);
-      if (bgDigits) {
-        textAttrs.push(`backgroundColor:"rgb(${bgDigits.join(',')})"`);
-      }
-    } else if (config.backgroundColor === 'default') {
-      textAttrs.push('backgroundColor:"userMessageBackground"');
-    }
-
-    if (config.styling.includes('bold')) textAttrs.push('bold:!0');
-    if (config.styling.includes('italic')) textAttrs.push('italic:!0');
-    if (config.styling.includes('underline')) textAttrs.push('underline:!0');
-    if (config.styling.includes('strikethrough'))
-      textAttrs.push('strikethrough:!0');
-    if (config.styling.includes('inverse')) textAttrs.push('inverse:!0');
-
-    // JSX runtime passes children as a prop, so the Text element is one object
-    // literal: `{<textAttrs>,children:<formatted>}` (or just `{children:…}`).
-    const textAttrsPrefix =
-      textAttrs.length > 0 ? `${textAttrs.join(',')},` : '';
-
-    const unwrappedMessageExpr = buildUnwrappedMessageExpr(messageVar);
-    const formattedMessage =
-      '`' +
-      escapeForTemplateLiteral(config.format).replace(
-        /\{\}/g,
-        () => '${' + unwrappedMessageExpr + '}'
-      ) +
-      '`';
-
-    const innerText =
-      `${jsxModule}.jsx(${textComponent},` +
-      `{${textAttrsPrefix}children:${formattedMessage}})`;
-
-    // prefix already ends at `…MOD.jsx(BOX,`; mutableBoxAttrs still carries the
-    // leading `{` and no closing brace, so we re-emit `children:` then the
-    // child, then the captured `})` that closes the props object + jsx call.
-    const replacement =
-      prefix + `{${mutableBoxAttrs}` + childrenKeyword + innerText + '})';
-
-    const startIndex = jsxRuntimeMatch.index!;
-    const endIndex = startIndex + jsxRuntimeMatch[0].length;
-    const newFile =
-      oldFile.slice(0, startIndex) + replacement + oldFile.slice(endIndex);
-    showDiff(oldFile, newFile, replacement, startIndex, endIndex);
-    return newFile;
-  }
 
   if (modernMatch) {
     // ──────────────────────────────────────────────────────────────────────
@@ -652,8 +776,14 @@ export const writeUserMessageDisplay = (
   // The memoized branch re-emits the `VAR=` assignment (see replacementPrefix
   // below) so React-compiler cache bookkeeping stays intact.
   // ────────────────────────────────────────────────────────────────────────
+  const boxComponent = findBoxComponent(oldFile);
   if (!boxComponent) {
     console.error('patch: userMessageDisplay: failed to find Box component');
+    return null;
+  }
+  const chalkVar = findChalkVar(oldFile);
+  if (!chalkVar) {
+    console.error('patch: userMessageDisplay: failed to find chalk variable');
     return null;
   }
   const match = (memoizedChildMatch ?? legacyMatch)!;

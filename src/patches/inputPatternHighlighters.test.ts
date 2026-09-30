@@ -51,11 +51,41 @@ describe('writeInputPatternHighlighters', () => {
     'dimColor:SYe.highlight?.dimColor,inverse:SYe.highlight?.inverse,' +
     'children:jte.jsx(Ac,{children:SYe.text})},fVy);';
 
+  // A real chalk binding, so the resolver runs for real. The mocked
+  // findChalkVar is bypassed by design on the module-local path.
+  const CHALK_DECL = 'var chalk=chalkFactory();chalk.hex("#fff").bold("x");';
+
   const jsxFile =
+    CHALK_DECL +
     'let props={inputValue:te,other:1};' +
     jsxRenderer +
     ';let ranges=Pi.useMemo(()=>{let arr=[];if(a&&b&&!c)' +
     'arr.push({start:s,end:s+l.length,color:"warning",priority:20})},[a]);';
+
+  const importedJsxRenderer =
+    'return c(u,{color:C.highlight?.color,dimColor:C.highlight?.dimColor,' +
+    'inverse:C.highlight?.inverse,underline:C.highlight?.underline,' +
+    'children:c(E,{children:C.text})},Pt);';
+
+  const importedJsxFile =
+    CHALK_DECL +
+    'let props={inputValue:te,other:1};' +
+    importedJsxRenderer +
+    ';let ranges=z(()=>{let arr=[];if(a&&b&&!c)' +
+    'arr.push({start:s,end:s+l.length,color:"warning",priority:20})},[a]);';
+
+  it('patches the imported jsx renderer shape (CC >=2.1.246)', () => {
+    const result = writeInputPatternHighlighters(importedJsxFile, [
+      baseHighlighter({ name: 'todo', regex: 'TODO', styling: ['bold'] }),
+    ]);
+
+    expect(result).not.toBeNull();
+    expect(result).toContain('return c(u,{');
+    expect(result).not.toContain('.jsx(');
+    expect(result).toContain('matchAll(new RegExp("TODO", "g"))');
+    expect(result).toContain('style:(x)=>chalk.bold(x)');
+    expect(result).toContain(',[a,te]);');
+  });
 
   it('patches the jsx-runtime renderer shape (CC >=2.1.186)', () => {
     const result = writeInputPatternHighlighters(jsxFile, [
@@ -109,5 +139,59 @@ describe('writeInputPatternHighlighters', () => {
     expect(
       (twice as string).split('children:jte.jsx(Ac,{children:(').length - 1
     ).toBe(1);
+  });
+});
+
+// CC 2.1.246 code-split the bundle. `findChalkVar` counts across the whole
+// file, so it returns whichever module uses chalk most — and splicing that
+// name into a DIFFERENT module throws the first time a highlighter matches
+// what the user is typing. Against the real 2.1.246 bundle it picked `b`,
+// which in the target module is only ever a block-local loop variable.
+describe('module-local chalk resolution (code-split bundles)', () => {
+  const MARK = (i: number, n: string) => `\n/*@@TWEAKCC_MODULE:${i}:${n}@@*/\n`;
+
+  // A chalk-heavy module that is NOT the one being patched; `b` wins a
+  // bundle-wide count purely on volume.
+  const LOUD_CHALK_MODULE =
+    MARK(1, 'other.js') +
+    'var b=chalkFactory();' +
+    Array.from({ length: 40 }, (_, i) => `b.rgb(${i},0,0).bold("x");`).join('');
+
+  const targetModule = (chalkDecl: string) =>
+    MARK(2, 'input.js') +
+    chalkDecl +
+    'let props={inputValue:te,other:1};' +
+    'return c(u,{color:C.highlight?.color,dimColor:C.highlight?.dimColor,' +
+    'inverse:C.highlight?.inverse,children:c(E,{children:C.text})},Pt);' +
+    ';let ranges=z(()=>{let arr=[];if(a&&q&&!w)' +
+    'arr.push({start:s,end:s+l.length,color:"warning",priority:20})},[a]);';
+
+  it('uses the chalk name bound in the patched module, not the loudest one', () => {
+    const file =
+      LOUD_CHALK_MODULE +
+      targetModule('var oc=chalkFactory();oc.hex("#fff").bold("y");');
+    const out = writeInputPatternHighlighters(file, [
+      baseHighlighter({ name: 'todo', regex: 'todo', styling: ['bold'] }),
+    ]);
+    expect(out).not.toBeNull();
+    expect(out).toContain('style:(x)=>oc.');
+    expect(out).not.toContain('style:(x)=>b.');
+  });
+
+  it('drops the style closure when the patched module has no chalk at all', () => {
+    const file = LOUD_CHALK_MODULE + targetModule('');
+    const out = writeInputPatternHighlighters(file, [
+      baseHighlighter({
+        name: 'todo',
+        regex: 'todo',
+        styling: ['bold'],
+        foregroundColor: '#ff0000',
+      }),
+    ]);
+    expect(out).not.toBeNull();
+    // No chain is better than a foreign name: the declarative props carry
+    // every option this config exposes and the renderer falls back to them.
+    expect(out).not.toContain('style:(x)=>');
+    expect(out).toContain('color:"#ff0000",bold:!0,priority:100');
   });
 });

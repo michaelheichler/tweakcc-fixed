@@ -195,6 +195,15 @@ export const matchDelimiter = (
 export const findSelectComponentName = (
   fileContents: string
 ): string | null => {
+  // Method 0 (CC >= 2.1.246): imported jsx helper, not `.jsx(`:
+  //   e(Me,{confirmLabel:"Yes, use recommended settings",...})
+  const importedJsxPattern =
+    /[^$\w][$\w]+\(([$\w]+),\{[\s\S]{0,100}"Yes, use recommended settings"/;
+  const importedJsxMatch = fileContents.match(importedJsxPattern);
+  if (importedJsxMatch) {
+    return importedJsxMatch[1];
+  }
+
   // Method 1 (CC >=2.1.186): the jsx runtime replaced createElement, and the
   // children/props moved into the object literal:
   //   Mb.jsx(ya,{confirmLabel:"Yes, use recommended settings",...})
@@ -217,6 +226,29 @@ export const findSelectComponentName = (
   }
 
   return match[1];
+};
+
+export const getToolsetFallbackExpression = (
+  stateExpression: string,
+  defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
+): string => {
+  // Each mode binding can be forced at CC start via runtime environment
+  // variables (read by the patched cli.js, so no re-apply is needed). They
+  // override the bindings configured in the tweakcc menu (#569).
+  const defaultValue = `(process.env.TWEAKCC_TOOLSET_DEFAULT||${
+    defaultToolset ? JSON.stringify(defaultToolset) : 'undefined'
+  })`;
+  const acceptEditsValue = `(process.env.TWEAKCC_TOOLSET_ALLOW_EDITS||${
+    acceptEditsToolset ? JSON.stringify(acceptEditsToolset) : defaultValue
+  })`;
+  const planValue = `(process.env.TWEAKCC_TOOLSET_PLAN||${
+    planModeToolset ? JSON.stringify(planModeToolset) : defaultValue
+  })`;
+  const autoValue = `(process.env.TWEAKCC_TOOLSET_AUTO||${defaultValue})`;
+
+  return `${stateExpression}.toolPermissionContext?.mode!=="plan"&&${stateExpression}.toolsetAutoMode==="plan"?${defaultValue}:(${stateExpression}.toolset??(${stateExpression}.toolPermissionContext?.mode==="plan"?${planValue}:(${stateExpression}.toolPermissionContext?.mode==="acceptEdits"?${acceptEditsValue}:(${stateExpression}.toolPermissionContext?.mode==="auto"?${autoValue}:${defaultValue}))))`;
 };
 
 /**
@@ -288,9 +320,125 @@ export const getMainAppComponentBodyStart = (
 /**
  * Get app state selector and useState function names
  */
+export interface AppStateFns {
+  appStateUseSelectorFn: string;
+  appStateSetState: string;
+  selectorIndex?: number;
+  setStateIndex?: number;
+}
+
+const TWEAKCC_MODULE_MARK = '/*@@TWEAKCC_MODULE:';
+
+const moduleBoundsAt = (
+  file: string,
+  index: number
+): { start: number; end: number } | null => {
+  const start = file.lastIndexOf(TWEAKCC_MODULE_MARK, index);
+  if (start === -1) return null;
+  const next = file.indexOf(TWEAKCC_MODULE_MARK, start + 1);
+  return { start, end: next === -1 ? file.length : next };
+};
+
+/**
+ * After the 2.1.246 ESM split, a function's local name in its defining module
+ * is not the name other modules import. Map defining-local → export → local
+ * name at `useIndex`. On a single-module bundle there are no sentinels and
+ * the defining name is used as-is.
+ */
+export const resolveNameAt = (
+  file: string,
+  definingLocal: string,
+  definingIndex: number,
+  useIndex: number
+): string => {
+  const defBounds = moduleBoundsAt(file, definingIndex);
+  const useBounds = moduleBoundsAt(file, useIndex);
+  if (!defBounds || !useBounds || defBounds.start === useBounds.start) {
+    return definingLocal;
+  }
+  const defMod = file.slice(defBounds.start, defBounds.end);
+  const exp = defMod.match(/export\{([^}]+)\}/);
+  if (!exp) return definingLocal;
+  let exported: string | null = null;
+  for (const part of exp[1].split(',')) {
+    const m = part.match(/^([$\w]+)(?: as ([$\w]+))?$/);
+    if (m && m[1] === definingLocal) {
+      exported = m[2] ?? m[1];
+      break;
+    }
+  }
+  if (!exported) return definingLocal;
+  const useHead = file.slice(
+    useBounds.start,
+    Math.min(useBounds.end, useBounds.start + 80000)
+  );
+  const escaped = exported.replace(/\$/g, '\\$');
+  const renamed = useHead.match(
+    new RegExp(`(?:^|[,{])${escaped} as ([${'$'}\\w]+)`)
+  );
+  if (renamed) return renamed[1];
+  return definingLocal;
+};
+
 export const getAppStateSelectorAndUseState = (
   fileContents: string
-): { appStateUseSelectorFn: string; appStateSetState: string } | null => {
+): AppStateFns | null => {
+  const appStateErr =
+    'useAppState/useSetAppState cannot be called outside of an <AppStateProvider />';
+  const errIdx = fileContents.indexOf(appStateErr);
+  if (errIdx !== -1) {
+    // Method 0 — CC >= 2.1.251: the selector no longer inlines
+    // useSyncExternalStore. It delegates to an imported helper:
+    //   function SEL(t){let s=STORE();return HOOK(s,t)}
+    //   function SET(){return STORE().setState}
+    // Anchor on the unique provider error and search the enclosing module
+    // (or the rest of the file when there are no module sentinels) — do not
+    // require the pair to sit inside a fixed-size window.
+    const bounds = moduleBoundsAt(fileContents, errIdx);
+    const regionStart = bounds ? bounds.start : errIdx;
+    const regionEnd = bounds ? bounds.end : fileContents.length;
+    const moduleRegion = fileContents.slice(regionStart, regionEnd);
+    const selectorPat251 =
+      /function ([$\w]+)\(([$\w]+)\)\{let ([$\w]+)=([$\w]+)\(\);return [$\w]+\(\3,\2\)\}/;
+    const setPat251 = /function ([$\w]+)\(\)\{return ([$\w]+)\(\)\.setState\}/;
+    const sel251 = moduleRegion.match(selectorPat251);
+    const set251 = moduleRegion.match(setPat251);
+    if (
+      sel251 &&
+      sel251.index !== undefined &&
+      set251 &&
+      set251.index !== undefined
+    ) {
+      return {
+        appStateUseSelectorFn: sel251[1],
+        appStateSetState: set251[1],
+        selectorIndex: regionStart + sel251.index,
+        setStateIndex: regionStart + set251.index,
+      };
+    }
+
+    // Method 0 (CC >= 2.1.246): the app-state store is its own ESM module.
+    // useSyncExternalStore is an imported binding, so the old identifier hunt
+    // never sees it. Unique anchor is the provider error string. Shape:
+    //   function SEL(t){let e=STORE(),n=()=>{let i=e.getState();return t(i)};return HOOK(e.subscribe,n,n)}
+    //   function SET(){return STORE().setState}
+    const start = Math.max(0, errIdx - 400);
+    const region = fileContents.slice(start, errIdx + 1200);
+    const selectorPat =
+      /function ([$\w]+)\(([$\w]+)\)\{let ([$\w]+)=([$\w]+)\(\),([$\w]+)=\(\)=>\{let ([$\w]+)=\3\.getState\(\);return \2\(\6\)\};return [$\w]+\(\3\.subscribe,\5,\5\)\}/;
+    const setPat = /function ([$\w]+)\(\)\{return ([$\w]+)\(\)\.setState\}/;
+    const sel = region.match(selectorPat);
+    const set = region.match(setPat);
+    if (sel && sel.index !== undefined && set && set.index !== undefined) {
+      return {
+        appStateUseSelectorFn: sel[1],
+        appStateSetState: set[1],
+        selectorIndex: start + sel.index,
+        setStateIndex: start + set.index,
+      };
+    }
+  }
+
   // CC <2.1.83: function D8(...`Your selector in...function iA(){return STORE().setState}
   const oldPattern =
     /function ([$\w]+)\(.{0,110}`Your selector in.{0,1000}?function ([$\w]+)\(\)\{return [$\w]+\(\)\.setState\}/;
@@ -300,6 +448,7 @@ export const getAppStateSelectorAndUseState = (
     return {
       appStateUseSelectorFn: oldMatch[1],
       appStateSetState: oldMatch[2],
+      selectorIndex: oldMatch.index,
     };
   }
 
@@ -336,6 +485,8 @@ export const getAppStateSelectorAndUseState = (
     return {
       appStateUseSelectorFn: selectorFn,
       appStateSetState: setStateFn,
+      selectorIndex: selectorMatch.index,
+      setStateIndex: ssMatch.index,
     };
   }
 
@@ -421,10 +572,7 @@ export const findTopLevelPositionBeforeSlashCommand = (
 /**
  * Sub-patch 1: Add toolset field to app state initialization
  */
-export const writeToolsetFieldToAppState = (
-  oldFile: string,
-  defaultToolset: string | null
-): string | null => {
+export const writeToolsetFieldToAppState = (oldFile: string): string | null => {
   // Find all occurrences of thinkingEnabled:SOMETHING()
   const thinkingEnabledPattern = /thinkingEnabled:([$\w]+)\(\)/g;
   const matches = Array.from(oldFile.matchAll(thinkingEnabledPattern));
@@ -448,10 +596,13 @@ export const writeToolsetFieldToAppState = (
 
   // Apply modifications
   let newFile = oldFile;
-  const toolsetValue = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
-  const textToInsert = `,toolset:${toolsetValue}`;
+  // Start both fields empty, as upstream does. The selection expression reads
+  // `state.toolset ?? <mode binding>`, so ANY starting value short-circuits it:
+  // seeding the default here means the permission mode and the four
+  // TWEAKCC_TOOLSET_* variables are never consulted until something clears the
+  // field, which in practice is the first Shift+Tab. The default is already the
+  // tail of that same expression, so it still applies when no mode matches.
+  const textToInsert = `,toolset:undefined,toolsetAutoMode:null`;
   for (const mod of modifications) {
     newFile =
       newFile.slice(0, mod.index) + textToInsert + newFile.slice(mod.index);
@@ -475,8 +626,70 @@ export const writeToolsetFieldToAppState = (
 export const writeToolFetchingUseMemo = (
   oldFile: string,
   toolsets: Toolset[],
-  defaultToolset: string | null
+  defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
 ): string | null => {
+  const toolsetsJSON = JSON.stringify(
+    Object.fromEntries(
+      toolsets.map(ts => [
+        ts.name,
+        ts.allowedTools === '*' ? '*' : ts.allowedTools,
+      ])
+    )
+  );
+
+  // Method 0 — CC >= 2.1.251: the React-side `let X=F(A,B.tools,C)` merge
+  // was promoted into the host class. The UI list is now
+  // `renderingTools:this.addDisplayOnlyTools(TOOLS)` inside derive().
+  // Anchor on that unique call and find derive()'s getState by search,
+  // not by a distance window.
+  const renderPat = /renderingTools:this\.addDisplayOnlyTools\(([$\w]+)\)/;
+  const renderMatch = oldFile.match(renderPat);
+  if (renderMatch && renderMatch.index !== undefined) {
+    const derivePat = /derive\(\)\{let ([$\w]+)=this\.store\.getState\(\)/g;
+    let deriveMatch: RegExpExecArray | null = null;
+    for (const candidate of oldFile.matchAll(derivePat)) {
+      if (
+        candidate.index !== undefined &&
+        candidate.index < renderMatch.index
+      ) {
+        deriveMatch = candidate;
+      } else {
+        break;
+      }
+    }
+    if (!deriveMatch || deriveMatch.index === undefined) {
+      console.error(
+        'patch: toolsets: toolFetchingMemo: failed to find derive() for renderingTools'
+      );
+      return null;
+    }
+    const stateVar = deriveMatch[1];
+    const toolsVar = renderMatch[1];
+    const helper =
+      `const __ts=${toolsetsJSON},__tf=(t,s)=>{` +
+      `const n=${getToolsetFallbackExpression('s', defaultToolset, acceptEditsToolset, planModeToolset)};` +
+      `globalThis.__tweakcc_toolset={name:n,tools:__ts[n]};` +
+      `if(__ts.hasOwnProperty(n)){const a=__ts[n];if(a==="*")return t;` +
+      `return t.filter(d=>a.includes(d.name))}return t};`;
+    const renderRepl = `renderingTools:this.addDisplayOnlyTools(__tf(${toolsVar},${stateVar}))`;
+    let newFile =
+      oldFile.slice(0, renderMatch.index) +
+      renderRepl +
+      oldFile.slice(renderMatch.index + renderMatch[0].length);
+    const insertAt = deriveMatch.index + 'derive(){'.length;
+    newFile = newFile.slice(0, insertAt) + helper + newFile.slice(insertAt);
+    showDiff(
+      oldFile,
+      newFile,
+      renderRepl,
+      renderMatch.index,
+      renderMatch.index
+    );
+    return newFile;
+  }
+
   const stateInfo = getAppStateSelectorAndUseState(oldFile);
   if (!stateInfo) {
     console.error(
@@ -485,7 +698,7 @@ export const writeToolFetchingUseMemo = (
     return null;
   }
 
-  const { appStateUseSelectorFn } = stateInfo;
+  const { appStateUseSelectorFn, selectorIndex } = stateInfo;
 
   // Pattern to find: let toolAggregationVar=toolAggregationCode(arg1,arg2.tools,arg3);
   const pattern = /let ([$\w]+)=([$\w]+\([$\w]+,[$\w]+\.tools,[$\w]+\)),/;
@@ -496,28 +709,21 @@ export const writeToolFetchingUseMemo = (
     return null;
   }
 
+  const selectorFn =
+    selectorIndex !== undefined
+      ? resolveNameAt(
+          oldFile,
+          appStateUseSelectorFn,
+          selectorIndex,
+          match.index
+        )
+      : appStateUseSelectorFn;
+
   const toolAggregationVar = match[1];
   const toolAggregationCode = match[2];
 
-  // Create toolsets mapping: { "toolset-name": ["tool1", "tool2", ...] }
-  const toolsetsJSON = JSON.stringify(
-    Object.fromEntries(
-      toolsets.map(ts => [
-        ts.name,
-        ts.allowedTools === '*' ? '*' : ts.allowedTools,
-      ])
-    )
-  );
-
-  // When persisted app state is loaded it may not have a toolset field (saved before
-  // the toolset patch existed), causing currentToolset to be undefined. Fall back to
-  // defaultToolset so the restriction is active from the very first render.
-  const fallback = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
-
   // Generate the replacement code
-  const replacement = `let currentToolset = ${appStateUseSelectorFn}(state => state.toolset) ?? ${fallback};
+  const replacement = `let currentToolset = ${selectorFn}(state => ${getToolsetFallbackExpression('state', defaultToolset, acceptEditsToolset, planModeToolset)});
 let ${toolAggregationVar} = undefined;
 const toolsets = ${toolsetsJSON};
 if (toolsets.hasOwnProperty(currentToolset)) {
@@ -561,18 +767,10 @@ if (toolsets.hasOwnProperty(currentToolset)) {
 export const writeComputeToolsFilter = (
   oldFile: string,
   toolsets: Toolset[],
-  defaultToolset: string | null
+  defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
 ): string | null => {
-  const stateInfo = getAppStateSelectorAndUseState(oldFile);
-  if (!stateInfo) {
-    console.error(
-      'patch: toolsets: computeToolsFilter: failed to find app state info'
-    );
-    return null;
-  }
-
-  // stateInfo validated above — computeTools reads toolset from STORE.getState() directly
-
   // Create toolsets mapping (shared by both methods)
   const toolsetsMapJSON = JSON.stringify(
     Object.fromEntries(
@@ -582,9 +780,92 @@ export const writeComputeToolsFilter = (
       ])
     )
   );
-  const toolsetFallback = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
+
+  const classFilterHelper = `globalThis.__tweakcc_appStore=this.store;const __ts=${toolsetsMapJSON},__tf=(t,s)=>{const n=${getToolsetFallbackExpression('s', defaultToolset, acceptEditsToolset, planModeToolset)};globalThis.__tweakcc_toolset={name:n,tools:__ts[n]};if(__ts.hasOwnProperty(n)){const a=__ts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};`;
+
+  // Method 0 — CC >= 2.1.251: computeTools is a one-line delegate
+  //   computeTools=()=>this.computeToolPoolFresh().tools
+  // and the cache/assemble body moved into computeToolPool. Wrapping
+  // computeToolPoolFresh filters every public reader (computeTools and
+  // the getToolUseContext destructure) while the snapshot comparison
+  // still sees the unfiltered list. Anchor on the unique field name
+  // and walk the body — do not require a window to the cache returns.
+  const freshHead = oldFile.match(
+    /computeToolPoolFresh=\(\)=>\{let ([$\w]+)=this\.store\.getState\(\),/
+  );
+  if (freshHead && freshHead.index !== undefined) {
+    const braceIndex = freshHead.index + 'computeToolPoolFresh=()=>'.length;
+    const bodyEnd = matchDelimiter(oldFile, braceIndex);
+    if (bodyEnd !== null) {
+      const stateVar = freshHead[1];
+      const body = oldFile.slice(braceIndex + 1, bodyEnd);
+      const ret = body.match(/return ([$\w]+);?\s*$/);
+      if (ret && ret.index !== undefined) {
+        const pv = ret[1];
+        const patched =
+          classFilterHelper +
+          body.slice(0, ret.index) +
+          `return{...${pv},tools:__tf(${pv}.tools,${stateVar})}` +
+          body.slice(ret.index + ret[0].length);
+        const newFile =
+          oldFile.slice(0, braceIndex + 1) + patched + oldFile.slice(bodyEnd);
+        showDiff(oldFile, newFile, patched, freshHead.index, bodyEnd + 1);
+        return newFile;
+      }
+    }
+  }
+
+  // Method 0 (CC >= 2.1.246): computeTools is a class field that reads the
+  // store off `this`, not a useCallback closure. Both exits are wrapped; the
+  // cache still stores the UNFILTERED list so a /toolset switch takes effect
+  // without invalidating it. Also stashes the store on globalThis so the
+  // slash-command path can set `toolset` without a React hook in scope.
+  const classHead = oldFile.match(
+    /computeTools=\(\)=>\{let ([$\w]+)=this\.store\.getState\(\),/
+  );
+  if (classHead && classHead.index !== undefined) {
+    const braceIndex = classHead.index + 'computeTools=()=>'.length;
+    const bodyEnd = matchDelimiter(oldFile, braceIndex);
+    if (bodyEnd !== null) {
+      const stateVar = classHead[1];
+      const body = oldFile.slice(braceIndex + 1, bodyEnd);
+      let patched = classFilterHelper + body;
+      const final = patched.match(
+        /return this\.toolPoolCache=\{key:([$\w]+),result:([$\w]+)\},\2/
+      );
+      if (final && final.index !== undefined) {
+        const keyVar = final[1];
+        const rv = final[2];
+        patched =
+          patched.slice(0, final.index) +
+          `return this.toolPoolCache={key:${keyVar},result:${rv}},__tf(${rv},${stateVar})` +
+          patched.slice(final.index + final[0].length);
+      }
+      const cached = patched.match(/return ([$\w]+)\.result;/);
+      if (cached && cached.index !== undefined) {
+        const cv = cached[1];
+        patched =
+          patched.slice(0, cached.index) +
+          `return __tf(${cv}.result,${stateVar});` +
+          patched.slice(cached.index + cached[0].length);
+      }
+      const startIndex = classHead.index;
+      const newFile =
+        oldFile.slice(0, braceIndex + 1) + patched + oldFile.slice(bodyEnd);
+      showDiff(oldFile, newFile, patched, startIndex, bodyEnd + 1);
+      return newFile;
+    }
+  }
+
+  const stateInfo = getAppStateSelectorAndUseState(oldFile);
+  if (!stateInfo) {
+    console.error(
+      'patch: toolsets: computeToolsFilter: failed to find app state info'
+    );
+    return null;
+  }
+
+  // stateInfo validated above — computeTools reads toolset from STORE.getState() directly
 
   // Method 1 (CC >=2.1.219): the closure gained a ref-backed memo cache and the
   // agent-resolution branch collapsed into a ternary inside a post-filter call:
@@ -620,7 +901,7 @@ export const writeComputeToolsFilter = (
     const cacheVar = memoMatch[6];
     const resultVar = memoMatch[10];
 
-    const helper = `const __ts=${toolsetsMapJSON},__tf=(t,s)=>{const n=s.toolset??${toolsetFallback};globalThis.__tweakcc_toolset={name:n,tools:__ts[n]};if(__ts.hasOwnProperty(n)){const a=__ts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};`;
+    const helper = `const __ts=${toolsetsMapJSON},__tf=(t,s)=>{const n=${getToolsetFallbackExpression('s', defaultToolset, acceptEditsToolset, planModeToolset)};globalThis.__tweakcc_toolset={name:n,tools:__ts[n]};if(__ts.hasOwnProperty(n)){const a=__ts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};`;
 
     const bodyStart = full.indexOf('()=>{');
     const cachedReturn = `return ${cacheVar}.result;`;
@@ -693,10 +974,6 @@ export const writeComputeToolsFilter = (
     )
   );
 
-  const fallback = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
-
   // Actually let me re-examine the match to get the init tools var
   const fullMatch = match[0];
   // Extract the init var from MERGE(INIT,ASSEMBLED,...)
@@ -714,7 +991,7 @@ export const writeComputeToolsFilter = (
   const initVar = mergeCallMatch[1];
 
   // Set globalThis.__tweakcc_toolset so the error message helper can read it
-  const newClosure = `${closureVar}=${useCallbackPrefix}()=>{let ${stateVar}=${storeVar}.getState(),${assembledVar}=${assembleFn}(${stateVar}.toolPermissionContext,${stateVar}.mcp.tools${skillToolsArg}),${mergedVar}=${mergeFn}(${initVar},${assembledVar},${stateVar}.toolPermissionContext.mode);const __ts=${toolsetsJSON},__tc=${stateVar}.toolset??${fallback},__tf=(t)=>{globalThis.__tweakcc_toolset={name:__tc,tools:__ts[__tc]};if(__ts.hasOwnProperty(__tc)){const a=__ts[__tc];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};if(!${agentVar})return __tf(${mergedVar});return __tf(${resolveFn}(${agentVar},${mergedVar},!1,!0).resolvedTools)}`;
+  const newClosure = `${closureVar}=${useCallbackPrefix}()=>{let ${stateVar}=${storeVar}.getState(),${assembledVar}=${assembleFn}(${stateVar}.toolPermissionContext,${stateVar}.mcp.tools${skillToolsArg}),${mergedVar}=${mergeFn}(${initVar},${assembledVar},${stateVar}.toolPermissionContext.mode);const __ts=${toolsetsJSON},__tc=${getToolsetFallbackExpression(stateVar, defaultToolset, acceptEditsToolset, planModeToolset)},__tf=(t)=>{globalThis.__tweakcc_toolset={name:__tc,tools:__ts[__tc]};if(__ts.hasOwnProperty(__tc)){const a=__ts[__tc];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};if(!${agentVar})return __tf(${mergedVar});return __tf(${resolveFn}(${agentVar},${mergedVar},!1,!0).resolvedTools)}`;
 
   const startIndex = match.index;
   const endIndex = startIndex + fullMatch.length;
@@ -737,7 +1014,9 @@ export const writeComputeToolsFilter = (
 export const writePrintToolsFilter = (
   oldFile: string,
   toolsets: Toolset[],
-  defaultToolset: string | null
+  defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
 ): string | null => {
   const toolsetsJSON = JSON.stringify(
     Object.fromEntries(
@@ -747,9 +1026,6 @@ export const writePrintToolsFilter = (
       ])
     )
   );
-  const fallback = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
 
   // Anchored on unique code SHAPES, with every relationship derived by search
   // rather than by distance. Two earlier forms broke on the same class of
@@ -781,11 +1057,22 @@ export const writePrintToolsFilter = (
   if (csMatch && csMatch.index !== undefined) {
     const thunkVar = csMatch[1];
 
-    const thunkDecl = oldFile.match(
-      new RegExp(
-        `${escapeIdent(thunkVar)}=\\(\\)=>([$\\w]+)\\(([$\\w]+)\\(\\)\\)`
-      )
+    const thunkDeclRe = new RegExp(
+      `${escapeIdent(thunkVar)}=\\(\\)=>([$\\w]+)\\(([$\\w]+)\\(\\)\\)`,
+      'g'
     );
+    let thunkDecl: RegExpExecArray | null = null;
+    for (
+      let candidate = thunkDeclRe.exec(oldFile);
+      candidate !== null;
+      candidate = thunkDeclRe.exec(oldFile)
+    ) {
+      if (candidate.index < csMatch.index) thunkDecl = candidate;
+      else {
+        if (thunkDecl === null) thunkDecl = candidate;
+        break;
+      }
+    }
     if (!thunkDecl || thunkDecl.index === undefined) {
       console.error(
         'patch: toolsets: printToolsFilter: failed to find the print tools thunk'
@@ -804,7 +1091,7 @@ export const writePrintToolsFilter = (
     // valid in every position and needs no scope analysis; the cost is repeating
     // the toolset table once, which is a few KB.
     const filterExpr =
-      `((t,s)=>{const p=${toolsetsJSON},n=s.toolset??${fallback};` +
+      `((t,s)=>{const p=${toolsetsJSON},n=${getToolsetFallbackExpression('s', defaultToolset, acceptEditsToolset, planModeToolset)};` +
       `globalThis.__tweakcc_toolset={name:n,tools:p[n]};` +
       `if(p.hasOwnProperty(n)){const a=p[n];if(a==="*")return t;` +
       `return t.filter(d=>a.includes(d.name))}return t})`;
@@ -927,7 +1214,7 @@ export const writePrintToolsFilter = (
   // A `,` terminator means more declarators follow — reopen the `let` after the
   // injected statements so they keep their original binding form.
   const reopen = terminator === ',' ? 'let ' : '';
-  const filterCode = `let ${toolsVar}=${computeFn}(${stateVar});const __tpts=${toolsetsJSON},__tptf=(t,s)=>{const n=s.toolset??${fallback};globalThis.__tweakcc_toolset={name:n,tools:__tpts[n]};if(__tpts.hasOwnProperty(n)){const a=__tpts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};${toolsVar}=__tptf(${toolsVar},${stateVar});${reopen}`;
+  const filterCode = `let ${toolsVar}=${computeFn}(${stateVar});const __tpts=${toolsetsJSON},__tptf=(t,s)=>{const n=${getToolsetFallbackExpression('s', defaultToolset, acceptEditsToolset, planModeToolset)};globalThis.__tweakcc_toolset={name:n,tools:__tpts[n]};if(__tpts.hasOwnProperty(n)){const a=__tpts[n];if(a==="*")return t;return t.filter(d=>a.includes(d.name))}return t};${toolsVar}=__tptf(${toolsVar},${stateVar});${reopen}`;
 
   let newFile =
     oldFile.slice(0, toolsMatch.index) +
@@ -1061,19 +1348,21 @@ export const writeToolsetAwareErrors = (
 export const writeToolsetComponentDefinition = (
   oldFile: string,
   toolsets: Toolset[],
-  defaultToolset: string | null
+  defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
 ): string | null => {
+  const reactVar = getReactVar(oldFile);
+  if (!reactVar) {
+    console.error('patch: toolsets: failed to find React variable');
+    return null;
+  }
+
   const insertionPoint = findTopLevelPositionBeforeSlashCommand(oldFile);
   if (insertionPoint === null) {
     console.error(
       'patch: toolsets: failed to find slash command insertion point'
     );
-    return null;
-  }
-
-  const reactVar = getReactVar(oldFile);
-  if (!reactVar) {
-    console.error('patch: toolsets: failed to find React variable');
     return null;
   }
 
@@ -1128,13 +1417,9 @@ export const writeToolsetComponentDefinition = (
     }))
   );
 
-  const fallback = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
-
   // Generate the component code
   const componentCode = `const toolsetComp = ({ onExit, input }) => {
-  const currentToolset = ${appStateUseSelectorFn}(state => state.toolset) ?? ${fallback};
+  const currentToolset = ${appStateUseSelectorFn}(state => ${getToolsetFallbackExpression('state', defaultToolset, acceptEditsToolset, planModeToolset)});
 
   const setState = ${appStateSetState}();
 
@@ -1146,7 +1431,7 @@ export const writeToolsetComponentDefinition = (
       )}));
       return;
     } else {
-      setState(prev => ({ ...prev, toolset: input }));
+      setState(prev => ({ ...prev, toolset: input, toolsetAutoMode: null }));
       onExit(\`Toolset changed to \${${chalkVar}.bold(input)}\`);
       return;
     }
@@ -1192,7 +1477,7 @@ export const writeToolsetComponentDefinition = (
         ${reactVar}.createElement(${selectComponent}, {
           options: ${selectOptions},
           onChange: (input) => {
-            setState(prev => ({ ...prev, toolset: input }));
+            setState(prev => ({ ...prev, toolset: input, toolsetAutoMode: null }));
             onExit(\`Toolset changed to \${${chalkVar}.bold(input)}\`);
           },
           onCancel: () => onExit(\`Toolset not changed (left as \${${chalkVar}.bold(currentToolset)})\`)
@@ -1236,7 +1521,7 @@ export interface StatusLineComponent {
 // The optional `currentToolset` prefix makes the locator idempotent: step 5
 // injects there, and steps 6/7 must still be able to find the same component.
 const compilerComponentHeader = () =>
-  /function ([$\w]+)\([$\w]+\)\{(?:let currentToolset=[^;]*;)?let ([$\w]+)=[$\w]+\.c\(\d+\),/g;
+  /function ([$\w]+)\([$\w]+\)\{(?:let currentToolset=[^;]*;)?let ([$\w]+)=[$\w]+(?:\.[$\w]+)?\(\d+\),/g;
 
 // `Que(dne)," on",EWf` — the permission-mode label in the status line.
 // CC 2.1.232 split the label into its own component and precomputes the mode
@@ -1331,6 +1616,17 @@ export const findStatusLineComponent = (
     if (!header[0].includes('let currentToolset=')) continue;
     const comp = build(header);
     if (comp) return comp;
+  }
+
+  // Method 0 — CC >= 2.1.251: " on" was hoisted out of the children
+  // array into `const LABEL=BARE?"":" on"`.
+  const hoisted = findComponentsContaining(file, '?"":" on"');
+  if (hoisted.length) {
+    return (
+      hoisted.find(
+        c => file.slice(c.bodyStart, c.bodyEnd).indexOf(SHORTCUTS_LABEL) !== -1
+      ) ?? hoisted[0]
+    );
   }
 
   const candidates: StatusLineComponent[] = [];
@@ -1483,7 +1779,9 @@ export const findShiftTabAppStateVarInsertionPoint = (
  */
 export const insertShiftTabAppStateVar = (
   oldFile: string,
-  defaultToolset: string | null
+  defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
 ): string | null => {
   const stateInfo = getAppStateSelectorAndUseState(oldFile);
   if (!stateInfo) {
@@ -1493,11 +1791,13 @@ export const insertShiftTabAppStateVar = (
     return null;
   }
 
-  const { appStateUseSelectorFn } = stateInfo;
-  const fallback = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
-  const codeToInsert = `let currentToolset=${appStateUseSelectorFn}(state => state.toolset) ?? ${fallback};`;
+  const { appStateUseSelectorFn, selectorIndex } = stateInfo;
+  const selectorAt = (at: number): string =>
+    selectorIndex !== undefined
+      ? resolveNameAt(oldFile, appStateUseSelectorFn, selectorIndex, at)
+      : appStateUseSelectorFn;
+  const codeToInsertAt = (at: number): string =>
+    `let currentToolset=${selectorAt(at)}(state => ${getToolsetFallbackExpression('state', defaultToolset, acceptEditsToolset, planModeToolset)});`;
 
   // Method 1 (CC >=2.1.204): declare it at the top of every React-compiler
   // component steps 6/7 rewrite a label in. Up to CC 2.1.231 that was a single
@@ -1508,6 +1808,8 @@ export const insertShiftTabAppStateVar = (
   const targets = [
     ...(comp ? [comp] : []),
     ...findComponentsContaining(oldFile, SHORTCUTS_LABEL),
+    ...findComponentsContaining(oldFile, '?"":" on"'),
+    ...findComponentsContaining(oldFile, '," on"'),
   ];
   const seen = new Set<number>();
   const points = targets
@@ -1523,11 +1825,11 @@ export const insertShiftTabAppStateVar = (
     const splices: Splice[] = points.map(at => ({
       start: at,
       end: at,
-      text: codeToInsert,
+      text: codeToInsertAt(at),
     }));
     const newFile = applySplices(oldFile, splices);
     const first = Math.min(...points);
-    showDiff(oldFile, newFile, codeToInsert, first, first);
+    showDiff(oldFile, newFile, splices[0].text, first, first);
     return newFile;
   }
 
@@ -1541,6 +1843,7 @@ export const insertShiftTabAppStateVar = (
     return null;
   }
 
+  const codeToInsert = codeToInsertAt(insertionPoint);
   const newFile =
     oldFile.slice(0, insertionPoint) +
     codeToInsert +
@@ -1555,6 +1858,30 @@ export const insertShiftTabAppStateVar = (
  * Append the toolset name to the mode display text
  */
 export const appendToolsetToModeDisplay = (oldFile: string): string | null => {
+  if (oldFile.includes('currentToolset?` on [')) return oldFile;
+
+  // Method 0 — CC >= 2.1.251: " on" was hoisted into
+  //   const LABEL=BARE?"":" on"
+  // instead of sitting inline in the children array. The memo guard
+  // already compares LABEL, so changing its value keeps /toolset live.
+  const onConstPat = /const ([$\w]+)=([$\w]+)\?"":" on"/;
+  const onConst = oldFile.match(onConstPat);
+  if (onConst && onConst.index !== undefined) {
+    const replacement = `const ${onConst[1]}=${onConst[2]}?"":(currentToolset?\` on [\${currentToolset}]\`:" on")`;
+    const newFile =
+      oldFile.slice(0, onConst.index) +
+      replacement +
+      oldFile.slice(onConst.index + onConst[0].length);
+    showDiff(
+      oldFile,
+      newFile,
+      replacement,
+      onConst.index,
+      onConst.index + onConst[0].length
+    );
+    return newFile;
+  }
+
   // Method 1 (CC >=2.1.204): the label lost its `.toLowerCase()` and is now
   // rendered from a memoized slot inside the status line component:
   //   Que(dne)," on",EWf]},"mode"):null,bm[35]=dne,...
@@ -1567,7 +1894,6 @@ export const appendToolsetToModeDisplay = (oldFile: string): string | null => {
   // Prefer a label-owning component that already carries the declaration (after
   // step 5 several components do, and only this one owns the label), but fall
   // back to the first label owner so the step still works called on its own.
-  if (oldFile.includes('currentToolset?` on [')) return oldFile;
   const labelComps = findComponentsContaining(oldFile, '," on"');
   const comp =
     labelComps.find(c =>
@@ -1726,15 +2052,16 @@ export const appendToolsetToShortcutsDisplay = (
 /**
  * Sub-patch 4: Add the slash command definition
  */
-export const writeSlashCommandDefinition = (oldFile: string): string | null => {
+export const writeSlashCommandDefinition = (
+  oldFile: string,
+  toolsets?: Toolset[],
+  defaultToolset?: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
+): string | null => {
   const reactVar = getReactVar(oldFile);
-  if (!reactVar) {
-    console.error('patch: toolsets: failed to find React variable');
-    return null;
-  }
-
-  // Generate the slash command definition
-  const commandDef = `, {
+  if (reactVar) {
+    const commandDef = `, {
   aliases: ["change-tools"],
   type: "local-jsx",
   name: "toolset",
@@ -1749,8 +2076,51 @@ export const writeSlashCommandDefinition = (oldFile: string): string | null => {
     return "toolset";
   }
 }`;
+    return writeSlashCommandDefinitionToArray(oldFile, commandDef);
+  }
 
-  // Use the imported function to write the command definition
+  // CC >= 2.1.246: React.createElement is not a global in the command-table
+  // module. Register a text command that reads/writes the store stashed by
+  // computeTools (`globalThis.__tweakcc_appStore`).
+  const names = (toolsets ?? []).map(ts => ts.name);
+  const namesJson = JSON.stringify(names);
+  // What /toolset reports has to be what the tool filter will actually select,
+  // so it reads through the same mode-aware expression rather than the plain
+  // `state.toolset ?? default`. App state starts with no toolset, so the older
+  // form named the default whenever a mode binding was the one in force.
+  const currentExpression = getToolsetFallbackExpression(
+    '__st',
+    defaultToolset ?? null,
+    acceptEditsToolset,
+    planModeToolset
+  );
+  const commandDef = `, {
+  aliases: ["change-tools"],
+  type: "local",
+  name: "toolset",
+  description: "Select a toolset (managed by tweakcc)",
+  argumentHint: "[toolset-name]",
+  isEnabled: () => true,
+  isHidden: false,
+  load: () => Promise.resolve().then(() => ({call: (args) => {
+    const names = ${namesJson};
+    const store = globalThis.__tweakcc_appStore;
+    const __st = (store && store.getState) ? store.getState() : {};
+    const current = ${currentExpression};
+    const input = typeof args === "string" ? args.trim() : "";
+    if (!input) {
+      return "Current toolset: " + current + ". Valid toolsets: " + names.join(", ") + ". Run /toolset <name> to switch.";
+    }
+    if (!names.includes(input)) {
+      return input + " is not a valid toolset. Valid toolsets: " + names.join(", ");
+    }
+    if (store && store.setState) store.setState(prev => ({...prev, toolset: input, toolsetAutoMode: null}));
+    return "Toolset changed to " + input;
+  }})),
+  userFacingName() {
+    return "toolset";
+  }
+}`;
   return writeSlashCommandDefinitionToArray(oldFile, commandDef);
 };
 
@@ -1769,6 +2139,68 @@ export const writeSlashCommandDefinition = (oldFile: string): string | null => {
 export const findToolChangeComponentScope = (
   fileContents: string
 ): number | null => {
+  // Method 0 (CC >= 2.1.257): the React Compiler dropped the useCallback
+  // wrapper entirely — the handler is a bare arrow assigned straight into a
+  // memo-cache slot, guarded by a brace-less if/else:
+  //   if(is[257]!==Ur.cursorOffset||...)nno=(fYn)=>{s("tengu_ext_at_mentioned",
+  //     {}),$T(Z6e(fYn,Ur.value[Ur.cursorOffset-1]))},is[257]=Ur.cursorOffset,
+  //     is[258]=Ur.value,is[259]=$T,is[260]=nno;else nno=is[260];
+  // The consequent is a single (comma-expression) statement with no braces, so
+  // splicing a `const` between it and `else` is a SyntaxError — the true
+  // statement boundary is after the alternate too. Confirm the match is an
+  // if's brace-less consequent by walking back to the `if(` and matching its
+  // condition parens, then walk past the consequent AND (if present) the
+  // else clause before returning an insertion point.
+  const compilerArrowPattern =
+    /[$\w]+=\([$\w]+\)=>\{[$\w]+\("tengu_ext_at_mentioned",\{\}\)[,;]/;
+  const compilerMatch = fileContents.match(compilerArrowPattern);
+  if (compilerMatch && compilerMatch.index !== undefined) {
+    let end = findStatementEnd(fileContents, compilerMatch.index);
+    if (end !== null) {
+      const lookbackStart = Math.max(0, compilerMatch.index - 500);
+      const lookback = fileContents.slice(lookbackStart, compilerMatch.index);
+      const ifRel = lookback.lastIndexOf('if(');
+      if (ifRel !== -1) {
+        const ifAbs = lookbackStart + ifRel;
+        const condClose = matchDelimiter(fileContents, ifAbs + 2);
+        if (condClose !== null && condClose + 1 === compilerMatch.index) {
+          if (fileContents.startsWith('else', end)) {
+            let afterElse = end + 'else'.length;
+            if (fileContents[afterElse] === ' ') afterElse++;
+            if (fileContents[afterElse] === '{') {
+              const blockEnd = matchDelimiter(fileContents, afterElse);
+              if (blockEnd !== null) end = blockEnd + 1;
+            } else {
+              const elseEnd = findStatementEnd(fileContents, afterElse);
+              if (elseEnd !== null) end = elseEnd;
+            }
+          }
+        }
+      }
+      return end;
+    }
+  }
+
+  // Method 1 (CC >= 2.1.247): the handler became an arrow passed to useCallback
+  // and assigned inside a comma-declarator chain, so there is no longer a
+  // statement boundary at the match:
+  //   ...,[d,G,Q,Y,j,Ko]),HM=B((E)=>{U("tengu_ext_at_mentioned",{}),Sa(...)},[d,Sa]);
+  // Splicing a `const` at match.index would land mid-chain and emit
+  // `...]),const currentToolset=...;HM=B(...)`. Return the index just AFTER the
+  // statement's terminating `;` instead — the declaration is only read later, by
+  // callbacks, so declaring it after the chain is equivalent and always valid.
+  const arrowPattern =
+    /[$\w]+=[$\w]+\(\([$\w]+\)=>\{[$\w]+\("tengu_ext_at_mentioned",\{\}\)[;,]/;
+  const arrowMatch = fileContents.match(arrowPattern);
+  if (arrowMatch && arrowMatch.index !== undefined) {
+    const end = findStatementEnd(fileContents, arrowMatch.index);
+    if (end !== null) return end;
+  }
+
+  // Method 2 (CC <= 2.1.246): `X(Y,function(Z){W("tengu_ext_at_mentioned",{});`
+  // was its own expression statement, so its start is already a safe boundary.
+  // CC >= 2.1.219 folded the next statement into a sequence expression, hence
+  // the `[;,]` terminator.
   const pattern =
     /[\w$]+\([\w$]+,function\([\w$]+\)\{[\w$]+\("tengu_ext_at_mentioned",\{\}\)[;,]/;
   const match = fileContents.match(pattern);
@@ -1784,12 +2216,52 @@ export const findToolChangeComponentScope = (
 };
 
 /**
+ * Index just past the `;` that terminates the statement starting at `from`.
+ * Skips strings, templates and nested brackets so a `;` inside any of them
+ * cannot be mistaken for the terminator. Returns null if none is found.
+ */
+export const findStatementEnd = (
+  fileContents: string,
+  from: number
+): number | null => {
+  let depth = 0;
+  let i = from;
+  while (i < fileContents.length) {
+    const ch = fileContents[i];
+    if (ch === '"' || ch === "'" || ch === '`') {
+      const quote = ch;
+      i += 1;
+      while (i < fileContents.length) {
+        if (fileContents[i] === '\\') {
+          i += 2;
+          continue;
+        }
+        if (fileContents[i] === quote) break;
+        i += 1;
+      }
+      if (i >= fileContents.length) return null;
+      i += 1;
+      continue;
+    }
+    if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === ']' || ch === '}') {
+      if (depth === 0) return null;
+      depth -= 1;
+    } else if (ch === ';' && depth === 0) return i + 1;
+    i += 1;
+  }
+  return null;
+};
+
+/**
  * Add setState function access at the tool change component scope
  * So that writeModeChangeUpdateToolset can use them.
  */
 export const addCurrentToolsetAtToolChangeComponentScope = (
   oldFile: string,
-  defaultToolset: string | null
+  defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
+  planModeToolset?: string | null
 ): string | null => {
   const scopeIndex = findToolChangeComponentScope(oldFile);
   if (scopeIndex === null) {
@@ -1804,13 +2276,14 @@ export const addCurrentToolsetAtToolChangeComponentScope = (
     return null;
   }
 
-  const { appStateUseSelectorFn } = stateInfo;
-  const fallback = defaultToolset
-    ? JSON.stringify(defaultToolset)
-    : 'undefined';
+  const { appStateUseSelectorFn, selectorIndex } = stateInfo;
+  const selectorFn =
+    selectorIndex !== undefined
+      ? resolveNameAt(oldFile, appStateUseSelectorFn, selectorIndex, scopeIndex)
+      : appStateUseSelectorFn;
 
   // Inject the currentToolset access right at the start of the component scope
-  const injectionCode = `const currentToolset = ${appStateUseSelectorFn}(state => state.toolset) ?? ${fallback};`;
+  const injectionCode = `const currentToolset = ${selectorFn}(state => ${getToolsetFallbackExpression('state', defaultToolset, acceptEditsToolset, planModeToolset)});`;
 
   const newFile =
     oldFile.slice(0, scopeIndex) + injectionCode + oldFile.slice(scopeIndex);
@@ -1875,8 +2348,9 @@ export const findModeChange = (
  */
 export const writeModeChangeUpdateToolset = (
   oldFile: string,
-  planModeToolset: string,
-  defaultToolset: string
+  defaultToolset: string,
+  acceptEditsToolset: string,
+  planModeToolset: string
 ): string | null => {
   const modeChangeResult = findModeChange(oldFile);
   if (!modeChangeResult) {
@@ -1885,8 +2359,9 @@ export const writeModeChangeUpdateToolset = (
 
   const { index: modeChangeIndex, modeVar, setStateVar } = modeChangeResult;
 
-  // Build the injection code using setState directly
-  const injectionCode = `if(${modeVar}==="plan"){${setStateVar}((prev)=>({...prev,toolset:${JSON.stringify(planModeToolset)}}));}else{${setStateVar}((prev)=>({...prev,toolset:${JSON.stringify(defaultToolset)}}));}`;
+  // Build the injection code using setState directly. Each binding can be
+  // forced at CC start via TWEAKCC_TOOLSET_* env vars (#569).
+  const injectionCode = `if(${modeVar}==="plan"){${setStateVar}((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_PLAN||${JSON.stringify(planModeToolset)},toolsetAutoMode:"plan"}));}else if(${modeVar}==="acceptEdits"){${setStateVar}((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_ALLOW_EDITS||${JSON.stringify(acceptEditsToolset)},toolsetAutoMode:null}));}else if(${modeVar}==="auto"){${setStateVar}((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_AUTO||process.env.TWEAKCC_TOOLSET_DEFAULT||${JSON.stringify(defaultToolset)},toolsetAutoMode:null}));}else{${setStateVar}((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_DEFAULT||${JSON.stringify(defaultToolset)},toolsetAutoMode:null}));}`;
 
   // Inject right before the mode change
   const newFile =
@@ -1914,6 +2389,7 @@ export const writeToolsets = (
   oldFile: string,
   toolsets: Toolset[],
   defaultToolset: string | null,
+  acceptEditsToolset?: string | null,
   planModeToolset?: string | null
 ): string | null => {
   // Return if no toolsets are configured
@@ -1924,7 +2400,7 @@ export const writeToolsets = (
   let result: string | null = oldFile;
 
   // Step 1: Add toolset field to app state
-  result = writeToolsetFieldToAppState(result, defaultToolset);
+  result = writeToolsetFieldToAppState(result);
   if (!result) {
     console.error(
       'patch: toolsets: step 1 failed (writeToolsetFieldToAppState)'
@@ -1933,21 +2409,39 @@ export const writeToolsets = (
   }
 
   // Step 2: Modify tool fetching useMemo
-  result = writeToolFetchingUseMemo(result, toolsets, defaultToolset);
+  result = writeToolFetchingUseMemo(
+    result,
+    toolsets,
+    defaultToolset,
+    acceptEditsToolset,
+    planModeToolset
+  );
   if (!result) {
     console.error('patch: toolsets: step 2 failed (writeToolFetchingUseMemo)');
     return null;
   }
 
   // Step 2b: Patch computeTools() to filter API-bound tools
-  result = writeComputeToolsFilter(result, toolsets, defaultToolset);
+  result = writeComputeToolsFilter(
+    result,
+    toolsets,
+    defaultToolset,
+    acceptEditsToolset,
+    planModeToolset
+  );
   if (!result) {
     console.error('patch: toolsets: step 2b failed (writeComputeToolsFilter)');
     return null;
   }
 
   // Step 2c: Patch the non-interactive --print tool context
-  result = writePrintToolsFilter(result, toolsets, defaultToolset);
+  result = writePrintToolsFilter(
+    result,
+    toolsets,
+    defaultToolset,
+    acceptEditsToolset,
+    planModeToolset
+  );
   if (!result) {
     console.error('patch: toolsets: step 2c failed (writePrintToolsFilter)');
     return null;
@@ -1963,17 +2457,32 @@ export const writeToolsets = (
     result = result2d;
   }
 
-  // Step 3: Add toolset component definition
-  result = writeToolsetComponentDefinition(result, toolsets, defaultToolset);
-  if (!result) {
-    console.error(
-      'patch: toolsets: step 3 failed (writeToolsetComponentDefinition)'
+  // Step 3: Add toolset component definition (JSX UI). On ESM-split builds
+  // React is not a global in the insertion module — skip the component and
+  // register a text /toolset command instead.
+  const withUi = writeToolsetComponentDefinition(
+    result,
+    toolsets,
+    defaultToolset,
+    acceptEditsToolset,
+    planModeToolset
+  );
+  if (withUi) {
+    result = withUi;
+  } else {
+    console.log(
+      'patch: toolsets: step 3 skipped (no React global — using text /toolset)'
     );
-    return null;
   }
 
   // Step 4: Add slash command definition
-  result = writeSlashCommandDefinition(result);
+  result = writeSlashCommandDefinition(
+    result,
+    toolsets,
+    defaultToolset,
+    acceptEditsToolset,
+    planModeToolset
+  );
   if (!result) {
     console.error(
       'patch: toolsets: step 4 failed (writeSlashCommandDefinition)'
@@ -1982,7 +2491,12 @@ export const writeToolsets = (
   }
 
   // Step 5: Insert state getter in statusline component
-  result = insertShiftTabAppStateVar(result, defaultToolset);
+  result = insertShiftTabAppStateVar(
+    result,
+    defaultToolset,
+    acceptEditsToolset,
+    planModeToolset
+  );
   if (!result) {
     console.error('patch: toolsets: step 5 failed (insertShiftTabAppStateVar)');
     return null;
@@ -2007,11 +2521,16 @@ export const writeToolsets = (
   }
 
   // Step 8: Mode-change toolset switching (optional)
-  if (planModeToolset && defaultToolset) {
+  if (defaultToolset && (acceptEditsToolset || planModeToolset)) {
+    const effectiveAcceptEditsToolset = acceptEditsToolset ?? defaultToolset;
+    const effectivePlanModeToolset = planModeToolset ?? defaultToolset;
+
     // First, add setState access at the tool change component scope
     result = addCurrentToolsetAtToolChangeComponentScope(
       result,
-      defaultToolset
+      defaultToolset,
+      effectiveAcceptEditsToolset,
+      effectivePlanModeToolset
     );
     if (!result) {
       console.error(
@@ -2023,8 +2542,9 @@ export const writeToolsets = (
     // Then, inject the mode change toolset switching code
     result = writeModeChangeUpdateToolset(
       result,
-      planModeToolset,
-      defaultToolset
+      defaultToolset,
+      effectiveAcceptEditsToolset,
+      effectivePlanModeToolset
     );
     if (!result) {
       console.error(

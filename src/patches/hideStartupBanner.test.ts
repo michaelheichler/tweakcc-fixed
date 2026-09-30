@@ -28,7 +28,19 @@ const MODERN_CARD_FIXTURE_B =
 const STANDALONE_FIXTURE =
   'x=1;function Yb(){let t=T==="Apple_Terminal"?1:2;return q.createElement(W,null,"Welcome to Claude Code")}y=2;';
 
+// Method 0 — CC >=2.1.246: zero-arg function, imported cache `lo(39)`, Welcome
+// AND Apple_Terminal in the body (Apple_Terminal sits after a compact-welcome
+// `return`, so the older `[^}]{0,500}` lookahead never sees it).
+const IMPORTED_CACHE_FIXTURE =
+  'q=1;function bo(){let e=lo(39),[j]=L();if(so){return d(o,{children:["Welcome to Claude Code"," "]})}if(E.terminal==="Apple_Terminal"){return l(oo,{theme:j})}return 1}z=2;';
+
 describe('writeHideStartupBanner', () => {
+  it('injects `return null;` into the imported-cache startup card (CC >=2.1.246)', () => {
+    const out = writeHideStartupBanner(IMPORTED_CACHE_FIXTURE);
+    expect(out).not.toBeNull();
+    expect(out).toContain('function bo(){return null;let e=lo(39)');
+  });
+
   it('collapses the legacy createElement banner to a bare comma (CC <2.1.83)', () => {
     const out = writeHideStartupBanner(LEGACY_FIXTURE);
     expect(out).not.toBeNull();

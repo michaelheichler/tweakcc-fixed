@@ -4,19 +4,12 @@ import * as fsSync from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
-
-// package.json sits two levels up from src/patches/ but one level up from the
-// bundled dist/*.mjs chunks, so try both — keeps the reported version pinned
-// to the published one instead of a hardcoded literal that drifts.
-const _require = createRequire(import.meta.url);
-export const TWEAKCC_VERSION: string = (() => {
-  try {
-    return (_require('../package.json') as { version: string }).version;
-  } catch {
-    return (_require('../../package.json') as { version: string }).version;
-  }
-})();
+// Re-exported so the many existing importers keep their path. The values are
+// read in `../packageMeta`, which imports nothing but a node builtin:
+// `systemPromptDownload` needs the version to address the release tag, and it
+// is reached from here through `../systemPromptSync`.
+import { TWEAKCC_VERSION, TWEAKCC_SUPPORTED_CC } from '../packageMeta';
+export { TWEAKCC_VERSION, TWEAKCC_SUPPORTED_CC };
 
 import {
   CONFIG_DIR,
@@ -49,6 +42,7 @@ import { writeShowMoreItemsInSelectMenus } from './showMoreItemsInSelectMenus';
 import { writeThemes } from './themes';
 import { writeContextLimit } from './contextLimit';
 import { writeInputBoxBorder } from './inputBorderBox';
+import { writeInputChevronColor } from './inputChevronColor';
 import { writeThinkerFormat } from './thinkerFormat';
 import { writeThinkerSymbolMirrorOption } from './thinkerMirrorOption';
 import { writeThinkerSymbolChars } from './thinkerSymbolChars';
@@ -70,6 +64,7 @@ import {
   runSystemPromptPreflight,
 } from '../systemPromptPreflight';
 import { writeFixLspSupport } from './fixLspSupport';
+import { writeNoGlobalCacheScope } from './globalCacheScope';
 import { writeFixSummarizeFromHere } from './fixSummarizeFromHere';
 import { writeFixRewindSummaryHeader } from './fixRewindSummaryHeader';
 import { writeToolsets } from './toolsets';
@@ -81,6 +76,7 @@ import { writeHideStartupClawd } from './hideStartupClawd';
 import { writeIncreaseFileReadLimit } from './increaseFileReadLimit';
 import { writeSuppressLineNumbers } from './suppressLineNumbers';
 import { writeSuppressRateLimitOptions } from './suppressRateLimitOptions';
+import { writeSuppressRateLimitWarning } from './suppressRateLimitWarning';
 import { writeSessionMemory } from './sessionMemory';
 import { writeDreamMode } from './dreamMode';
 import { writeLeanMemoryTypes } from './leanMemoryTypes';
@@ -95,17 +91,20 @@ import { writeAllowBypassPermsInSudo } from './allowBypassPermsInSudo';
 import { writeSuppressNativeInstallerWarning } from './suppressNativeInstallerWarning';
 import { writeScrollEscapeSequenceFilter } from './scrollEscapeSequenceFilter';
 import { writeWorktreeMode } from './worktreeMode';
+import { writeResponsiveMode } from './responsiveMode';
 import { writeAllowCustomAgentModels } from './allowCustomAgentModels';
 import { writeMaxEffortDefault } from './maxEffortDefault';
 import { writeAutonomousOperationAllModels } from './autonomousOperationAllModels';
-import { writeAdhdOutputStyle } from './adhdOutputStyle';
+import { writeRefusalFallbackModel } from './refusalFallbackModel';
 import { writeOutputStyleTurnReminder } from './outputStyleTurnReminder';
 import { writeAutoModeClassifierModel } from './autoModeClassifierModel';
 import { writeComplexityRouter } from './complexityRouter';
+import { writeComplexityRouterModels } from './complexityRouterModels';
 import { writeFablePlan } from './fablePlan';
 import { writeVoiceMode } from './voiceMode';
 import { writeChannelsMode } from './channelsMode';
 import { writeClearScreen } from './clearScreen';
+import { writeSessionColor } from './sessionColor';
 import { writeReadDefaultLines } from './readDefaultLines';
 import { writeSwapRipgrepForFff } from './swapRipgrepForFff';
 import { ensureRgFffWrapper } from '../ripgrepFff';
@@ -124,6 +123,7 @@ import { compareVersions } from '../systemPromptSync';
 export { showDiff, showPositionalDiff, globalReplace } from './patchDiffing';
 export {
   findChalkVar,
+  findChalkVarInModule,
   getModuleLoaderFunction,
   getReactModuleNameNonBun,
   getReactModuleFunctionBun,
@@ -212,6 +212,13 @@ const PATCH_DEFINITIONS = [
     name: 'Fix LSP support',
     group: PatchGroup.ALWAYS_APPLIED,
     description: 'Enable/fix nascent LSP support',
+  },
+  {
+    id: 'no-global-cache-scope',
+    name: 'Keep a replaced identity line out of the global prompt cache',
+    group: PatchGroup.ALWAYS_APPLIED,
+    description:
+      'When a prompt override replaces one of Claude Code\'s identity lines, turn off the "global" cache scope that the first-party API rejects after a non-stock identity, so the prompt caches at organization scope instead. Does nothing while the identity lines are stock.',
   },
   {
     id: 'fix-summarize-from-here',
@@ -333,6 +340,13 @@ const PATCH_DEFINITIONS = [
       "Your custom styles to the main input box's border will be applied",
   },
   {
+    id: 'input-chevron-color',
+    name: 'Input chevron idle color',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'The idle input chevron will use your chosen theme color instead of the default',
+  },
+  {
     id: 'subagent-models',
     name: 'Subagent models',
     group: PatchGroup.MISC_CONFIGURABLE,
@@ -385,6 +399,19 @@ const PATCH_DEFINITIONS = [
     group: PatchGroup.MISC_CONFIGURABLE,
     description:
       "/rate-limit-options won't be injected when limits are reached",
+  },
+  {
+    id: 'suppress-rate-limit-warning',
+    name: 'Suppress rate limit warning',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description: 'Rate limit warning banners in the status bar will be hidden',
+  },
+  {
+    id: 'session-color',
+    name: 'Session color from env',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'Session prompt bar color is read from the TWEAKCC_SESSION_COLOR env var at each launch',
   },
   {
     id: 'token-count-rounding',
@@ -450,12 +477,12 @@ const PATCH_DEFINITIONS = [
     modelFacing: true,
   },
   {
-    id: 'adhd-output-style',
-    name: 'ADHD-friendly output style',
+    id: 'refusal-fallback-model',
+    name: 'Route the refusal fallback, then switch back',
     group: PatchGroup.MISC_CONFIGURABLE,
     description:
-      'EXPERIMENTAL, and it may not visibly change your output. This rewrites prompt text, which is a weak and inconsistent lever: Claude can and does ignore it, the effect varies a lot between one reply and the next, and on some tasks it changes nothing measurable. It was chosen over the alternatives by blind ranking across roughly 900 generated replies, where it placed last in 1 of 16 comparisons and the unmodified prompt placed last in 10 - but that is an average over many replies, not a promise about any one of them. Rewrites the always-on "# Communicating with the user" prompt for skim-first reading. There is no word limit anywhere in it: length follows the substance, and the rules cut kinds of content instead, which is what testing showed actually works. Answer in the first line; show the command, path or value rather than describing it; say each thing once; keep both sides of a count and every qualifier; bold the key terms and keep paragraphs short. Removes the three clauses that drive Claude-speak: the "load-bearing" update cue (the prompt is where that tic comes from), the "readable matters more" ranking, and the "in prose, not headers and sections" ban on the structure skim-readers rely on. Also restates the rules in the per-turn CLAUDE.md reminder, where recency makes them stick, and drops that reminder\'s "may or may not be relevant" hedge which labelled your own CLAUDE.md as ignorable.',
-    modelFacing: true,
+      'When safeguards flag a message, Claude Code retries it on a fallback model from its own route table, keyed by the flagged model and the refusal category, and keeps the session on that model. This merges refusalFallbackRoutes from config.json over that table (a category you leave out keeps its stock route, one you route falls back to the stock route when none of your models is usable, and a route is a model id or a chain of them) and switches the session back to its own model once the flagged turn is answered, with a line in the transcript. refusalFallbackMaxReturns in config.json (default 1, null for no limit) caps consecutive returns, so a conversation that keeps being flagged stays on the fallback instead of paying a refusal and a retry every turn',
+    modelFacing: false,
   },
   {
     id: 'output-style-turn-reminder',
@@ -479,7 +506,7 @@ const PATCH_DEFINITIONS = [
     name: '[EXPERIMENTAL] Complexity effort router',
     group: PatchGroup.FEATURES,
     description:
-      'Auto-route reasoning effort (thinking depth) by task complexity: routine work runs at low effort, the top tier only for genuinely frontier problems. Rides on your current model - no model switch, no prompt-cache churn. A one-shot Haiku side-call routes each prompt using a rolling TL;DR summary of the session (so terse follow-ups that continue hard work stay elevated; persisted across resume, reseeded from the main model summary on compaction). While on it drives effort, overriding your saved effortLevel default; an in-session /effort or CLAUDE_CODE_EFFORT_LEVEL still wins. Off by default.',
+      'Choose reasoning effort for each user message only while an Effort Router model entry is selected. Uses Haiku, or Jev decisions with asynchronous Haiku conversation summaries, and honors explicit effort overrides. Jev requires a TypeSafe API key and sends the current message and bounded conversation context to TypeSafe. Off by default.',
     modelFacing: true,
   },
   {
@@ -487,7 +514,15 @@ const PATCH_DEFINITIONS = [
     name: 'Fable Plan mode',
     group: PatchGroup.FEATURES,
     description:
-      'Adds a "fableplan" entry to /model: Fable while planning, Opus while executing, each at its own reasoning effort (Fable xhigh, Opus medium by default). Mirrors the mechanism Claude Code already ships for opusplan, so it is a MODEL YOU SELECT — nothing changes for any other model, your selection stays "fableplan" throughout, and no model is ever switched underneath you mid-session. Also surfaces Claude Code\'s own "Yes, clear context (N% used)" option on the plan-approval dialog, which Claude Code defaults off: clearing hands only the plan to the executing model, where continuing re-sends the entire planning transcript to a different one. Off by default.',
+      'Adds a "fableplan" entry to /model: Fable while planning, Opus while executing, each at the reasoning effort you set for that model in /model (Claude Code\'s per-model effort). Mirrors the mechanism Claude Code already ships for opusplan, so it is a MODEL YOU SELECT — nothing changes for any other model, your selection stays "fableplan" throughout, and no model is ever switched underneath you mid-session. Also surfaces Claude Code\'s own "Yes, clear context (N% used)" option on the plan-approval dialog, which Claude Code defaults off: clearing hands only the plan to the executing model, where continuing re-sends the entire planning transcript to a different one. Off by default.',
+    modelFacing: true,
+  },
+  {
+    id: 'complexity-router-models',
+    name: 'Effort Router model entries',
+    group: PatchGroup.FEATURES,
+    description:
+      'Adds opt-in Opus 5.5 and Fable 5.1 + Effort Router entries to /model. Ordinary models keep native effort behavior. Selecting a router entry enables the configured effort provider; switching away stops routing and background summaries.',
     modelFacing: true,
   },
   {
@@ -496,6 +531,14 @@ const PATCH_DEFINITIONS = [
     group: PatchGroup.FEATURES,
     description:
       'Allow arbitrary model names in custom agent frontmatter (e.g. gemini-2.5-flash)',
+  },
+  {
+    id: 'unlock-responsive-mode',
+    name: 'Unlock responsive mode',
+    group: PatchGroup.FEATURES,
+    description:
+      "Make Claude Code's bundled responsive-mode plugin selectable. Claude Code 2.1.280 ships the whole feature in the binary - a system-reminder telling Claude to answer the message before it thinks or picks up a tool, and a system-prompt section ruling out stock AI phrasing (eager openers, agreement reflexes, corporate vocabulary, wrap-ups) - but gates it behind a server flag that answers no. This drops the flag check and keeps the session-kind guard, so the plugin appears in /plugin. It is registered DISABLED, so nothing changes until you turn it on there. Off by default.",
+    modelFacing: true,
   },
   {
     id: 'worktree-mode',
@@ -657,8 +700,14 @@ const applyPatchImplementations = (
   for (const def of PATCH_DEFINITIONS) {
     const impl = implementations[def.id];
 
-    // Skip patches not in the filter (if filter is provided)
-    if (patchFilter && !patchFilter.includes(def.id)) {
+    // Skip patches not in the filter (if filter is provided). The cache-scope
+    // guard is exempt: a filter naming an identity prompt would otherwise apply
+    // the override without it, and every first-party request would 400.
+    if (
+      patchFilter &&
+      !patchFilter.includes(def.id) &&
+      def.id !== 'no-global-cache-scope'
+    ) {
       results.push({
         id: def.id,
         name: def.name,
@@ -709,6 +758,10 @@ const applyPatchImplementations = (
 };
 
 const assertNativeBinaryStarts = (binaryPath: string) => {
+  // A cross-platform repack (TWEAKCC_ALLOW_CROSS_PLATFORM, the darwin
+  // checkout repacking a Linux ELF for the pre-publish gate) cannot run the
+  // result here; the box that receives it runs its own smoke.
+  if (process.env.TWEAKCC_ALLOW_CROSS_PLATFORM === '1') return;
   const result = spawnSync(binaryPath, ['--version'], {
     encoding: 'utf8',
     timeout: 15000,
@@ -932,6 +985,15 @@ export const applyCustomization = async (
     pristineContent
   );
   content = systemPromptsResult.newContent;
+  const identityOverrideApplied = systemPromptsResult.results.some(
+    r =>
+      r.applied &&
+      [
+        'system-prompt-identity',
+        'system-prompt-cli-identity-agent-sdk',
+        'system-prompt-claude-agent-identity-sdk',
+      ].includes(r.id)
+  );
 
   const sortedSystemPromptResults = [...systemPromptsResult.results].sort(
     (a, b) => a.name.localeCompare(b.name)
@@ -999,6 +1061,10 @@ export const applyCustomization = async (
     },
     'fix-lsp-support': {
       fn: c => writeFixLspSupport(c),
+    },
+    'no-global-cache-scope': {
+      fn: c =>
+        writeNoGlobalCacheScope(c, pristineContent, identityOverrideApplied),
     },
     'fix-summarize-from-here': {
       fn: c => writeFixSummarizeFromHere(c),
@@ -1116,6 +1182,17 @@ export const applyCustomization = async (
           DEFAULT_SETTINGS.inputBox.removeBorder
       ),
     },
+    'input-chevron-color': {
+      fn: c => {
+        const themeColorKey = config.settings.inputBox!.chevronIdleThemeColor!;
+        const theme = config.settings.themes?.[0];
+        const resolved =
+          (theme?.colors as Record<string, string>)?.[themeColorKey] ??
+          themeColorKey;
+        return writeInputChevronColor(c, resolved);
+      },
+      condition: !!config.settings.inputBox?.chevronIdleThemeColor,
+    },
     'subagent-models': {
       fn: c => writeSubagentModels(c, config.settings.subagentModels!),
       condition:
@@ -1150,6 +1227,14 @@ export const applyCustomization = async (
     'suppress-rate-limit-options': {
       fn: c => writeSuppressRateLimitOptions(c),
       condition: !!config.settings.misc?.suppressRateLimitOptions,
+    },
+    'suppress-rate-limit-warning': {
+      fn: c => writeSuppressRateLimitWarning(c),
+      condition: !!config.settings.misc?.suppressRateLimitWarning,
+    },
+    'session-color': {
+      fn: c => writeSessionColor(c),
+      condition: !!config.settings.misc?.sessionColor,
     },
     'token-count-rounding': {
       fn: c =>
@@ -1191,9 +1276,14 @@ export const applyCustomization = async (
       fn: c => writeAutonomousOperationAllModels(c),
       condition: !!config.settings.misc?.autonomousOperationAllModels,
     },
-    'adhd-output-style': {
-      fn: c => writeAdhdOutputStyle(c),
-      condition: !!config.settings.misc?.adhdOutputStyle,
+    'refusal-fallback-model': {
+      fn: c =>
+        writeRefusalFallbackModel(
+          c,
+          config.settings.misc?.refusalFallbackRoutes,
+          config.settings.misc?.refusalFallbackMaxReturns
+        ),
+      condition: !!config.settings.misc?.refusalFallbackModel,
     },
     'output-style-turn-reminder': {
       fn: c => writeOutputStyleTurnReminder(c),
@@ -1218,9 +1308,17 @@ export const applyCustomization = async (
       fn: c => writeFablePlan(c, config.settings.fablePlan),
       condition: config.settings.fablePlan.enabled,
     },
+    'complexity-router-models': {
+      fn: c => writeComplexityRouterModels(c),
+      condition: config.settings.complexityRouter.enabled,
+    },
     'allow-custom-agent-models': {
       fn: c => writeAllowCustomAgentModels(c),
       condition: !!config.settings.misc?.allowCustomAgentModels,
+    },
+    'unlock-responsive-mode': {
+      fn: c => writeResponsiveMode(c),
+      condition: !!config.settings.misc?.unlockResponsiveMode,
     },
     'worktree-mode': {
       fn: c => writeWorktreeMode(c),
@@ -1250,6 +1348,7 @@ export const applyCustomization = async (
           c,
           config.settings.toolsets!,
           config.settings.defaultToolset,
+          config.settings.acceptEditsToolset,
           config.settings.planModeToolset
         ),
       condition: !!(

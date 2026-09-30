@@ -27,7 +27,64 @@
 
 import { showDiff } from './index';
 
+const insertReturnTrueAt = (file: string, insertIndex: number): string => {
+  const insertion = 'return !0;';
+  const newFile =
+    file.slice(0, insertIndex) + insertion + file.slice(insertIndex);
+  showDiff(file, newFile, insertion, insertIndex, insertIndex);
+  return newFile;
+};
+
 const patchAmberQuartz = (file: string): string | null => {
+  // Method 0 (CC >= 2.1.246): `tengu_amber_quartz` is gone. Voice is gated by
+  // a tiny ESM module whose unique literal is `"allow_voice_mode"`:
+  //   function a(){try{if(!n())return!1;return t()}catch{return!1}}
+  //   function c(){return o("allow_voice_mode")}
+  //   function p(){return a()&&c()}   // isHidden inverse
+  // Force the combined gate (the old isHidden bypass) so /voice stays visible
+  // even without OAuth / the permission flag. Older CC never contains this
+  // literal next to the combined helper, so this is a no-op there.
+  const allowIdx = file.indexOf('"allow_voice_mode"');
+  if (allowIdx !== -1) {
+    const start = Math.max(0, allowIdx - 800);
+    const region = file.slice(start, allowIdx + 400);
+    const combined = region.match(
+      /function ([$\w]+)\(\)\{return [$\w]+\(\)&&[$\w]+\(\)\}/
+    );
+    if (combined && combined.index !== undefined) {
+      const abs = start + combined.index;
+      const brace = file.indexOf('{', abs);
+      if (brace !== -1) {
+        if (file.startsWith('return !0;', brace + 1)) return file;
+        return insertReturnTrueAt(file, brace + 1);
+      }
+    }
+    // Fallback: the slash-command getter itself, so a missing combined helper
+    // still un-hides /voice.
+    const hidden = file.match(
+      /name:"voice",description:"Toggle voice mode"[\s\S]{0,500}?get isHidden\(\)\{return![$\w]+\(\)\}/
+    );
+    if (hidden && hidden.index !== undefined) {
+      const getter = hidden[0].replace(
+        /get isHidden\(\)\{return![$\w]+\(\)\}/,
+        'get isHidden(){return!1}'
+      );
+      if (hidden[0] === getter) return file;
+      const newFile =
+        file.slice(0, hidden.index) +
+        getter +
+        file.slice(hidden.index + hidden[0].length);
+      showDiff(
+        file,
+        newFile,
+        getter,
+        hidden.index,
+        hidden.index + hidden[0].length
+      );
+      return newFile;
+    }
+  }
+
   // CC <=2.1.69: function XXX(){return YYY("tengu_amber_quartz",!1)}
   const legacyPattern =
     /function [$\w]+\(\)\{return [$\w]+\("tengu_amber_quartz"/;

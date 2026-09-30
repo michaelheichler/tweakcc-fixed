@@ -84,11 +84,10 @@ Two git repos move together on the same release cycle:
 | **lobotomized-claude-code (LCC)** | curated overrides (`.md` + frontmatter)             | `origin` = your fork of the overrides repo; no upstream (own canonical source) |
 
 - The README pairs tweakcc-fixed with an overrides repo (lobotomized-claude-code
-  by default) — clone or symlink it where the README says. `~/.tweakcc/system-prompts`
-  is a **symlink** → your active per-model override set (e.g. `…/lobotomized-claude-code/system-prompts-<model>`).
-  `~/.tweakcc/system-reminders` is symlinked the same way. The patcher reads both
-  via the symlinks at `--apply`. Use your active model override set — the public
-  skill does not assume a single model dir.
+  by default) — clone or symlink it where the README says. The patcher reads the
+  tweakcc config folder. Audit tools take `--overrides <dir>` (repeatable) or
+  `TWEAKCC_OVERRIDE_SETS` (`path.delimiter`-joined set directories). Use your
+  active model override set — the public skill does not assume a single model dir.
 - **CC install detection.** tweakcc auto-detects the installed Claude Code; the
   native binary it extracts from is the versioned binary your `claude` launcher
   resolves to. No env var is needed when there's exactly one install.
@@ -141,7 +140,7 @@ repeatedly. It also flags the **stale-backup** condition before it can bite (§1
 6. Stale-backup check + --apply + smoke             ← driver check
 7. LCC override realignment (the conflicts)         ← grounded workflow + the decision rule (§7)
 8. Commit each repo + push                          ← git commit -F (avoid the bad-substitution trap)
-9. Publish to npm (if you distribute via npm)       ← bump package.json version, tag vX.Y.Z, push --tags → release CI; consumers npx the new version
+9. Publish to npm (if you distribute via npm)       ← bump package.json version + supportedClaudeCode, tag vX.Y.Z, push --tags → release CI; consumers npx the new version
 ```
 
 > **Major-change gate — deem and stop, don't blindly apply.** "Applied cleanly /
@@ -435,12 +434,16 @@ git -C <overrides-repo> add system-prompts-<model>/ && git -C <overrides-repo> c
 ### Phase 9: publish to npm (if your fork is distributed as an npm package)
 
 The local `--apply` in Phase 6 is the pre-publish gate — publish only after the
-four zeros. Push main FIRST: npm installs of the package ship no `data/`, they
-fetch `prompts-X.Y.Z.json` from your repo's `main` branch at runtime, so an
-unpushed JSON 404s for every consumer.
+four zeros. npm installs of the package ship no `data/`: at runtime they fetch
+`prompts-X.Y.Z.json` from the release tag `v<version>` of your repo, so the JSON
+has to be in the commit the tag points at (`checkReleaseMeta` holds the release
+to that by requiring `supportedClaudeCode` to name the newest prompts file).
 
 ```bash
-# bump "version" in package.json (its own commit), push main, then:
+# bump "version" and "supportedClaudeCode" in package.json in the release commit
+# (supportedClaudeCode = the newest data/prompts/prompts-X.Y.Z.json), then:
+node tools/checkReleaseMeta.mjs                  # the release workflows run this too and abort on a mismatch
+# push main, then:
 git tag vX.Y.Z && git push origin main --tags   # tag push triggers the release workflow (npm publish + GH release)
 npm view <your-package> version                  # wait until the registry serves X.Y.Z
 ```

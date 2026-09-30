@@ -215,3 +215,123 @@ describe('writeUserMessageDisplay — CC 2.1.186 JSX runtime', () => {
     expect(out).toContain('" hidden)');
   });
 });
+
+// CC 2.1.246 ESM-split: jsx/jsxs are imported bindings (`o(Comp,{...})`),
+// not `MOD.jsx(...)`. Verbatim shape from /tmp/cli-2.1.246.js function tM.
+// `o(t,{color:"text"...})` is the same module's Text import; the decoy
+// `function v({color:...})` is what findTextComponent would pick globally
+// and must NOT be spliced (it is a different module's binding).
+const TEXT_FN_DECOY =
+  'function v({color:A,backgroundColor:B,dimColor:C=!1,bold:D=!1}){return null}';
+const LOCAL_TEXT_246 = 'o(t,{color:"text",children:"hi"});';
+const USER_MSG_246 =
+  'function tM(Ute){let Mm=R(23),{addMargin:Ete,param:vte,timestamp:Ate}=Ute,{text:ls}=vte;' +
+  'if(!ls){return Ye(Error("No content found in user prompt message")),null}' +
+  'const xm=Ete?1:0,km=bm?void 0:"userMessageBackground",_m=bm?0:1,Pm=bm?Ate:void 0;let Zy;' +
+  'if(Mm[14]!==wE||Mm[15]!==Pm||Mm[16]!==bm)Zy=o(Ff,{text:wE,useBriefLayout:bm,timestamp:Pm}),' +
+  'Mm[14]=wE,Mm[15]=Pm,Mm[16]=bm,Mm[17]=Zy;else Zy=Mm[17];let zz;' +
+  'if(Mm[18]!==xm||Mm[19]!==km||Mm[20]!==_m||Mm[21]!==Zy)' +
+  'zz=o(a,{flexDirection:"column",marginTop:xm,backgroundColor:km,paddingRight:_m,children:Zy}),' +
+  'Mm[18]=xm,Mm[19]=km,Mm[20]=_m,Mm[21]=Zy,Mm[22]=zz;else zz=Mm[22];return zz}';
+const FIXTURE_246 =
+  TEXT_FN_DECOY + ';' + CHALK_186 + LOCAL_TEXT_246 + USER_MSG_246;
+
+const REAL_CONFIG: UserMessageDisplayConfig = {
+  format: ' > {} ',
+  styling: [],
+  foregroundColor: 'default',
+  backgroundColor: 'rgb(28,32,48)',
+  borderStyle: 'topBottomBold',
+  borderColor: 'rgb(255,32,134)',
+  paddingX: 1,
+  paddingY: 0,
+  fitBoxToContent: false,
+};
+
+const SWEEP_CONFIG: UserMessageDisplayConfig = {
+  ...baseConfig,
+  borderStyle: 'round',
+  styling: ['bold'],
+};
+
+// CC 2.1.276 appended `awaitingModel` to the child's props; the anchor must
+// accept a trailing prop run rather than end at `timestamp`.
+const FIXTURE_276 = FIXTURE_246.replace(
+  'timestamp:Pm})',
+  'timestamp:Pm,awaitingModel:nd})'
+);
+
+describe('writeUserMessageDisplay — CC 2.1.276 trailing child props', () => {
+  it('matches a child call carrying props after timestamp', () => {
+    expect(FIXTURE_276).not.toBe(FIXTURE_246);
+    const out = writeUserMessageDisplay(FIXTURE_276, baseConfig);
+    expect(out).not.toBeNull();
+    expect(out).toContain('flexDirection:"column"');
+  });
+});
+
+describe('writeUserMessageDisplay — CC 2.1.246 imported jsx helpers', () => {
+  it('matches the imported-helper shape that .jsx patterns no longer find', () => {
+    const out = writeUserMessageDisplay(FIXTURE_246, baseConfig);
+    expect(out).not.toBeNull();
+    expect(out).not.toBe(FIXTURE_246);
+  });
+
+  it('emits a bare helper call, not .jsx / .createElement', () => {
+    const out = writeUserMessageDisplay(FIXTURE_246, baseConfig)!;
+    expect(out).toContain('o(t,{');
+    expect(out).not.toContain('.jsx(');
+    expect(out).not.toContain('.createElement(');
+    // must use the local Text import, not the globally-first decoy
+    expect(out).not.toContain('o(v,{');
+  });
+
+  it('preserves Box layout attrs (flexDirection/marginTop) for wrap width', () => {
+    const out = writeUserMessageDisplay(FIXTURE_246, baseConfig)!;
+    expect(out).toContain('flexDirection:"column"');
+    expect(out).toContain('marginTop:xm');
+  });
+
+  it('does not steal a dotted .jsx( call from a 2.1.186 binary', () => {
+    const out = writeUserMessageDisplay(FIXTURE_186, baseConfig)!;
+    expect(out).toContain('Jpo.jsx(v,{');
+    expect(out).not.toMatch(/(?<![.\w$])jsx\(/);
+  });
+
+  it('applies the real user config (custom bg, topBottomBold, paddingX:1)', () => {
+    const out = writeUserMessageDisplay(FIXTURE_246, REAL_CONFIG)!;
+    expect(out).not.toContain('backgroundColor:km');
+    const bgHits = out.split('backgroundColor:"rgb(28,32,48)"').length - 1;
+    expect(bgHits).toBe(2);
+    expect(out).toContain('borderColor:"rgb(255,32,134)"');
+    expect(out).toContain('paddingX:1');
+    expect(out).not.toContain('paddingY:');
+    expect(out).not.toContain('bold:!0');
+    // bold box-drawing glyph is \\uXXXX-escaped
+    expect(out).toContain('\\u2501');
+    expect(out).not.toContain('━');
+    const delta = delimiterDelta(out);
+    expect(delta.brace).toBe(0);
+    expect(delta.paren).toBe(0);
+    expect(delta.inTemplate).toBe(false);
+  });
+
+  it('applies the sweep fixture (round border, bold styling)', () => {
+    const out = writeUserMessageDisplay(FIXTURE_246, SWEEP_CONFIG)!;
+    expect(out).toContain('borderStyle:"round"');
+    expect(out).toContain('bold:!0');
+    expect(out).toContain('backgroundColor:km');
+    expect(out).toContain('backgroundColor:"userMessageBackground"');
+    const delta = delimiterDelta(out);
+    expect(delta.brace).toBe(0);
+    expect(delta.paren).toBe(0);
+    expect(delta.inTemplate).toBe(false);
+  });
+
+  it('unwraps the long-paste object variant on the imported-helper path', () => {
+    const out = writeUserMessageDisplay(FIXTURE_246, baseConfig)!;
+    expect(out).toContain('typeof wE==="object"');
+    expect(out).toContain('wE.head');
+    expect(out).toContain('wE.tail');
+  });
+});

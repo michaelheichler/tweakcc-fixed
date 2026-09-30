@@ -2,30 +2,22 @@
 //
 // [EXPERIMENTAL] Complexity effort router.
 //
-// Classifies how hard each task is into an ordinal level and sets the session's
-// reasoning-effort (thinking) level accordingly - routine work runs at low
-// effort (fast, cheap), the hardest work at max. It rides on whatever model the
-// user is already on (Opus 4.8 by default): a pure thinking-depth dial, no model
-// switch. COST NOTE: effort level IS part of the prompt-cache key (measured on
-// CC 2.1.191 via statusline current_usage - changing effort gives cache_read=0 +
-// a full cache_creation that turn; same effort = full read-hit). So every turn
-// the router changes the level forces a one-time full-history re-read uncached,
-// then cheaper again while the level holds. Each level keeps its own cache, so
-// returning to a prior level reuses most of its earlier work; pin-on (monotonic)
-// minimizes churn, pin-off pays it on every flip. The router sets effort via the
-// resolver, bypassing CC's manual-/effort confirm dialog, so the cost is silent.
-// Experimental; off by default.
+// Classifies each user message and adjusts reasoning effort only while the
+// user selects Opus 5.5 + Effort Router or Fable 5.1 + Effort Router in /model.
+// Ordinary model selections retain native effort behavior and stop side calls.
+// COST NOTE: verified on CC 2.1.282, both supported models reuse the same cached
+// prefix across effort changes as same-effort control turns. Native per-message
+// effort markers preserve prior turns. Historical full-cache-rebuild results
+// from CC 2.1.191 do not apply to these selectable modes. Routing still adds
+// Jev API usage and Haiku summary usage; lower effort does not guarantee lower
+// total cost for every workload. Experimental; model entries are off by default.
 //
-// -- Classifier: Haiku-only, with rolling-summary context --
-// Routing is done by a one-shot Haiku side-call (gB) on every prompt-mode submit.
-// The call is fed a compact running SUMMARY of the session, the most recent
-// exchange (previous user message + previous assistant reply), and the new user
-// message, and returns BOTH an integer complexity level AND an updated summary in
-// one round-trip. The summary is a terse rolling TL;DR (no char cap; its growth
-// is bounded by the compaction cycle - see below - not truncation), so the Haiku
-// input stays small no matter how long the session runs - it never sees the full
-// transcript - which keeps routing context-aware on terse follow-ups
-// ("now do the same", "fix it") that continue hard work.
+// -- Classifiers --
+// Jev receives the current message, latest completed concise summary, recent
+// unsummarized events, and configured effort rubric. Haiku updates the summary
+// asynchronously. The legacy Haiku provider classifies and summarizes in one
+// side call. Switching away aborts pending work and clears routed effort while
+// retaining reusable conversation context.
 //
 // -- Mechanism (illustrated with CC 2.1.186 darwin names; minified names churn
 // per version/platform, so every anchor CAPTURES them from the binary at apply
@@ -87,18 +79,16 @@
 // the session-id accessor is absent persistence is simply disabled.
 //
 // -- Scope note --
-// XQ is CC's single effort resolver, used for the main loop AND for subagents /
-// side-calls that resolve effort the same way. The wrap applies the routed effort
-// wherever effort resolves with no explicit user pin, so a task's subagents (on
-// an effort-capable model) inherit the task's effort. Side-calls on Haiku-class
-// models are unaffected (Haiku does not take effort, so XQ returns at its
-// `!FR(e)` guard, before the wrap).
+// XQ is CC's shared effort resolver. The wrapper applies only while a router
+// alias is selected and the request uses its exact concrete model. Subagents
+// use native effort even when they inherit that concrete model; request options
+// isolate their resolution from the parent router state.
 //
 // -- Interaction: ultracode --
-// CC's "ultracode" mode is gated on the RESOLVED effort being exactly "xhigh".
-// The default tiers map to low/medium/high/max (never xhigh), so while the router
-// drives, ultracode-gated behavior goes inactive for an xhigh-baseline user. To
-// keep ultracode reachable, map a tier's effort to "xhigh" (a valid RouterEffort).
+// Since CC 2.1.284 "ultracode" is a session setting (`/effort ultracode on|off`,
+// the `ultracode` settings key), independent of effort, so routed effort levels
+// no longer switch it off. Earlier builds (checked on 2.1.283) gate it on the
+// RESOLVED effort being exactly "xhigh"; there, map a tier's effort to "xhigh".
 //
 // -- Behavior --
 // pinPerTask (default true): a monotonic floor - the routed level never drops
@@ -120,6 +110,12 @@ import { debug, escapeNonAscii } from '../utils';
 import { showDiff, getRequireFuncName } from './index';
 import { ComplexityRouterConfig } from '../types';
 import { DEFAULT_ROUTER_SYSTEM_PROMPT } from '../defaultSettings';
+import {
+  bindRouterModules,
+  isSplitRouterBundle,
+} from './complexityRouterBridge';
+import { buildHybridRuntime } from './complexityRouterHybrid';
+import { writeComplexityRouterTurnStatus } from './complexityRouterTurnStatus';
 
 const ROUTER_MARKER = '__tweakccRouterClassify';
 
@@ -143,6 +139,11 @@ const MAX_LOG_ENTRIES = 1000;
 interface ClassifierHelpers {
   gB: string;
   km: string;
+  gBIndex?: number;
+  kmIndex?: number;
+  gBSource: string;
+  gBOptions: string;
+  gBPatched: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,7 +160,7 @@ interface ClassifierHelpers {
  */
 const buildRuntime = (
   config: ComplexityRouterConfig,
-  helpers: ClassifierHelpers,
+  helpers: Pick<ClassifierHelpers, 'gB' | 'km'>,
   sidFn: string | null,
   requireFunc: string
 ): string => {
@@ -202,6 +203,8 @@ const buildRuntime = (
   return (
     // ----- per-session state -----
     `function __tweakccRouterState(){return globalThis.__tweakccRouter||(globalThis.__tweakccRouter={level:void 0,effort:void 0,baseline:void 0,summary:void 0,prevUser:void 0,prevAssistant:void 0,pendingCompaction:void 0,pendingRewindCut:void 0,log:void 0,model:void 0,loaded:!1})}` +
+    `function __tweakccRouterSyncSelection(){var selected=null;try{selected=globalThis.__tweakccRouterSelectedModel?.()||null}catch(e){}var s=__tweakccRouterState();if(s.selectedModel!==selected){if(s.selectedModel!==void 0){s.generation=(s.generation||0)+1;s.routeAbort?.abort();s.level=void 0;s.effort=void 0;s.baseline=void 0;s.prevUser=void 0;s.prevAssistant=void 0;}s.selectedModel=selected;}return selected}` +
+    `globalThis.__tweakccRouterSyncSelection=__tweakccRouterSyncSelection;` +
     // Middle-truncate: keep head + tail, drop the middle (where the bulk paste /
     // logs live), with a size marker. The intent/framing (head) and the actual
     // ask or result (tail) survive, and the omitted-size marker is itself a
@@ -234,11 +237,12 @@ const buildRuntime = (
     `async function __tweakccRouterClassifyLlm(__input,__max){` +
     `var __schema={type:"object",properties:{level:{type:"integer",description:"effort level, 0 (least) to "+__max+" (most)"},summary:{type:"string",description:"the updated running TL;DR summary"}},required:["level","summary"],additionalProperties:false};` +
     `var __sys=${sysLit};` +
-    `var __ac=new AbortController(),__to=setTimeout(function(){try{__ac.abort()}catch(__e){}},${timeoutMs});` +
+    `var __ac=new AbortController();__tweakccRouterState().routeAbort=__ac;var __to=setTimeout(function(){try{__ac.abort()}catch(__e){}},${timeoutMs});` +
     `try{var __res=await ${helpers.gB}({systemPrompt:[__sys],userPrompt:__input,outputFormat:{type:"json_schema",schema:__schema},signal:__ac.signal,options:{querySource:"route_complexity",agents:[],isNonInteractiveSession:!1,hasAppendSystemPrompt:!1,mcpTools:[],agentContext:${helpers.km}()}});` +
     `return __tweakccRouterReadResult(__res)}finally{clearTimeout(__to)}}` +
     // ----- classify entry: called from the submit handler -----
     `async function ${ROUTER_MARKER}(__text,__mode,__model){try{` +
+    `var __selected=__tweakccRouterSyncSelection();if(!__selected)return;` +
     `var __ef=${efJson},__pin=${pin},__max=__ef.length-1,__labels=${labelsJson};` +
     `if(!__ef||!__ef.length)return;` +
     `var __st=__tweakccRouterState();` +
@@ -288,7 +292,8 @@ const buildRuntime = (
     `var __pa=__tweakccRouterTrunc(typeof __st.prevAssistant==="string"?__st.prevAssistant:"",${assistantCap});` +
     `var __input="<summary>\\n"+(__st.summary||"(none - first turn of the session)")+"\\n</summary>\\n<context>\\n"+__ctx+"\\n</context>\\n<recent_exchange>\\nuser: "+(__pu||"(none)")+"\\nassistant: "+(__pa||"(none)")+"\\n</recent_exchange>\\n<new_message>\\n"+__nm+"\\n</new_message>";` +
     // classify (fail OPEN)
-    `var __res=null;try{__res=await __tweakccRouterClassifyLlm(__input,__max)}catch(__e){__res=null}` +
+    `var __generation=__st.generation,__res=null;try{__res=await __tweakccRouterClassifyLlm(__input,__max)}catch(__e){__res=null}` +
+    `if(__tweakccRouterSyncSelection()!==__selected||__st.generation!==__generation)return;__st.routeAbort=null;` +
     `var __hi=__ef.indexOf("high");if(__hi<0)__hi=Math.min(2,__max);` +
     `var __lv,__sm=__st.summary;` +
     // Take the summary whenever present, independent of the level field, so the
@@ -315,13 +320,24 @@ const buildRuntime = (
 const wrapEffortResolver = (
   file: string,
   config: ComplexityRouterConfig,
-  helpers: ClassifierHelpers,
+  helpers: Pick<ClassifierHelpers, 'gB' | 'km'>,
   sidFn: string | null
 ): string | null => {
-  // Three resolver shapes, tried newest-first. The two in-line shapes expose the
+  // Five resolver shapes, tried newest-first. The two in-line shapes expose the
   // same capture groups: 1=prefix (through `=ENV();`), 2=MODEL, 3=FALLBACK,
-  // 4=ENV result, 5=combined effort var, 6=maxGuard, 7=xhighGuard. The split
-  // shape carries its guards in a separate normalizer function, resolved below.
+  // 4=ENV result, 5=combined effort var, 6=maxGuard, 7=xhighGuard. Both split
+  // shapes carry their guards in a separate normalizer function, resolved below.
+  //
+  // Method 0 — CC >= 2.1.251: the resolver gained a third options arg
+  // `{honorLaunchPin:PIN=!0}={}` and the launch-pin binding became
+  // `PIN&&LAUNCH(MODEL)` instead of a bare `LAUNCH(MODEL)` call. Still a
+  // split shape: guards live in the tail-called normalizer; the wrap still
+  // rides right after `=ENV();`. Same capture groups as patternSplit.
+  //   function NAME(MODEL,FALLBACK,{honorLaunchPin:PIN=!0}={}){if(!dI(MODEL))return;
+  //     let A=PIN&&SOe(MODEL),B=LKe(MODEL),ENV=Sft();
+  //     if(ENV===null&&!A)return;return NORM(ENV??(A?B:void 0)??FALLBACK??B,MODEL)}
+  const patternHonorPin =
+    /(function [$\w]+\(([$\w]+),([$\w]+),\{honorLaunchPin:[$\w]+=!0\}=\{\}\)\{if\(![$\w]+\(\2\)\)return;let [$\w]+=[$\w]+&&[$\w]+\(\2\),[$\w]+=[$\w]+\(\2\),([$\w]+)=[$\w]+\(\);)if\(\4===null&&![$\w]+\)return;return ([$\w]+)\(\4\?\?\([$\w]+\?[$\w]+:void 0\)\?\?\3\?\?[$\w]+,\2\)\}/;
   //
   // CC 2.1.222+ (lQ/s_u shape): the normalization + both support guards moved
   // OUT of the resolver into a shared normalizer, so the resolver body ends at
@@ -352,9 +368,62 @@ const wrapEffortResolver = (
   const patternLegacy =
     /(function [$\w]+\(([$\w]+),([$\w]+)\)\{if\(![$\w]+\(\2\)\)return;let [$\w]+=[$\w]+\(\2\),[$\w]+=[$\w]+\(\2\),([$\w]+)=[$\w]+\(\);)if\(\4===null\)return [$\w]+\?[$\w]+:void 0;let ([$\w]+)=\4\?\?\([$\w]+\?[$\w]+:void 0\)\?\?\3\?\?[$\w]+;if\(\5==="max"&&!([$\w]+)\(\2\)\)return"high";if\(\5==="xhigh"&&!([$\w]+)\(\2\)\)return"high";return \5\}/;
 
-  const splitMatch = file.match(patternSplit);
+  //
+  // CC 2.1.267: the options arg gained a per-turn `turnEffort:TURN`, a fourth
+  // binding records whether the model takes a numeric effort, and TURN outranks
+  // both the launch pin and the persisted FALLBACK:
+  //   function NAME(MODEL,FALLBACK,{honorLaunchPin:PIN=!0,turnEffort:TURN}={}){if(!$h(MODEL))return;
+  //     let A=PIN&&y1(MODEL),B=D(MODEL),ENV=G0(),NUM=U(MODEL)!==null;
+  //     if(ENV===null&&!A&&!NUM)return;let S=ENV??(ENV===null?B:void 0)??TURN??(A?B:void 0)??FALLBACK??B;
+  //     if(typeof S==="number"&&NUM)S=_1(S);return NORM(S,MODEL)}
+  // A per-turn effort is an explicit pick for that turn, so the router yields
+  // to it the same way it yields to ENV. Captures: 1=prefix, 2=MODEL,
+  // 3=FALLBACK, 4=TURN, 5=ENV, 6=NORM.
+  const patternTurnEffort =
+    /(function [$\w]+\(([$\w]+),([$\w]+),\{honorLaunchPin:[$\w]+=!0,turnEffort:([$\w]+)\}=\{\}\)\{if\(![$\w]+\(\2\)\)return;let [$\w]+=[$\w]+&&[$\w]+\(\2\),[$\w]+=[$\w]+\(\2\),([$\w]+)=[$\w]+\(\),[$\w]+=[$\w]+\(\2\)!==null;)if\(\5===null&&![$\w]+&&![$\w]+\)return;let ([$\w]+)=\5\?\?\(\5===null\?[$\w]+:void 0\)\?\?\4\?\?\([$\w]+\?[$\w]+:void 0\)\?\?\3\?\?[$\w]+;if\(typeof \6==="number"&&[$\w]+\)\6=[$\w]+\(\6\);return ([$\w]+)\(\6,\2\)\}/;
+  //
+  // CC 2.1.269: the options arg gained `hookEffortValue:HOOK`. NUM is bound
+  // first; a defined HOOK short-circuits (numeric HOOK is converted, then
+  // NORM) before the ENV/TURN/FALLBACK chain. The wrap still rides right
+  // after `=ENV();`, so a hook-set effort never reaches the router — the
+  // early-return is the yield. Same capture groups as patternTurnEffort.
+  //   function NAME(MODEL,FALLBACK,{honorLaunchPin:PIN=!0,turnEffort:TURN,hookEffortValue:HOOK}={}){
+  //     if(!SUPPORT(MODEL))return;let NUM=NUMERIC(MODEL)!==null;
+  //     if(HOOK!==void 0){let V=typeof HOOK==="number"&&NUM?CONVERT(HOOK):HOOK;return NORM(V,MODEL)}
+  //     let A=PIN&&LAUNCH(MODEL),B=DEFAULT(MODEL),ENV=ENVFN();
+  //     if(ENV===null&&!A&&!NUM)return;let S=ENV??(ENV===null?B:void 0)??TURN??(A?B:void 0)??FALLBACK??B;
+  //     if(typeof S==="number"&&NUM)S=CONVERT(S);return NORM(S,MODEL)}
+  const patternHookEffort =
+    /(function [$\w]+\(([$\w]+),([$\w]+),\{honorLaunchPin:[$\w]+=!0,turnEffort:([$\w]+),hookEffortValue:[$\w]+\}=\{\}\)\{if\(![$\w]+\(\2\)\)return;let [$\w]+=[$\w]+\(\2\)!==null;if\([$\w]+!==void 0\)\{let [$\w]+=typeof [$\w]+==="number"&&[$\w]+\?[$\w]+\([$\w]+\):[$\w]+;return [$\w]+\([$\w]+,\2\)\}let [$\w]+=[$\w]+&&[$\w]+\(\2\),[$\w]+=[$\w]+\(\2\),([$\w]+)=[$\w]+\(\);)if\(\5===null&&![$\w]+&&![$\w]+\)return;let ([$\w]+)=\5\?\?\(\5===null\?[$\w]+:void 0\)\?\?\4\?\?\([$\w]+\?[$\w]+:void 0\)\?\?\3\?\?[$\w]+;if\(typeof \6==="number"&&[$\w]+\)\6=[$\w]+\(\6\);return ([$\w]+)\(\6,\2\)\}/;
+  //
+  // CC 2.1.280: the launch pin left the resolver entirely — `honorLaunchPin` is
+  // 0 occurrences in the bundle — so the options arg is `{turnEffort:TURN,
+  // hookEffortValue:HOOK}` and the `(PIN?DEFAULT:void 0)` term is gone from the
+  // chain. The per-model DEFAULT is now bound AFTER the env check rather than
+  // beside it. The wrap still rides right after `=ENV();`, and the inject never
+  // referenced the pin, so only the anchor moves. Same capture groups as
+  // patternTurnEffort.
+  //   function NAME(MODEL,FALLBACK,{turnEffort:TURN,hookEffortValue:HOOK}={}){
+  //     if(!SUPPORT(MODEL))return;let NUM=NUMERIC(MODEL)!==null;
+  //     if(HOOK!==void 0){let V=typeof HOOK==="number"&&NUM?CONVERT(HOOK):HOOK;return NORM(V,MODEL)}
+  //     let ENV=ENVFN();if(ENV===null&&!NUM)return;
+  //     let DEF=DEFAULT(MODEL),S=ENV??(ENV===null?DEF:void 0)??TURN??FALLBACK??DEF;
+  //     if(typeof S==="number"&&NUM)S=CONVERT(S);return NORM(S,MODEL)}
+  const patternNoLaunchPin =
+    /(function [$\w]+\(([$\w]+),([$\w]+),\{turnEffort:([$\w]+),hookEffortValue:[$\w]+\}=\{\}\)\{if\(![$\w]+\(\2\)\)return;let [$\w]+=[$\w]+\(\2\)!==null;if\([$\w]+!==void 0\)\{let [$\w]+=typeof [$\w]+==="number"&&[$\w]+\?[$\w]+\([$\w]+\):[$\w]+;return [$\w]+\([$\w]+,\2\)\}let ([$\w]+)=[$\w]+\(\);)if\(\5===null&&![$\w]+\)return;let [$\w]+=[$\w]+\(\2\),([$\w]+)=\5\?\?\(\5===null\?[$\w]+:void 0\)\?\?\4\?\?\3\?\?[$\w]+;if\(typeof \6==="number"&&[$\w]+\)\6=[$\w]+\(\6\);return ([$\w]+)\(\6,\2\)\}/;
+  const turnMatch =
+    file.match(patternNoLaunchPin) ||
+    file.match(patternHookEffort) ||
+    file.match(patternTurnEffort);
+
+  const splitMatch = turnMatch
+    ? null
+    : file.match(patternHonorPin) || file.match(patternSplit);
   const match =
-    splitMatch || file.match(patternNew) || file.match(patternLegacy);
+    turnMatch ||
+    splitMatch ||
+    file.match(patternNew) ||
+    file.match(patternLegacy);
   if (!match || match.index === undefined) {
     if (!file.includes('CLAUDE_CODE_EFFORT_LEVEL')) {
       debug(
@@ -371,13 +440,15 @@ const wrapEffortResolver = (
   const prefix = match[1];
   const model = match[2];
   const fallback = match[3];
-  const env = match[4];
+  const turn = turnMatch ? turnMatch[4] : null;
+  const env = turnMatch ? turnMatch[5] : match[4];
   let maxGuard = match[6];
   let xhighGuard = match[7];
 
-  // Split shape: the guards live in the normalizer the resolver tail-calls.
-  if (splitMatch) {
-    const norm = splitMatch[5].replace(/[$]/g, '\\$');
+  // Split shapes: the guards live in the normalizer the resolver tail-calls.
+  const normName = turnMatch ? turnMatch[7] : splitMatch?.[5];
+  if (normName) {
+    const norm = normName.replace(/[$]/g, '\\$');
     const normPattern = new RegExp(
       `function ${norm}\\(([$\\w]+),([$\\w]+)\\)\\{let ([$\\w]+)=\\1;` +
         `(?:if\\(typeof \\3==="string"&&[$\\w]+\\(\\3\\)\\)\\3=[$\\w]+\\(\\3,\\2\\);)?` +
@@ -402,23 +473,31 @@ const wrapEffortResolver = (
   //     capture on first resolve. Equal-to-baseline (or unset) -> router drives.
   // Support guards re-applied so an unsupported level still downgrades to "high".
   const inject =
+    `var __request=arguments[3];if(!__request||(!__request.agentId&&(__request.querySource?.startsWith("repl_main_thread")||__request.querySource==="sdk"))){` +
+    `var __selected=__tweakccRouterSyncSelection();` +
     `var __st=__tweakccRouterState();` +
-    `if(__st.baseline===void 0)__st.baseline=(${fallback}==null?null:${fallback});` +
-    `let __twkRE=__st.effort;` +
-    `if(__twkRE&&${env}==null&&(${fallback}==null||${fallback}===__st.baseline)){` +
+    `if(__selected===${model}&&__st.baseline===void 0)__st.baseline=(${fallback}==null?null:${fallback});` +
+    `let __twkRE=__selected===${model}?__st.effort:void 0;` +
+    `if(__twkRE&&${env}==null${turn ? `&&${turn}==null` : ''}&&(${fallback}==null||${fallback}===__st.baseline)){` +
     `if(__twkRE==="max"&&!${maxGuard}(${model}))__twkRE="high";` +
     `if(__twkRE==="xhigh"&&!${xhighGuard}(${model}))__twkRE="high";` +
-    `return __twkRE}`;
+    `globalThis.__tweakccRouterResolution={effort:__twkRE};return __twkRE}}`;
 
   // Resolve the require fn name for THIS build: Bun exposes `require` directly,
   // but esbuild (NPM installs) routes it through a createRequire-derived var, so
   // bare require() is undefined there - the sidecar fs/path/os calls would throw.
-  const runtime = buildRuntime(
+  let runtime = (config.provider === 'jev' ? buildHybridRuntime : buildRuntime)(
     config,
     helpers,
     sidFn,
-    getRequireFuncName(file)
+    isSplitRouterBundle(file)
+      ? 'process.getBuiltinModule'
+      : getRequireFuncName(file)
   );
+  if (isSplitRouterBundle(file) && config.provider !== 'jev') {
+    runtime +=
+      'globalThis.__tweakccRouterState=__tweakccRouterState;globalThis.__tweakccRouterClassify=__tweakccRouterClassify;';
+  }
   const replacement = runtime + prefix + inject + match[0].slice(prefix.length);
 
   const start = match.index;
@@ -431,7 +510,7 @@ const wrapEffortResolver = (
 // ---------------------------------------------------------------------------
 // Splice 2: call the classify hook from the submit handler.
 // ---------------------------------------------------------------------------
-const injectSubmitHook = (file: string): string | null => {
+const injectSubmitHook = (file: string, hybrid: boolean): string | null => {
   // if(E===null&&t!=="prompt")throw Error(`Mode: ${t} requires a string input.`);
   // Captures: 1=text var (E), 2=mode var (t).
   const pattern =
@@ -464,7 +543,16 @@ const injectSubmitHook = (file: string): string | null => {
   ];
   const last = modelMatches[modelMatches.length - 1];
   const modelExpr = last ? `${last[1]}.options.mainLoopModel` : 'void 0';
-  const call = `await ${ROUTER_MARKER}(${textVar},${modeVar},${modelExpr});`;
+  const historyExpr = last ? `${last[1]}.messages` : 'void 0';
+  const sessionExpr = last ? `${last[1]}.session?.id` : 'void 0';
+  const target = isSplitRouterBundle(file)
+    ? `globalThis.${ROUTER_MARKER}`
+    : ROUTER_MARKER;
+  const argumentsExpr = `${textVar},${modeVar},${modelExpr}${hybrid ? `,${historyExpr},${sessionExpr}` : ''}`;
+  const invocation = `await ${target}(${argumentsExpr});`;
+  const call = hybrid
+    ? `try{${last ? `if(!${last[1]}.agentId)` : ''}{${last ? `${last[1]}.__tweakccRouterTurn=` : ''}${invocation}}}catch(__tweakccRouterError){}`
+    : invocation;
 
   const insertAt = match.index + match[0].length;
   const newFile = file.slice(0, insertAt) + call + file.slice(insertAt);
@@ -483,6 +571,26 @@ const injectSubmitHook = (file: string): string | null => {
 // majority); a pure-text turn just leaves the prior captured text in place.
 // ---------------------------------------------------------------------------
 const injectPrevAssistantCapture = (file: string): string => {
+  if (file.includes('function __tweakccRouterObserve(')) {
+    const round =
+      /let [$\w]+;if\(([$\w]+)\.gates\.emitToolUseSummaries&&[$\w]+\.length>0&&!([$\w]+)\.abortController\.signal\.aborted&&!\2\.agentId\)\{let [$\w]+=([$\w]+)\.at\(-1\)/;
+    const match = file.match(round);
+    if (match?.index !== undefined) {
+      const tail = file.slice(match.index, match.index + 2000);
+      const results = tail.match(
+        /([$\w]+)\.find\(\([$\w]+\)=>[$\w]+\.type==="user"&&Array\.isArray/
+      );
+      const target = isSplitRouterBundle(file)
+        ? 'globalThis.__tweakccRouterObserve'
+        : '__tweakccRouterObserve';
+      const capture = `try{if(!${match[2]}.agentId)${target}(${match[3]}${results ? `.concat(${results[1]})` : ''},${match[2]}.session?.id,${match[2]}.__tweakccRouterTurn);}catch(__tweakccRouterError){}`;
+      return file.slice(0, match.index) + capture + file.slice(match.index);
+    }
+    debug(
+      'patch: complexityRouter: round capture absent - transcript refresh occurs at submit'
+    );
+    return file;
+  }
   const pattern =
     /([$\w]+)=([$\w]+)\.at\(-1\),([$\w]+);if\(\1\)\{let ([$\w]+)=\1\.message\.content\.filter\(\(([$\w]+)\)=>\5\.type==="text"\);if\(\4\.length>0\)\{let ([$\w]+)=\4\.at\(-1\);if\(\6&&"text"in \6\)\3=\6\.text\}\}/;
   const match = file.match(pattern);
@@ -493,7 +601,7 @@ const injectPrevAssistantCapture = (file: string): string => {
     return file;
   }
   const textVar = match[3];
-  const capture = `try{var __twr=globalThis.__tweakccRouter;if(__twr)__twr.prevAssistant=${textVar}}catch(__e){}`;
+  const capture = `try{var __twr=globalThis.__tweakccRouter;if(__twr&&globalThis.__tweakccRouterSyncSelection?.())__twr.prevAssistant=${textVar}}catch(__e){}`;
   const insertAt = match.index + match[0].length;
   const newFile = file.slice(0, insertAt) + capture + file.slice(insertAt);
   showDiff(file, newFile, capture, insertAt, insertAt);
@@ -518,7 +626,7 @@ const injectCompactionCapture = (file: string): string => {
     return file;
   }
   const sumVar = match[1];
-  const replacement = `return globalThis.__tweakccRouter&&(globalThis.__tweakccRouter.pendingCompaction=${sumVar}),{ok:!0,summaryText:${sumVar},`;
+  const replacement = `return globalThis.__tweakccRouter&&((typeof globalThis.__tweakccRouterInvalidate==="function"&&globalThis.__tweakccRouterInvalidate(globalThis.__tweakccRouter),globalThis.__tweakccRouter.pendingCompaction=${sumVar})),{ok:!0,summaryText:${sumVar},`;
   const start = match.index;
   const end = start + match[0].length;
   const newFile = file.slice(0, start) + replacement + file.slice(end);
@@ -538,7 +646,7 @@ const injectCompactionCapture = (file: string): string => {
 // ---------------------------------------------------------------------------
 const injectRestoreReset = (file: string): string => {
   const pattern =
-    /onRestoreMessage:\(([$\w]+)\)=>([$\w]+)\(\1,"message_selector"\)/;
+    /onRestoreMessage:\(([$\w]+)\)=>([$\w]+(?:\.[$\w]+)?)\(\1,"message_selector"\)/;
   const match = file.match(pattern);
   if (!match || match.index === undefined) {
     debug(
@@ -550,7 +658,7 @@ const injectRestoreReset = (file: string): string => {
   const fn = match[2];
   // Capture the rewound-TO message's timestamp - the only stable link across the
   // fork (it has no exposed parentUuid, and its own uuid is in the new fork space).
-  const replacement = `onRestoreMessage:(${param})=>(globalThis.__tweakccRouter&&(globalThis.__tweakccRouter.pendingRewindCut=${param}&&${param}.timestamp),${fn}(${param},"message_selector"))`;
+  const replacement = `onRestoreMessage:(${param})=>(globalThis.__tweakccRouter&&((typeof globalThis.__tweakccRouterInvalidate==="function"&&globalThis.__tweakccRouterInvalidate(globalThis.__tweakccRouter),globalThis.__tweakccRouter.pendingRewindCut=${param}&&${param}.timestamp)),${fn}(${param},"message_selector"))`;
   const start = match.index;
   const end = start + match[0].length;
   const newFile = file.slice(0, start) + replacement + file.slice(end);
@@ -564,13 +672,48 @@ const injectRestoreReset = (file: string): string => {
 // unique to gB: it pins `model:<fn>(),enablePromptCaching:` (Vpt has no `model:`).
 // km is `function NAME(){return{agentType:"main",agentId:<fn>()}}`.
 const findClassifierHelpers = (file: string): ClassifierHelpers | null => {
-  const gb = file.match(
-    /async function ([$\w]+)\(\{systemPrompt:[$\w]+=[$\w]+\(\[\]\),userPrompt:[$\w]+,outputFormat:[$\w]+,signal:[$\w]+,options:[$\w]+\}\)\{return\(await [$\w]+\([\s\S]{0,500}?,model:[$\w]+\(\),enablePromptCaching:/
-  );
   const km = file.match(
     /function ([$\w]+)\(\)\{return\{agentType:"main",agentId:[$\w]+\(\)\}\}/
   );
-  if (gb && km) return { gB: gb[1], km: km[1] };
+  if (!km) return null;
+  // Method 1 (2.1.285+): gB is a thin wrapper that resolves the small-fast
+  // model itself (`let n=fn(fn2()),...`) and forwards the whole options object
+  // plus model/fallback to the inner side-call: `return await Inner(e,g[h],g[h+1])`.
+  const gbNew = file.match(
+    /async function ([$\w]+)\(([$\w]+)\)\{(let ([$\w]+)=)([$\w]+\([$\w]+\(\)\)),[\s\S]{0,600}?return await [$\w]+\(\2,[$\w]+\[[$\w]+\],[$\w]+\[[$\w]+\+1\]\)/
+  );
+  if (gbNew) {
+    const [full, name, param, letPrefix, , modelExpr] = gbNew;
+    const head = `async function ${name}(${param}){${letPrefix}${modelExpr},`;
+    return {
+      gB: name,
+      km: km[1],
+      gBIndex: gbNew.index,
+      kmIndex: km.index,
+      gBSource: full,
+      gBOptions: `${param}.options`,
+      gBPatched:
+        `async function ${name}(${param}){${letPrefix}${param}.options.querySource==="route_complexity"?"claude-haiku-4-5":${modelExpr},` +
+        full.slice(head.length),
+    };
+  }
+  // Method 2: gB itself pins `model:<fn>(),enablePromptCaching:`.
+  const gb = file.match(
+    /async function ([$\w]+)\(\{systemPrompt:[$\w]+=[$\w]+\(\[\]\),userPrompt:[$\w]+,outputFormat:[$\w]+,signal:[$\w]+,options:([$\w]+)\}\)\{return\(await [$\w]+\([\s\S]{0,500}?,model:[$\w]+\(\),enablePromptCaching:/
+  );
+  if (gb)
+    return {
+      gB: gb[1],
+      km: km[1],
+      gBIndex: gb.index,
+      kmIndex: km.index,
+      gBSource: gb[0],
+      gBOptions: gb[2],
+      gBPatched: gb[0].replace(
+        /model:([$\w]+)\(\),enablePromptCaching:$/,
+        `model:${gb[2]}.querySource==="route_complexity"?"claude-haiku-4-5":$1(),enablePromptCaching:`
+      ),
+    };
   return null;
 };
 
@@ -592,13 +735,13 @@ export const writeComplexityRouter = (
     return oldFile;
   }
 
-  // Haiku routing is the only mode now, so gB/km are required. If they can't be
-  // found in this build, the router can't classify - no-op gracefully.
+  // Both providers use the Haiku helper for conversation context. If it cannot
+  // be found in this build, leave the router inactive.
   const helpers = findClassifierHelpers(oldFile);
   if (!helpers) {
     console.warn(
       'patch: complexityRouter: gB/km side-call helpers not found in this CC ' +
-        'build - cannot route without the Haiku classifier; skipping the router'
+        'build - cannot maintain routing context; skipping the router'
     );
     return oldFile;
   }
@@ -611,12 +754,20 @@ export const writeComplexityRouter = (
     );
   }
 
-  const afterResolver = wrapEffortResolver(oldFile, config, helpers, sidFn);
+  const bound = bindRouterModules(oldFile, helpers);
+  if (!bound) return null;
+  bound.file = bound.file.replace(helpers.gBSource, () => helpers.gBPatched);
+  const afterResolver = wrapEffortResolver(
+    bound.file,
+    config,
+    bound.helpers,
+    sidFn
+  );
   if (afterResolver === null) return null;
   // Graceful no-op (resolver absent) returns the file unchanged: nothing to hook.
-  if (afterResolver === oldFile) return oldFile;
+  if (afterResolver === bound.file) return oldFile;
 
-  const afterHook = injectSubmitHook(afterResolver);
+  const afterHook = injectSubmitHook(afterResolver, config.provider === 'jev');
   if (afterHook === null) return null;
   // All-or-nothing: if the submit handler is absent, don't ship the resolver wrap
   // + runtime with nothing to populate the global (a permanently inert wrap plus
@@ -631,7 +782,12 @@ export const writeComplexityRouter = (
 
   // Splices 3, 4, 5 are optional: a missing capture site only costs prior-assistant
   // context / compaction reseed / rewind reset, so never fail the patch on them.
-  return injectRestoreReset(
-    injectCompactionCapture(injectPrevAssistantCapture(afterHook))
+  const afterCapture = injectPrevAssistantCapture(afterHook);
+  return writeComplexityRouterTurnStatus(
+    injectRestoreReset(
+      config.provider === 'jev'
+        ? afterCapture
+        : injectCompactionCapture(afterCapture)
+    )
   );
 };

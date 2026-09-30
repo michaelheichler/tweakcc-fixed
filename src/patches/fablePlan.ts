@@ -27,25 +27,20 @@
 //   3. the builtin-default switch
 //   4. the alias -> concrete model switch
 //   5. the `/model` picker options
-//   6. the effort resolver
+//   6. the per-model effort lookup
 //
-// Effort is decided in `uM` — the one function that is handed the permission
-// mode — and read back in the effort resolver through a global.
+// Effort is Claude Code's own: each model keeps its level in
+// `settings.modelSettings.<model>.effortLevel` (what `/model` writes when you
+// adjust effort on a model), falling back to that model's built-in default. CC
+// looks that table up by the SESSION model, and a fableplan session resolves to
+// the exec model, so without help a Fable plan turn would run at Opus's level.
+// `uM` knows which model answers this request, records it in a global, and the
+// table lookup reads it — so each side of the pairing gets the level you set
+// for that model. An explicit `/effort` for the session still applies to both.
 //
-// It used to key on the resolved model instead ("the alias already encodes the
-// mode, so the model the effort resolver is handed says which side we are on").
-// That was WRONG, and shipped: every call site of the effort resolver passes
-// `options.mainLoopModel`, the SESSION model, never the per-request plan-resolved
-// one — `k3(m.options.mainLoopModel,…)` x6, `yW(…options.mainLoopModel,…)` x6,
-// and the spinner's `Qbt(h??fs(),…)`. So while planning it was handed the RESTING
-// model (Opus), the substring test missed, and Claude Code reported "thinking
-// with medium effort" during a Fable plan turn. Deriving both halves from the
-// same decision is the only way they cannot disagree.
-//
-// Still composes with the complexity router, which splices the same function at
-// a different point (right after its `=ENV();` prefix): this rides the top of
-// the body, so when fableplan is selected it answers first and the router keeps
-// every other model.
+// Earlier versions pinned their own plan/exec levels from tweakcc's config and
+// answered before Claude Code's resolver; that shadowed `/effort` and the
+// per-model table entirely, and was retired once CC grew per-model levels.
 
 // Scope note, because it nearly went the other way. The splices call helpers
 // declared far from where they are injected — the effort resolver reaches for
@@ -65,10 +60,11 @@ import { showDiff } from './index';
 
 const ALIAS = 'fableplan';
 
-// Written by the model resolver, read by the effort resolver. `__tweakcc` is the
-// repo's patched-binary marker prefix, so a binary carrying it is correctly
-// detected as patched.
-const EFFORT_GLOBAL = 'globalThis.__tweakccFablePlanEffort';
+// Written by the model resolver, read by the per-model effort lookup. `__tweakcc`
+// is the repo's patched-binary marker prefix, so a binary carrying it is
+// correctly detected as patched. A global rather than a call because the two
+// sites live in different bundle modules.
+const MODEL_GLOBAL = 'globalThis.__tweakccFablePlanModel';
 
 /**
  * Splice 1 — the alias whitelist.
@@ -125,25 +121,45 @@ const patchPlanResolver = (
   config: FablePlanConfig,
   aliasToModel: string
 ): string | null => {
-  const pattern =
+  // Method -1 — CC >= 2.1.268: the resolver returns `{model,clampWarning}` and
+  // a thin wrapper logs the warning, so every early return is an object.
+  const patternObj =
+    /(function ([$\w]+)\(([$\w]+)\)\{let\{permissionMode:([$\w]+),mainLoopModel:([$\w]+),exceeds200kTokens:([$\w]+)=!1\}=\3;)(if\(\4!=="plan"\)return\{model:\5,clampWarning:null\};let [$\w]+=([$\w]+)\(\),)/;
+  const matchObj = file.match(patternObj);
+
+  // Method 0 — CC >= 2.1.251: the inlined opusplan/haiku branches became a
+  // pairing table, and the selected-alias getter moved past an early
+  // `if(mode!=="plan")return main`. Call the getter ourselves so we still
+  // intercept before that return (exec-side resolution + effort).
+  const pattern0 =
+    /(function ([$\w]+)\(([$\w]+)\)\{let\{permissionMode:([$\w]+),mainLoopModel:([$\w]+),exceeds200kTokens:([$\w]+)=!1\}=\3;)(if\(\4!=="plan"\)return \5;let [$\w]+=([$\w]+)\(\),)/;
+  const match0 = matchObj ? null : file.match(pattern0);
+
+  const pattern1 =
     /(function ([$\w]+)\(([$\w]+)\)\{let\{permissionMode:([$\w]+),mainLoopModel:([$\w]+),exceeds200kTokens:([$\w]+)=!1\}=\3,([$\w]+)=([$\w]+)\(\);)/;
-  const match = file.match(pattern);
+  const match1 = matchObj || match0 ? null : file.match(pattern1);
+
+  const match = matchObj ?? match0 ?? match1;
   if (!match || match.index === undefined) {
     console.error(
       'patch: fablePlan: failed to find the plan-mode model resolver (uM shape)'
     );
     return null;
   }
-  const [, prefix, , , mode, , , selected] = match;
-  // Both halves of the pairing come out of ONE branch. The global is cleared on
-  // the way past for every other alias, so switching away from fableplan cannot
-  // leave a stale effort pinned for the rest of the session.
+  const prefix = match[1];
+  const mode = match[4];
+  const tableShape = matchObj ?? match0;
+  const selected = tableShape ? `${match[8]}()` : match[7];
+  const tail = tableShape ? match[7] : '';
+  const resolvedModel = `${aliasToModel}(${mode}==="plan"?"${config.planModel}":"${config.execModel}")`;
+  // The model and the effort lookup key come out of ONE branch. The global is
+  // cleared on the way past for every other alias, so switching away from
+  // fableplan cannot leave a stale model steering the effort table.
   const injection =
-    `if(${selected}==="${ALIAS}"){${EFFORT_GLOBAL}=` +
-    `${mode}==="plan"?"${config.planEffort}":"${config.execEffort}";` +
-    `return ${aliasToModel}(${mode}==="plan"?"${config.planModel}":"${config.execModel}")}` +
-    `${EFFORT_GLOBAL}=void 0;`;
-  const replacement = prefix + injection;
+    `if(${selected}==="${ALIAS}"){${MODEL_GLOBAL}=${resolvedModel};` +
+    `${matchObj ? `return{model:${MODEL_GLOBAL},clampWarning:null}` : `return ${MODEL_GLOBAL}`}}` +
+    `${MODEL_GLOBAL}=void 0;`;
+  const replacement = prefix + injection + tail;
   const newFile =
     file.slice(0, match.index) +
     replacement +
@@ -245,12 +261,30 @@ const patchModelPicker = (
 ): string | null => {
   const pattern =
     /(function [$\w]+\(([$\w]+),([$\w]+)\)\{let ([$\w]+)=[$\w]+\(\2\),([$\w]+)=[$\w]+\.ANTHROPIC_CUSTOM_MODEL_OPTION;)/;
-  const match = file.match(pattern);
+  // CC 2.1.257 shape: the builder resolves a bootstrap list first and the
+  // pickable array became the SECOND declarator, so the list to push onto is no
+  // longer the first binding:
+  //   function eXr(e,n){let r=X9r(e,n),o=r??V9r(e),d=a.ANTHROPIC_CUSTOM_MODEL_OPTION;
+  const pattern257 =
+    /(function [$\w]+\(([$\w]+),([$\w]+)\)\{let ([$\w]+)=[$\w]+\(\2,\3\),([$\w]+)=\4\?\?[$\w]+\(\2\),([$\w]+)=[$\w]+\.ANTHROPIC_CUSTOM_MODEL_OPTION;)/;
+  // CC 2.1.268 shape: the custom-option read moved out of the first `let`, past
+  // a flag-gated merge of the bootstrap list. Anchor on the first statement and
+  // confirm the custom-option read follows before the next function — by scope,
+  // not distance, because model-customizations and opusplan1m inject pushes here
+  // first:
+  //   function Vko(e,n){let r=Wko(e,n),o=r??Smn(e),d=r!==null&&Ple()==="flag";
+  //     if(d){…}let p=r===null||d,_=a.ANTHROPIC_CUSTOM_MODEL_OPTION;
+  const pattern268 =
+    /(function [$\w]+\(([$\w]+),([$\w]+)\)\{let ([$\w]+)=[$\w]+\(\2,\3\),([$\w]+)=\4\?\?[$\w]+\(\2\),[^;]*;)(?=(?:(?!function )[^])*?[$\w]+\.ANTHROPIC_CUSTOM_MODEL_OPTION;)/;
+  const match257 = file.match(pattern268) ?? file.match(pattern257);
+  const match = match257 ?? file.match(pattern);
   if (!match || match.index === undefined) {
     console.error('patch: fablePlan: failed to find the model picker options');
     return null;
   }
-  const list = match[4];
+  // The pickable array is capture 5 on the 2.1.257 shape and capture 4 on the
+  // older one; reading the wrong group silently pushes onto the bootstrap list.
+  const list = match257 ? match[5] : match[4];
   const label = `${title(config.planModel)} Plan Mode`;
   const description = `Use ${title(config.planModel)} in plan mode, ${title(config.execModel)} otherwise`;
   const option = JSON.stringify({ value: ALIAS, label, description });
@@ -271,31 +305,44 @@ const patchModelPicker = (
 };
 
 /**
- * Splice 6 — reasoning effort, read back from the model resolver's decision.
+ * Splice 6 — per-model effort, keyed on the model that answers this request.
  *
- * The effort resolver is never handed the per-request model — every call site
- * passes `options.mainLoopModel` — so it cannot work out which side of the
- * pairing a turn is on by itself. `uM` can, because it receives the permission
- * mode, so it records the answer and this reads it.
+ * `case"inherit":if(e.settingsEffortTable===void 0)return;
+ *   if(!ee(e.settingsEffortTable))return e.settingsEffortTable.default;
+ *   return Z(e.settingsEffortTable,n??e.mainLoopModelForSession??…)`
  *
- * Rides the top of the resolver body, a different anchor from the complexity
- * router's (`=ENV();`), so the two compose: this answers only while fableplan is
- * the selected alias, and the router keeps every other model.
+ * `n` is the session model, which for fableplan resolves to the exec model.
+ * Prefer the model `uM` recorded for this request, so a plan turn reads the
+ * planning model's own entry. Nothing else in the resolver changes: env
+ * overrides, an explicit session `/effort`, per-turn effort and the per-model
+ * caps and defaults all still apply, and every other alias passes through
+ * because the global is only set while fableplan is selected.
  */
-const patchEffortResolver = (file: string): string | null => {
+const patchEffortLookup = (file: string): string | null => {
+  if (file.includes(`settingsEffortTable,${MODEL_GLOBAL}??`)) {
+    debug('patch: fablePlan: effort lookup already keyed — skipping');
+    return file;
+  }
+  // The table guard flipped polarity in CC 2.1.280 — `if(!ee(TABLE))` became
+  // `if(se(TABLE))`, the negation moving into the predicate — so match either.
+  // The splice only needs the `return LOOKUP(TABLE,` site that follows; which
+  // way the guard reads says nothing about where the model key goes.
   const pattern =
-    /(function ([$\w]+)\(([$\w]+),([$\w]+)\)\{)(if\(!([$\w]+)\(\3\)\)return;let [$\w]+=[$\w]+\(\3\),[$\w]+=[$\w]+\(\3\),[$\w]+=[$\w]+\(\);)/;
+    /(case"inherit":if\(([$\w]+)\.settingsEffortTable===void 0\)return;if\(!?[$\w]+\(\2\.settingsEffortTable\)\)return \2\.settingsEffortTable\.default;return [$\w]+\(\2\.settingsEffortTable,)/;
   const match = file.match(pattern);
   if (!match || match.index === undefined) {
-    if (!file.includes('CLAUDE_CODE_EFFORT_LEVEL')) {
-      debug('patch: fablePlan: effort resolver absent in this build — no-op');
+    if (!file.includes('settingsEffortTable')) {
+      debug(
+        'patch: fablePlan: no per-model effort table in this build — effort follows the session'
+      );
       return file;
     }
-    console.error('patch: fablePlan: failed to find the effort resolver');
+    console.error(
+      'patch: fablePlan: failed to find the per-model effort lookup'
+    );
     return null;
   }
-  const injection = `if(${EFFORT_GLOBAL}!==void 0)return ${EFFORT_GLOBAL};`;
-  const replacement = match[1] + injection + match[5];
+  const replacement = `${match[1]}${MODEL_GLOBAL}??`;
   const newFile =
     file.slice(0, match.index) +
     replacement +
@@ -307,6 +354,119 @@ const patchEffortResolver = (file: string): string | null => {
     match.index,
     match.index + match[0].length
   );
+  return newFile;
+};
+
+/**
+ * Splice 8 — no single effort control on the fableplan row of `/model`.
+ *
+ * The picker resolves the highlighted alias to one concrete model, so ←/→ on
+ * fableplan would pin ONE session-wide level for both sides and save it as the
+ * exec model's default. Each side already follows its own model's setting
+ * (splice 6), so on this row the arrows do nothing, the effort line says where
+ * the levels come from, and confirming the row never writes an effort:
+ *   - the adjust handler returns before `supportsEffort` for fableplan;
+ *   - the effort line renders a note instead of the level + ←/→ hint;
+ *   - the commit passes the alias through with no effort, even if the arrows
+ *     were used on another row first.
+ */
+const patchPickerEffortRow = (
+  file: string,
+  config: FablePlanConfig
+): string | null => {
+  if (!file.includes('"modelPicker:decreaseEffort"')) {
+    debug('patch: fablePlan: no model-picker effort control in this build');
+    return file;
+  }
+  if (file.includes(`==="${ALIAS}")return;let `)) {
+    debug('patch: fablePlan: picker effort row already handled — skipping');
+    return file;
+  }
+
+  const adjust =
+    /(=[$\w]+\(\(([$\w]+)\)=>\{let ([$\w]+)=[$\w]+\(\),([$\w]+)=[$\w]+\.find\(\(([$\w]+)\)=>\5\.value===\3\);if\(\4===void 0\|\|\4\.disabled===!0\)return;)(let ([$\w]+)=[$\w]+\(\3\);if\(!\7\.supportsEffort\)return;)/;
+  const display =
+    /(([$\w]+)!==void 0&&![$\w]+&&[$\w]+\([$\w]+,\{marginBottom:1,flexDirection:"column",children:)([$\w]+\?)/;
+  const unsupported =
+    /([$\w]+)\(([$\w]+),\{color:"subtle",children:\[[$\w]+\([$\w]+,\{effort:void 0\}\)," Effort not supported"/;
+  const commits = [
+    // CC >= 2.1.284: ultracode left the effort scale for its own session flag,
+    // so the commit no longer guards the level against it.
+    //   function ir(es){let ss=wy(es),Cs=nn(),ws=Yo(),Is=ss&&Cs!==void 0?
+    //   zV(Cs,ss):Cs;i("tengu_model_command_menu_effort",…
+    /(function ([$\w]+)\(([$\w]+)\)\{)(let ([$\w]+)=[$\w]+\(\3\),(?:[$\w]+=[$\w]+\(\),)*[$\w]+=\5&&([$\w]+)!==void 0\?[$\w]+\(\6,\5\):\6;[$\w]+\("tengu_model_command_menu_effort")/,
+    // CC 2.1.281 - 2.1.283: effort state is read through getters inside the commit,
+    // and the analytics call is a bare statement.
+    //   function Dr(cs){let Ts=vy(cs),Hs=Pn(),_i=qo(),fi=Ts&&Hs!==void 0&&
+    //   Hs!=="ultracode"?yG(Hs,Ts):Hs;i("tengu_model_command_menu_effort",…
+    /(function ([$\w]+)\(([$\w]+)\)\{)(let ([$\w]+)=[$\w]+\(\3\),(?:[$\w]+=[$\w]+\(\),)*[$\w]+=\5&&([$\w]+)!==void 0&&\6!=="ultracode"\?[$\w]+\(\6,\5\):\6;[$\w]+\("tengu_model_command_menu_effort")/,
+    // CC <= 2.1.280.
+    /(function ([$\w]+)\(([$\w]+)\)\{)(let ([$\w]+)=[$\w]+\(\3\),[$\w]+=\5&&[$\w]+!==void 0&&[$\w]+!=="ultracode"\?[$\w]+\([$\w]+,\5\):[$\w]+;if\([$\w]+\("tengu_model_command_menu_effort")/,
+  ];
+
+  const a = file.match(adjust);
+  const d = file.match(display);
+  const u = file.match(unsupported);
+  let c: RegExpMatchArray | null = null;
+  for (const commit of commits) {
+    c = file.match(commit);
+    if (c) break;
+  }
+  if (
+    !a ||
+    a.index === undefined ||
+    !d ||
+    d.index === undefined ||
+    !u ||
+    !c ||
+    c.index === undefined
+  ) {
+    console.error(
+      'patch: fablePlan: failed to find the model picker effort control'
+    );
+    return null;
+  }
+  // The commit's own apply call, `if(sel===DEFAULT){apply(null,effort);return}`,
+  // names the function that sets the model; find it inside the same function.
+  const tail = file
+    .slice(c.index + c[1].length)
+    .match(
+      new RegExp(
+        `^(?:(?!function )[^])*?if\\(${c[3].replace(/\$/g, '\\$')}===[$\\w]+\\)\\{([$\\w]+)\\(null,[$\\w]+\\);return\\}`
+      )
+    );
+  if (!tail) {
+    console.error(
+      'patch: fablePlan: failed to find the model picker apply call'
+    );
+    return null;
+  }
+  const note = JSON.stringify(
+    `${title(config.planModel)} and ${title(config.execModel)} each use their own effort (set it on their rows)`
+  );
+  const edits: [number, number, string][] = [
+    [
+      a.index,
+      a.index + a[0].length,
+      `${a[1]}if(${a[3]}==="${ALIAS}")return;${a[6]}`,
+    ],
+    [
+      d.index,
+      d.index + d[0].length,
+      `${d[1]}${d[2]}==="${ALIAS}"?${u[1]}(${u[2]},{color:"subtle",children:[${note}]}):${d[3]}`,
+    ],
+    [
+      c.index,
+      c.index + c[0].length,
+      `${c[1]}if(${c[3]}==="${ALIAS}"){${tail[1]}(${c[3]},void 0);return}${c[4]}`,
+    ],
+  ];
+  // Apply back to front so earlier offsets stay valid.
+  let newFile = file;
+  for (const [start, end, text] of edits.sort((x, y) => y[0] - x[0])) {
+    newFile = newFile.slice(0, start) + text + newFile.slice(end);
+  }
+  showDiff(file, newFile, edits.map(e => e[2]).join(' … '), a.index, a.index);
   return newFile;
 };
 
@@ -395,9 +555,13 @@ export const writeFablePlan = (
   if (!picked) return null;
   file = picked;
 
-  const efforted = patchEffortResolver(file);
+  const efforted = patchEffortLookup(file);
   if (!efforted) return null;
   file = efforted;
+
+  const effortRow = patchPickerEffortRow(file, config);
+  if (!effortRow) return null;
+  file = effortRow;
 
   if (config.offerClearContextOnPlanAccept) {
     const cleared = patchClearContextOption(file);

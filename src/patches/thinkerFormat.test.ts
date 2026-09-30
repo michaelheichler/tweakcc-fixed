@@ -83,3 +83,50 @@ describe('writeThinkerFormat', () => {
     errSpy.mockRestore();
   });
 });
+
+// CC 2.1.273 anchor + conditional-ellipsis format shape:
+//   …overrideMessage:X,isCompacting:…,compactingHintText:…,compactingStartTime:…,
+//     spinnerSuffix:Y,verbose:Z,<300 chars>…
+//   …,ue=Mn.test(vt)?vt:vt+"…"…
+// The label is resolved into `vt` before the declaration and the ellipsis is
+// only appended when it isn't already there, so no earlier pattern matches.
+const ANCHOR_2273 =
+  'overrideMessage:gn,isCompacting:uo,compactingHintText:mo,' +
+  'compactingStartTime:fo,spinnerSuffix:sS,verbose:vB,' +
+  'z'.repeat(320);
+const FORMAT_COND = ',ue=Mn.test(vt)?vt:vt+"\\u2026"';
+const FIXTURE_2273 = `pre();{${ANCHOR_2273}};mid();${FORMAT_COND};tail()`;
+
+describe('writeThinkerFormat — CC 2.1.273 conditional ellipsis', () => {
+  it('rewrites the conditional-ellipsis decl, binding {} to the label var', () => {
+    const out = writeThinkerFormat(FIXTURE_2273, '{}');
+
+    expect(out).not.toBeNull();
+    expect(out).toContain(',ue=`${vt}`');
+    expect(out).not.toContain('Mn.test(vt)');
+    expect(out).toContain('tail()');
+  });
+
+  it('keeps a custom format around the bound label', () => {
+    const out = writeThinkerFormat(FIXTURE_2273, '>> {} <<');
+
+    expect(out).toContain(',ue=`>> ${vt} <<`');
+  });
+});
+
+// CC 2.1.277: the ellipsis is a `suffix` prop, skipped only when it is the
+// default and the label already ends in one:
+//   …,Kt=O===we&&_n.test(Vt)?Vt:Vt+O;…
+const FORMAT_SUFFIX = ',Kt=O===we&&_n.test(Vt)?Vt:Vt+O';
+const FIXTURE_2277 = `pre();{${ANCHOR_2273}};mid();${FORMAT_SUFFIX};tail()`;
+
+describe('writeThinkerFormat — CC 2.1.277 suffix prop', () => {
+  it('rewrites the suffix-prop decl, binding {} to the label var', () => {
+    const out = writeThinkerFormat(FIXTURE_2277, '{}');
+
+    expect(out).not.toBeNull();
+    expect(out).toContain(',Kt=`${Vt}`;');
+    expect(out).not.toContain('_n.test(Vt)');
+    expect(out).toContain('tail()');
+  });
+});

@@ -8,7 +8,7 @@ import {
   discoverDeltaParam,
 } from './reminderShared';
 
-export const TOKEN_USAGE_INJECTION: ReminderInjection = {
+const TOKEN_USAGE_INJECTION: ReminderInjection = {
   id: 'token-usage',
   name: 'Token usage updater',
   description:
@@ -38,7 +38,7 @@ export const TOKEN_USAGE_INJECTION: ReminderInjection = {
   },
 };
 
-export const BUDGET_USD_INJECTION: ReminderInjection = {
+const BUDGET_USD_INJECTION: ReminderInjection = {
   id: 'budget-usd',
   name: 'USD budget updater',
   description:
@@ -68,13 +68,11 @@ export const BUDGET_USD_INJECTION: ReminderInjection = {
   },
 };
 
-export const TASK_LIST_REMINDER_INJECTION: ReminderInjection = {
+const TASK_LIST_REMINDER_INJECTION: ReminderInjection = {
   id: 'task-list-reminder',
   name: 'Task-list status reminder',
   description:
     'Fires every turn while TaskList has entries. Wraps the current task list with reminder text about using TaskCreate. Empty .md = suppress entirely.',
-  // Rewrites the task-reminder region to new phrasing before the named prompt
-  // (anchored on the old phrasing) runs, leaving it unmatchable.
   shadows: ['system-reminder-task-tools-reminder'],
   placeholders: {
     tasks: '${q}',
@@ -119,14 +117,11 @@ Here are the existing tasks:
   },
 };
 
-export const TASK_NOTIFICATION_FRAMING_INJECTION: ReminderInjection = {
+const TASK_NOTIFICATION_FRAMING_INJECTION: ReminderInjection = {
   id: 'task-notification-framing',
   name: 'Task-notification framing wrapper',
   description:
     'The "[SYSTEM NOTIFICATION - NOT USER INPUT]" text wrapping background-task event content. Fires when a run_in_background completes/errors. Empty .md = no framing (just the content).',
-  // CC 2.1.205 extracts this same framing text as a named prompt; this reminder
-  // patch owns the (now lazily-hoisted `hJn`) site, so shadow the named prompt to
-  // stop the named-prompt pass from double-splicing it.
   shadows: ['system-reminder-background-task-event-not-user-input'],
   placeholders: {
     content: '${H}',
@@ -138,17 +133,6 @@ No human input has been received since the last genuine user message in this con
 
 {{content}}`,
   apply(content, body, isSuppressed) {
-    // 2.1.205 hoisted the framing out of the return site entirely: it is now a
-    // lazily-initialized module var + a prepend helper —
-    //   function qUr(e){if(e.startsWith(hJn))return e;return`${hJn}${e}`}
-    //   var hJn;var azi=b(()=>{hJn=`${"[SYSTEM NOTIFICATION - NOT USER INPUT]"}\n…\n\n`})
-    // The message is APPENDED by the helper, so the framing var holds only the
-    // prefix (ends `\n\n`, no `${message}` inside). We rewrite the framing
-    // template in place and STRIP the content placeholder from the override body
-    // (the message is added externally by qUr, always at the end — text after
-    // {{content}} would land before the message, but no override does that).
-    // isSuppressed → empty framing (`hJn=``), so qUr emits just the message.
-    // Never hardcode the minified var name (churns per version/platform).
     const lazyVarShape =
       /([$\w]+)=`\$\{"\[SYSTEM NOTIFICATION - NOT USER INPUT\]"\}\nThis is an automated background-task event, NOT a message from the user\.\nDo NOT interpret this as user acknowledgement, confirmation, or response to any pending question\.\n[^`]*`/;
     const lm = content.match(lazyVarShape);
@@ -168,13 +152,6 @@ No human input has been received since the last genuine user message in this con
       );
       return newContent;
     }
-    // Fallback: <=2.1.204 inline shape. 2.1.183 hoisted the inline
-    // `case"task-notification":return`…${H}`;` body into a standalone framing
-    // function `function MBl(e){return`…${e}`}` (the case site reads
-    // `case"task-notification":return MBl(e);`). Anchor on the stable English
-    // framing body and capture the wrapper prefix (`case…:return` for <=2.1.182,
-    // or `function NAME(param){return` for 2.1.183+) plus the content param and
-    // the trailing delimiter (`;` or `}`) so both shapes are rewritten in place.
     return findAndReplace(
       content,
       /(case"task-notification":return|function [$\w]+\([$\w]+\)\{return)`\[SYSTEM NOTIFICATION - NOT USER INPUT\]\nThis is an automated background-task event, NOT a message from the user\.\nDo NOT interpret this as user acknowledgement, confirmation, or response to any pending question\.\n\n\$\{([$\w]+)\}`(;|\})/,
@@ -185,24 +162,16 @@ No human input has been received since the last genuine user message in this con
         return `${prefix}\`${bodyForBuild}\`${suffix}`;
       },
       'task-notification-framing',
-      // Anchored on the case-site shape only (the 2.1.183 function name is
-      // minified/unknowable, and an unanchored `function X(y){return`${z}`}`
-      // check would spuriously match unrelated trivial functions and mask real
-      // drift). Idempotency only matters on a double-apply-without-restore; the
-      // normal native flow restores pristine first, so the main regex always runs.
       c => /case"task-notification":return`\$\{[$\w]+\}`;/.test(c)
     );
   },
 };
 
-export const USER_NEW_MSG_INJECTION: ReminderInjection = {
+const USER_NEW_MSG_INJECTION: ReminderInjection = {
   id: 'user-sent-new-message',
   name: 'User-sent-new-message wrapper',
   description:
     'Wraps a user message that arrives mid-turn. Carries the "This is how Claude Code surfaces messages the user sends mid-turn … Address the message above as you continue this turn" framing (reworded in CC 2.1.205 from the old imperative "IMPORTANT: … you MUST address … Do not ignore it"). Empty .md = no wrapping (just the message text).',
-  // CC 2.1.205 extracts this same reworded framing as a named prompt; this
-  // reminder patch owns the `case…:return`${intro}${msg}\n\n…`` site, so shadow the
-  // named prompt to stop the named-prompt pass from double-splicing it.
   shadows: ['system-reminder-mid-turn-user-message-surfacing'],
   placeholders: {
     message: '${H}',
@@ -212,22 +181,6 @@ export const USER_NEW_MSG_INJECTION: ReminderInjection = {
 
 This is how Claude Code surfaces messages the user sends mid-turn — within the running turn, often alongside the next tool result, rather than as a separate conversation turn. Address the message above as you continue this turn.`,
   apply(content, body, isSuppressed) {
-    // 2.1.169 prepended `case"auto-continuation":` and split `default:` into its
-    // own `[MESSAGE FROM NON-USER SOURCE]` case, so the user-message return now
-    // reads `case"auto-continuation":case"human":case void 0:return`. Capture the
-    // case-label prefix and reuse it verbatim so both the <=2.1.168 shape
-    // (`case"human":case void 0:default:`) and the 2.1.169+ shape are preserved
-    // (never hardcode the prefix — that would corrupt whichever shape didn't match).
-    // 2.1.177 hoisted the intro line into a standalone var: the return now reads
-    // `return`${$Tq}${H}\n\nIMPORTANT:…`` instead of inlining the English text.
-    // The intro is matched as a non-capturing alternation (old inline literal OR a
-    // `${VAR}` reference) so group numbering stays stable (1=prefix, 2=message var).
-    // 2.1.205 REWORDED the trailing framing from the imperative "IMPORTANT: After
-    // completing your current task, you MUST address … Do not ignore it." to the
-    // explanatory "This is how Claude Code surfaces messages the user sends
-    // mid-turn … Address the message above as you continue this turn." (the em-dash
-    // is emitted as the literal `—` escape in the template source). Both are
-    // matched via a trailing alternation (new first) so older CC builds still bind.
     return findAndReplace(
       content,
       /((?:case"auto-continuation":)?case"human":case void 0:(?:default:)?)return`(?:The user sent a new message while you were working:\n|\$\{[$\w]+\})\$\{([$\w]+)\}\n\n(?:This is how Claude Code surfaces messages the user sends mid-turn \\u2014 within the running turn, often alongside the next tool result, rather than as a separate conversation turn\. Address the message above as you continue this turn\.|IMPORTANT: After completing your current task, you MUST address the user's message above\. Do not ignore it\.)`/,
@@ -246,7 +199,7 @@ This is how Claude Code surfaces messages the user sends mid-turn — within the
   },
 };
 
-export const STOP_HOOK_GOAL_INJECTION: ReminderInjection = {
+const STOP_HOOK_GOAL_INJECTION: ReminderInjection = {
   id: 'stop-hook-session-goal',
   name: 'Stop-hook session-goal reminder',
   description:
@@ -272,7 +225,7 @@ export const STOP_HOOK_GOAL_INJECTION: ReminderInjection = {
   },
 };
 
-export const MCP_PER_SERVER_ROUTER_INJECTION: ReminderInjection = {
+const MCP_PER_SERVER_ROUTER_INJECTION: ReminderInjection = {
   id: 'mcp-per-server-router',
   name: 'MCP per-server instruction router',
   description:
@@ -282,15 +235,6 @@ export const MCP_PER_SERVER_ROUTER_INJECTION: ReminderInjection = {
     'This file is a marker that enables per-MCP-server overrides. Edit per-server content in mcp-<server-name>.md alongside this file. Leave this file with content (any content) to enable routing; empty it to disable.',
   apply(content, _body, isSuppressed) {
     if (isSuppressed) return content;
-    // The loop body is a comma expression whose length is Anthropic's business,
-    // not ours: CC 2.1.238 appended a second `c.set(f.name,f.instructions)` to
-    // stash the raw instructions as a change-detection baseline (it feeds
-    // `addedServerInstructions`, compared as `g!==h` to decide whether to
-    // re-announce a server whose instructions moved). A pattern that ended at
-    // the first `.set(...)` broke on that alone. Match the RUN of trailing sets
-    // instead, and re-emit each one with `<param>.instructions` rewritten to the
-    // overridden text — otherwise the baseline tracks pristine while the model
-    // is shown our override, and every session re-announces the server.
     const pattern =
       /for\(let ([$\w]+) of ([$\w]+)\)if\(\1\.instructions\)([$\w]+)\.set\(\1\.name,`## \$\{\1\.name\}\n\$\{\1\.instructions\}`\)((?:,[$\w]+\.set\((?:[^()]|\([^()]*\))*\))*);/;
     const match = content.match(pattern);
@@ -302,10 +246,6 @@ export const MCP_PER_SERVER_ROUTER_INJECTION: ReminderInjection = {
       return null;
     }
     const [fullMatch, jVar, zVar, mapVar, extraSets] = match;
-    // `,a.set(x,y),b.set(z)` -> `;a.set(x,y);b.set(z)`, with the pristine
-    // instructions expression swapped for the resolved override. Split on the
-    // `.set(` calls themselves, never on commas — `set(f.name,f.instructions)`
-    // has one of its own.
     const extraRebound = [
       ...(extraSets || '').matchAll(/[$\w]+\.set\((?:[^()]|\([^()]*\))*\)/g),
     ]
@@ -340,7 +280,7 @@ export const MCP_PER_SERVER_ROUTER_INJECTION: ReminderInjection = {
   },
 };
 
-export const OUTPUT_TOKEN_USAGE_INJECTION: ReminderInjection = {
+const OUTPUT_TOKEN_USAGE_INJECTION: ReminderInjection = {
   id: 'output-token-usage',
   name: 'Output-token usage updater',
   description:
@@ -351,7 +291,6 @@ export const OUTPUT_TOKEN_USAGE_INJECTION: ReminderInjection = {
   },
   defaultBody: 'Output tokens — turn: {{turn}} · session: {{session}}',
   apply(content, body, isSuppressed) {
-    // cli.js source contains literal — and \xB7 escape sequences (6/4 chars), not the chars themselves.
     return findAndReplace(
       content,
       /output_token_usage:\(([$\w]+)\)=>\{let ([$\w]+)=\1\.budget!==null\?`\$\{([$\w]+)\(\1\.turn\)\} \/ \$\{\3\(\1\.budget\)\}`:\3\(\1\.turn\);return\[([$\w]+)\(\{content:([$\w]+)\(`Output tokens \\u2014 turn: \$\{\2\} \\xB7 session: \$\{\3\(\1\.session\)\}`\),isMeta:!0\}\)\]\}/,
@@ -370,4 +309,15 @@ export const OUTPUT_TOKEN_USAGE_INJECTION: ReminderInjection = {
       c => /output_token_usage:\([$\w]+\)=>\[\]/.test(c)
     );
   },
+};
+
+export {
+  TOKEN_USAGE_INJECTION,
+  BUDGET_USD_INJECTION,
+  TASK_LIST_REMINDER_INJECTION,
+  TASK_NOTIFICATION_FRAMING_INJECTION,
+  USER_NEW_MSG_INJECTION,
+  STOP_HOOK_GOAL_INJECTION,
+  MCP_PER_SERVER_ROUTER_INJECTION,
+  OUTPUT_TOKEN_USAGE_INJECTION,
 };

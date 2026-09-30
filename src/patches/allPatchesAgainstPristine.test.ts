@@ -10,6 +10,11 @@
 //
 // Gated behind TWEAKCC_PRISTINE_PATCHES=1 (see `pnpm test:pristine`) because it
 // needs a ~21 MB pristine cli.js on disk and spawns Bun to parse each output.
+//
+// The result belongs to the CC version of that bundle. A patch can no-op on one
+// release and apply on the next (unlock-responsive-mode finds nothing in 2.1.278
+// and applies from 2.1.280), so run it against the current release before
+// adding an entry to EXPECTED_NOOP, or the entry hides a dead anchor there.
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as fs from 'node:fs';
@@ -28,10 +33,13 @@ import { writeContextLimit } from './contextLimit';
 import { writeOpusplan1m } from './opusplan1m';
 import { writeThinkingBlockStyling } from './thinkingBlockStyling';
 import { writeFixLspSupport } from './fixLspSupport';
+import { writeNoGlobalCacheScope } from './globalCacheScope';
 import { writeFixSummarizeFromHere } from './fixSummarizeFromHere';
 import { writeFixRewindSummaryHeader } from './fixRewindSummaryHeader';
 import { writeStatuslineUpdateThrottle } from './statuslineUpdateThrottle';
 import { writeClearScreen } from './clearScreen';
+import { writeInputChevronColor } from './inputChevronColor';
+import { writeSessionColor } from './sessionColor';
 import { writePatchesAppliedIndication } from './patchesAppliedIndication';
 import { writeModelCustomizations } from './modelSelector';
 import { writeShowMoreItemsInSelectMenus } from './showMoreItemsInSelectMenus';
@@ -52,6 +60,7 @@ import { writeHideStartupClawd } from './hideStartupClawd';
 import { writeIncreaseFileReadLimit } from './increaseFileReadLimit';
 import { writeSuppressLineNumbers } from './suppressLineNumbers';
 import { writeSuppressRateLimitOptions } from './suppressRateLimitOptions';
+import { writeSuppressRateLimitWarning } from './suppressRateLimitWarning';
 import { writeTokenCountRounding } from './tokenCountRounding';
 import { writeRememberSkill } from './rememberSkill';
 import { writeAgentsMd } from './agentsMd';
@@ -61,13 +70,15 @@ import { writeSuppressNativeInstallerWarning } from './suppressNativeInstallerWa
 import { writeScrollEscapeSequenceFilter } from './scrollEscapeSequenceFilter';
 import { writeMaxEffortDefault } from './maxEffortDefault';
 import { writeAutonomousOperationAllModels } from './autonomousOperationAllModels';
-import { writeAdhdOutputStyle } from './adhdOutputStyle';
+import { writeRefusalFallbackModel } from './refusalFallbackModel';
 import { writeOutputStyleTurnReminder } from './outputStyleTurnReminder';
 import { writeAutoModeClassifierModel } from './autoModeClassifierModel';
 import { writeComplexityRouter } from './complexityRouter';
+import { writeComplexityRouterModels } from './complexityRouterModels';
 import { writeFablePlan } from './fablePlan';
 import { writeAllowCustomAgentModels } from './allowCustomAgentModels';
 import { writeWorktreeMode } from './worktreeMode';
+import { writeResponsiveMode } from './responsiveMode';
 import { writeSessionMemory } from './sessionMemory';
 import { writeSwapRipgrepForFff } from './swapRipgrepForFff';
 import { writeDreamMode } from './dreamMode';
@@ -84,40 +95,13 @@ import {
   writeStripEmptySystemReminders,
   writeClaudemdContextOncePerConversation,
 } from './systemReminders';
+import {
+  findPristineCliJs,
+  NOT_ENABLED,
+  NO_PRISTINE_CLI_JS,
+} from './pristineCliJs';
 
 const ENABLED = process.env.TWEAKCC_PRISTINE_PATCHES === '1';
-
-// ---------------------------------------------------------------------------
-// Pristine cli.js discovery
-// ---------------------------------------------------------------------------
-
-// tweakcc stamps its own marker into everything it splices, so a file carrying
-// one is a PATCHED binary's JS, not pristine — patching it again proves nothing.
-const isPristine = (src: string): boolean => !src.includes('__tweakcc');
-
-const findPristineCliJs = (): { path: string; source: string } | null => {
-  const candidates: string[] = [
-    path.join(os.homedir(), '.tweakcc', 'native-claudejs-orig.js'),
-  ];
-  try {
-    const tmpMatches = fs
-      .readdirSync('/tmp')
-      .filter(f => /^cli-.*\.js$/.test(f))
-      .map(f => path.join('/tmp', f))
-      .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-    candidates.push(...tmpMatches);
-  } catch {
-    // no /tmp listing available; the home candidate still stands
-  }
-
-  for (const candidate of candidates) {
-    if (!fs.existsSync(candidate)) continue;
-    const source = fs.readFileSync(candidate, 'utf8');
-    if (!isPristine(source)) continue;
-    return { path: candidate, source };
-  }
-  return null;
-};
 
 // ---------------------------------------------------------------------------
 // Parse oracle
@@ -147,10 +131,93 @@ const findBun = (): string | null => {
   }
 };
 
+// CC 2.1.246 code-split the bundle, so what the patch layer now sees is a
+// VIRTUAL bundle: every JS module concatenated behind a
+// `/*@@TWEAKCC_MODULE:index:name@@*/` sentinel. That concatenation is NOT a
+// valid single program — 1,412 ESM modules redeclare each other's top-level
+// names — so transpiling it whole is not just wrong, it wedges: the first run
+// against 2.1.246 sat for 32 minutes at 0% CPU. Parse each module on its own,
+// which is also what actually ships, since Bun loads them individually.
+const MODULE_MARK = '/*@@TWEAKCC_MODULE:';
+const MODULE_END = '@@*/';
+
+interface ModuleSpan {
+  name: string;
+  bodyStart: number;
+  bodyEnd: number;
+}
+
+const splitModuleSpans = (src: string): ModuleSpan[] => {
+  const mods: ModuleSpan[] = [];
+  let i = src.indexOf(MODULE_MARK);
+  while (i !== -1) {
+    const close = src.indexOf(MODULE_END, i);
+    const name = src.slice(i + MODULE_MARK.length, close);
+    const bodyStart = close + MODULE_END.length;
+    const next = src.indexOf(MODULE_MARK, close);
+    mods.push({
+      name,
+      bodyStart,
+      bodyEnd: next === -1 ? src.length : next,
+    });
+    i = next;
+  }
+  return mods;
+};
+
+const collectChangedBodies = (
+  original: string,
+  origSpans: ModuleSpan[],
+  source: string
+): string => {
+  const srcSpans = splitModuleSpans(source);
+  const origByName = new Map(origSpans.map(s => [s.name, s]));
+  const chunks: string[] = [];
+  for (const span of srcSpans) {
+    const orig = origByName.get(span.name);
+    // Compare CONTENT, not length. A same-length substitution — which is a
+    // perfectly ordinary patch shape — is invisible to a length test, so the
+    // oracle would silently skip the one module the patch actually touched
+    // and report a pass having parsed nothing.
+    const body = source.slice(span.bodyStart, span.bodyEnd);
+    const origBody = orig ? original.slice(orig.bodyStart, orig.bodyEnd) : null;
+    if (origBody !== body) {
+      chunks.push(`${MODULE_MARK}${span.name}${MODULE_END}\n` + body);
+    }
+  }
+  return chunks.join('');
+};
+
 const ORACLE_SCRIPT = `
 const fs = require('fs');
 const src = fs.readFileSync(process.argv[2], 'utf8');
-new Bun.Transpiler({ loader: 'js' }).transformSync(src);
+const t = new Bun.Transpiler({ loader: 'js' });
+const MARK = '/*@@TWEAKCC_MODULE:';
+const END = '@@*' + '/';
+if (src.indexOf(MARK) === -1) {
+  t.transformSync(src);
+} else {
+  const bounds = [];
+  let i = src.indexOf(MARK);
+  while (i !== -1) {
+    const close = src.indexOf(END, i);
+    bounds.push({
+      start: i,
+      bodyStart: close + END.length,
+      name: src.slice(i + MARK.length, close),
+    });
+    i = src.indexOf(MARK, close);
+  }
+  for (let k = 0; k < bounds.length; k++) {
+    const from = bounds[k].bodyStart;
+    const to = k + 1 < bounds.length ? bounds[k + 1].start : src.length;
+    try {
+      t.transformSync(src.slice(from, to));
+    } catch (err) {
+      throw new Error('module ' + bounds[k].name + ': ' + err.message);
+    }
+  }
+}
 `;
 
 interface ParseOracle {
@@ -158,13 +225,25 @@ interface ParseOracle {
   check(source: string, label: string): string | null;
 }
 
-const makeOracle = (bun: string, scratch: string): ParseOracle => {
+const makeOracle = (
+  bun: string,
+  scratch: string,
+  original: string
+): ParseOracle => {
   const scriptPath = path.join(scratch, 'parse-oracle.js');
   fs.writeFileSync(scriptPath, ORACLE_SCRIPT, 'utf8');
+  const origSpans = splitModuleSpans(original);
   return {
     check(source, label) {
       const srcPath = path.join(scratch, `${label}.js`);
-      fs.writeFileSync(srcPath, source, 'utf8');
+      let toWrite = source;
+      if (source !== original && source.includes(MODULE_MARK)) {
+        toWrite = collectChangedBodies(original, origSpans, source);
+        if (toWrite.length === 0) {
+          toWrite = source;
+        }
+      }
+      fs.writeFileSync(srcPath, toWrite, 'utf8');
       try {
         execFileSync(bun, [scriptPath, srcPath], {
           encoding: 'utf8',
@@ -213,18 +292,29 @@ const TEST_HIGHLIGHTERS = [
  * here is a `tsc --noEmit` failure — the coverage is enforced, not aspirational.
  */
 const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
-  'adhd-output-style': c => writeAdhdOutputStyle(c),
   'output-style-turn-reminder': c => writeOutputStyleTurnReminder(c),
   'verbose-property': c => writeVerboseProperty(c),
   'read-default-lines': c => writeReadDefaultLines(c),
   opusplan1m: c => writeOpusplan1m(c),
   'thinking-block-styling': c => writeThinkingBlockStyling(c),
   'fix-lsp-support': c => writeFixLspSupport(c),
+  // The patch acts only once an identity line differs from stock, so one is
+  // replaced here to exercise both of its anchors against the real bundle.
+  'no-global-cache-scope': c =>
+    writeNoGlobalCacheScope(
+      c.replace(
+        `"You are a Claude agent, built on Anthropic's Claude Agent SDK."`,
+        '"You are an overridden identity."'
+      ),
+      c
+    ),
   'fix-summarize-from-here': c => writeFixSummarizeFromHere(c),
   'fix-rewind-summary-header': c => writeFixRewindSummaryHeader(c),
   'statusline-update-throttle': c =>
     writeStatuslineUpdateThrottle(c, 300, false),
   'clear-screen': c => writeClearScreen(c),
+  'input-chevron-color': c => writeInputChevronColor(c, 'green'),
+  'session-color': c => writeSessionColor(c),
   'strip-empty-system-reminders': c => writeStripEmptySystemReminders(c),
   'model-customizations': c => writeModelCustomizations(c),
   'show-more-items-in-select-menus': c =>
@@ -249,7 +339,14 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'thinker-symbol-width': c =>
     writeThinkerSymbolWidthLocation(
       c,
-      Math.max(...DEFAULT_SETTINGS.thinkingStyle.phases.map(p => p.length)) + 1
+      // Native spinner cell is width:2. Passing 2 is a same-length no-op that
+      // the sweep would score as "applied, 0 bytes" even if the rewrite is a
+      // no-op of the native default — use a value that must mutate.
+      Math.max(
+        4,
+        Math.max(...DEFAULT_SETTINGS.thinkingStyle.phases.map(p => p.length)) +
+          1
+      )
     ),
   'thinker-symbol-mirror': c => writeThinkerSymbolMirrorOption(c, false),
   'input-box-border': c => writeInputBoxBorder(c, true),
@@ -266,6 +363,7 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'increase-file-read-limit': c => writeIncreaseFileReadLimit(c),
   'suppress-line-numbers': c => writeSuppressLineNumbers(c),
   'suppress-rate-limit-options': c => writeSuppressRateLimitOptions(c),
+  'suppress-rate-limit-warning': c => writeSuppressRateLimitWarning(c),
   'token-count-rounding': c => writeTokenCountRounding(c, 100),
   'remember-skill': c => writeRememberSkill(c),
   'agents-md': c => writeAgentsMd(c, DEFAULT_SETTINGS.claudeMdAltNames ?? []),
@@ -276,28 +374,47 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'filter-scroll-escape-sequences': c => writeScrollEscapeSequenceFilter(c),
   'max-effort-default': c => writeMaxEffortDefault(c),
   'autonomous-operation-all-models': c => writeAutonomousOperationAllModels(c),
+  'refusal-fallback-model': c =>
+    writeRefusalFallbackModel(c, {
+      bio: ['claude-opus-5', 'claude-opus-4-8'],
+      cyber: ['claude-opus-5', 'claude-opus-4-8'],
+    }),
   'auto-mode-classifier-model': c => writeAutoModeClassifierModel(c, 'sonnet'),
   'complexity-router': c =>
     writeComplexityRouter(c, {
       ...DEFAULT_SETTINGS.complexityRouter,
       enabled: true,
     }),
+  'complexity-router-models': writeComplexityRouterModels,
   'fable-plan': c =>
     writeFablePlan(c, { ...DEFAULT_SETTINGS.fablePlan, enabled: true }),
+  'unlock-responsive-mode': c => writeResponsiveMode(c),
   'allow-custom-agent-models': c => writeAllowCustomAgentModels(c),
   'worktree-mode': c => writeWorktreeMode(c),
   'session-memory': c => writeSessionMemory(c),
   'swap-ripgrep-for-fff': c => writeSwapRipgrepForFff(c, FFF_WRAPPER_PATH),
   'dream-mode': c => writeDreamMode(c),
   'lean-memory-types': c => writeLeanMemoryTypes(c),
-  toolsets: c => writeToolsets(c, TEST_TOOLSETS, 'minimal', 'minimal'),
+  // All three bindings, each distinct: the selection expression emits a branch
+  // per permission mode, and passing only some leaves the others referencing the
+  // default, so an unparseable plan or accept-edits branch would slip the sweep.
+  toolsets: c =>
+    writeToolsets(c, TEST_TOOLSETS, 'minimal', 'everything', 'minimal'),
   'mcp-non-blocking': c => writeMcpNonBlocking(c),
-  'mcp-batch-size': c => writeMcpBatchSize(c, 3),
+  // Native default is 3; passing 3 is a same-token no-op the sweep would
+  // score as applied/unchanged. Use a value that must rewrite the digit.
+  'mcp-batch-size': c => writeMcpBatchSize(c, 5),
   'user-message-display': c =>
     writeUserMessageDisplay(c, {
-      ...DEFAULT_SETTINGS.userMessageDisplay,
-      borderStyle: 'round',
-      styling: ['bold'],
+      format: ' > {} ',
+      styling: [],
+      foregroundColor: 'default',
+      backgroundColor: 'rgb(28,32,48)',
+      borderStyle: 'topBottomBold',
+      borderColor: 'rgb(255,32,134)',
+      paddingX: 1,
+      paddingY: 0,
+      fitBoxToContent: false,
     }),
   'input-pattern-highlighters': c =>
     writeInputPatternHighlighters(c, TEST_HIGHLIGHTERS),
@@ -323,6 +440,24 @@ const EXPECTED_NULL: Partial<Record<PatchId, string>> = {
   'thinker-symbol-speed': 'gated to CC < 2.1.27 (spinner interval moved)',
 };
 
+/**
+ * Patches that legitimately return the file unchanged on a current CC build.
+ * A no-op is only acceptable for an id listed here — an undeclared no-op is
+ * the silent-dead-anchor class (userMessageDisplay used to return oldFile on
+ * match failure, and the sweep scored it "applied, 0 bytes").
+ */
+const EXPECTED_NOOP: Partial<Record<PatchId, string>> = {
+  opusplan1m: 'CC >= 2.1.87 ships "opusplan[1m]" natively',
+  'fix-lsp-support':
+    'CC ships textDocument/didOpen natively; unimplemented throws are gone',
+  'worktree-mode':
+    'CC ships EnterWorktree natively; tengu_worktree_mode gate is gone',
+  'allow-custom-agent-models':
+    'CC >= 2.1.83 accepts any agent model string (no enum/includes gate)',
+  'conversation-title':
+    'CC ships /rename natively (name:"rename",aliases:["name"])',
+};
+
 type Outcome = 'applied' | 'no-op' | 'null';
 
 interface PatchOutcome {
@@ -338,11 +473,9 @@ const pristine = ENABLED ? findPristineCliJs() : null;
 const bun = ENABLED ? findBun() : null;
 
 const skipReason = !ENABLED
-  ? 'TWEAKCC_PRISTINE_PATCHES=1 not set — run `pnpm test:pristine`'
+  ? NOT_ENABLED
   : !pristine
-    ? 'no pristine cli.js found (looked for ~/.tweakcc/native-claudejs-orig.js ' +
-      'and /tmp/cli-*.js) — run tweakcc --apply once against a local Claude ' +
-      'Code install, or drop an extracted cli.js at /tmp/cli-<version>.js'
+    ? NO_PRISTINE_CLI_JS
     : !bun
       ? 'bun not found (needed as the JS parse oracle) — install bun, or set ' +
         'TWEAKCC_BUN_PATH to its binary'
@@ -353,9 +486,9 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
   let scratch = '';
   let oracle: ParseOracle;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'tweakcc-pristine-'));
-    oracle = makeOracle(bun!, scratch);
+    oracle = makeOracle(bun!, scratch, pristine!.source);
 
     const source = pristine!.source;
     for (const def of getAllPatchDefinitions()) {
@@ -382,6 +515,7 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
         parseError:
           outcome === 'applied' ? oracle.check(result!, `patched-${id}`) : null,
       });
+      await new Promise<void>(resolve => setImmediate(resolve));
     }
 
     const pad = (s: string, n: number) => s.padEnd(n);
@@ -396,14 +530,18 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
                 ? EXPECTED_NULL[o.id]
                   ? '(expected: ' + EXPECTED_NULL[o.id] + ')'
                   : 'FAILED TO FIND'
-                : ''
+                : o.outcome === 'no-op'
+                  ? EXPECTED_NOOP[o.id]
+                    ? '(expected: ' + EXPECTED_NOOP[o.id] + ')'
+                    : 'UNDECLARED NO-OP'
+                  : ''
           }`
       )
       .join('\n');
     console.log(
       `\npristine: ${pristine!.path}\noracle:   ${bun!} (Bun.Transpiler)\n${rows}\n`
     );
-  }, 600000);
+  }, 1200000);
 
   it('the parse oracle rejects broken JS', () => {
     expect(
@@ -427,6 +565,7 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
     id => {
       const outcome = outcomes.get(id)!;
       const expectedNull = EXPECTED_NULL[id];
+      const expectedNoop = EXPECTED_NOOP[id];
 
       if (expectedNull) {
         expect(
@@ -434,6 +573,16 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
           `${id} is recorded in EXPECTED_NULL (${expectedNull}) but now ` +
             'matches again — drop the entry and re-check its version gate'
         ).toBe('null');
+        return;
+      }
+
+      if (expectedNoop) {
+        expect(
+          outcome.outcome,
+          `${id} is recorded in EXPECTED_NOOP (${expectedNoop}) but now ` +
+            'applies or returns null — drop the entry if the feature is ' +
+            'gated again, or fix the patch if it should apply'
+        ).toBe('no-op');
         return;
       }
 
@@ -446,6 +595,13 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
       ).not.toBe('null');
 
       expect(
+        outcome.outcome,
+        `${id} returned the file unchanged against the pristine bundle, but ` +
+          'is not in EXPECTED_NOOP. That is a silent dead-anchor: either ' +
+          're-anchor it, or declare the no-op with a reason.'
+      ).not.toBe('no-op');
+
+      expect(
         outcome.parseError,
         `${id} spliced JS that Bun cannot parse — this would brick Claude ` +
           `Code on --apply:\n${outcome.parseError}`
@@ -453,6 +609,33 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
     },
     600000
   );
+
+  it('user-message-display also applies the round+bold sweep fixture', () => {
+    const result = writeUserMessageDisplay(pristine!.source, {
+      ...DEFAULT_SETTINGS.userMessageDisplay,
+      borderStyle: 'round',
+      styling: ['bold'],
+    });
+    expect(result).not.toBeNull();
+    expect(result).not.toBe(pristine!.source);
+    expect(
+      oracle.check(result!, 'patched-user-message-display-sweep')
+    ).toBeNull();
+  });
+
+  it('agents-md rewrites both memory-walk sites', () => {
+    const source = pristine!.source;
+    const result = writeAgentsMd(
+      source,
+      DEFAULT_SETTINGS.claudeMdAltNames ?? []
+    );
+    expect(result).not.toBeNull();
+    const walkReroutes = /if\(found\.length\)return found/g;
+    expect(
+      (result!.match(walkReroutes) ?? []).length -
+        (source.match(walkReroutes) ?? []).length
+    ).toBe(2);
+  });
 });
 
 // The 35-entry system-reminder registry is a SECOND patch surface that

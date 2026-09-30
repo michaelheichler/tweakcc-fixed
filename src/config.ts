@@ -264,6 +264,12 @@ const normalizeConfig = (config: TweakccConfig): void => {
       typeof v === 'number' && Number.isFinite(v)
         ? Math.min(hi, Math.max(lo, Math.round(v)))
         : def;
+    cr.provider = cr.provider === 'jev' ? 'jev' : 'haiku';
+    cr.jevModel = 'jev-1.13.0';
+    cr.jevTimeoutMs = clampNum(cr.jevTimeoutMs, 2000, 250, 30000);
+    cr.contextBudgetBytes = clampNum(cr.contextBudgetBytes, 24000, 4000, 28000);
+    cr.summaryMaxChars = clampNum(cr.summaryMaxChars, 6000, 500, 12000);
+    Reflect.deleteProperty(cr, 'jevConfidenceThreshold');
     cr.messageCap = clampNum(cr.messageCap, crDefaults.messageCap, 500, 400000);
     cr.assistantCap = clampNum(
       cr.assistantCap,
@@ -307,6 +313,12 @@ const normalizeConfig = (config: TweakccConfig): void => {
 
   // In 3.2.6 hideCtrlGToEditPrompt was renamed to hideCtrlGToEdit.
   migrateHideCtrlGToEditPrompt(config);
+
+  // The adhdOutputStyle toggle was removed in 2.8.7; drop it from old configs.
+  if (config.settings.misc) {
+    delete (config.settings.misc as unknown as Record<string, unknown>)
+      .adhdOutputStyle;
+  }
 
   // Remove launchText if it exists in the config; it was removed in v3.0.0.
   delete (config.settings as Settings & { launchText: unknown }).launchText;
@@ -364,6 +376,33 @@ export const readConfigFile = async (): Promise<TweakccConfig> => {
           `tweakcc: ${CONFIG_FILE} was not valid JSON — falling back to defaults.`
         );
       }
+      return defaultConfig;
+    }
+    throw error;
+  }
+};
+
+export const readConfigFileForDetection = async (): Promise<TweakccConfig> => {
+  const defaultConfig = createDefaultConfig();
+  try {
+    const content = await fs.readFile(CONFIG_FILE, 'utf8');
+    const rawConfig = JSON.parse(content) as Partial<TweakccConfig> & {
+      ccInstallationDir?: string;
+    };
+    return {
+      ...defaultConfig,
+      ...rawConfig,
+      ccInstallationPath:
+        rawConfig.ccInstallationPath ||
+        (rawConfig.ccInstallationDir
+          ? path.join(rawConfig.ccInstallationDir, 'cli.js')
+          : defaultConfig.ccInstallationPath),
+    };
+  } catch (error) {
+    if (
+      (error instanceof Error && 'code' in error && error.code === 'ENOENT') ||
+      error instanceof SyntaxError
+    ) {
       return defaultConfig;
     }
     throw error;

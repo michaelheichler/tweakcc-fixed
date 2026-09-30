@@ -6,7 +6,7 @@ import {
   loadReminderOverride,
   substitutePlaceholders,
 } from '../systemReminderSync';
-import { ReminderApplyResult, ReminderInjection } from './reminderShared';
+import { ReminderInjection, ReminderApplyResult } from './reminderShared';
 import {
   CLAUDEMD_INJECTION,
   SKILLS_INJECTION,
@@ -50,8 +50,7 @@ import {
   MCP_PER_SERVER_ROUTER_INJECTION,
   OUTPUT_TOKEN_USAGE_INJECTION,
 } from './reminderInjectionsSession';
-
-export type { ReminderApplyResult, ReminderInjection };
+export type { ReminderApplyResult, ReminderInjection } from './reminderShared';
 
 export const REMINDER_REGISTRY: ReminderInjection[] = [
   CLAUDEMD_INJECTION,
@@ -106,7 +105,7 @@ const discoverMcpServerNames = async (): Promise<string[]> => {
         return Object.keys(parsed.mcpServers);
       }
     } catch {
-      // try next candidate
+      continue;
     }
   }
   return [];
@@ -115,10 +114,12 @@ const discoverMcpServerNames = async (): Promise<string[]> => {
 export const applySystemReminderOverrides = async (
   content: string,
   ccVersion: string
-): Promise<{ content: string; results: ReminderApplyResult[] }> => {
+): Promise<{
+  content: string;
+  results: ReminderApplyResult[];
+}> => {
   const results: ReminderApplyResult[] = [];
   let working = content;
-
   const mcpServerNames = await discoverMcpServerNames();
   for (const name of mcpServerNames) {
     await ensureReminderOverrideFile(
@@ -130,7 +131,6 @@ export const applySystemReminderOverrides = async (
       '{{server_instructions}}'
     );
   }
-
   for (const injection of REMINDER_REGISTRY) {
     const created = await ensureReminderOverrideFile(
       injection.id,
@@ -140,7 +140,6 @@ export const applySystemReminderOverrides = async (
       Object.keys(injection.placeholders),
       injection.defaultBody
     );
-
     const override = await loadReminderOverride(injection.id);
     if (!override) {
       results.push({
@@ -155,7 +154,6 @@ export const applySystemReminderOverrides = async (
       });
       continue;
     }
-
     const { result: substituted, errors } = substitutePlaceholders(
       override.body,
       injection.placeholders
@@ -173,7 +171,6 @@ export const applySystemReminderOverrides = async (
       });
       continue;
     }
-
     const next = injection.apply(working, substituted, override.isSuppressed);
     if (next === null) {
       results.push({
@@ -188,15 +185,12 @@ export const applySystemReminderOverrides = async (
       });
       continue;
     }
-
     const applied = next !== working;
     working = next;
-
     let state: ReminderApplyResult['state'];
     if (override.isSuppressed) state = 'suppressed';
     else if (override.body === injection.defaultBody.trim()) state = 'default';
     else state = 'override';
-
     results.push({
       id: injection.id,
       name: injection.name,
@@ -208,6 +202,5 @@ export const applySystemReminderOverrides = async (
       details: created ? 'seeded default file' : undefined,
     });
   }
-
   return { content: working, results };
 };

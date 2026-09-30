@@ -105,11 +105,24 @@ export interface UserMessageDisplayConfig {
 
 export interface InputBoxConfig {
   removeBorder: boolean;
+  // Theme color key applied to the idle input chevron (null = leave default).
+  chevronIdleThemeColor: string | null;
 }
 
 export type TableFormat = 'default' | 'ascii' | 'clean' | 'clean-top-bottom';
 
 export type AutoModeClassifierModel = 'default' | 'sonnet' | 'haiku';
+
+/**
+ * Where a refusal-flagged message is retried, keyed by refusal category.
+ *
+ * A value is a model id or a chain walked until one is usable. Claude Code
+ * ships a table per flagged model, and this is merged over whichever of those
+ * applies, so a category named here is redirected and one left out keeps the
+ * route it shipped with. A named category still falls back to its shipped
+ * route when none of the models listed here is usable.
+ */
+export type RefusalFallbackRoutes = Record<string, string | string[]>;
 
 export interface MiscConfig {
   showTweakccVersion: boolean;
@@ -122,6 +135,8 @@ export interface MiscConfig {
   increaseFileReadLimit: boolean;
   suppressLineNumbers: boolean;
   suppressRateLimitOptions: boolean;
+  suppressRateLimitWarning: boolean;
+  sessionColor: boolean;
   mcpConnectionNonBlocking: boolean;
   mcpServerBatchSize: number | null;
   statuslineThrottleMs: number | null;
@@ -139,6 +154,7 @@ export interface MiscConfig {
   suppressNativeInstallerWarning: boolean;
   filterScrollEscapeSequences: boolean;
   enableWorktreeMode: boolean;
+  unlockResponsiveMode: boolean;
   swapRipgrepForFff: boolean;
   allowCustomAgentModels: boolean;
   enableContextLimitOverride: boolean;
@@ -148,7 +164,15 @@ export interface MiscConfig {
   enableChannelsMode: boolean;
   maxEffortDefault: boolean;
   autonomousOperationAllModels: boolean;
-  adhdOutputStyle: boolean;
+  refusalFallbackModel: boolean;
+  refusalFallbackRoutes: RefusalFallbackRoutes;
+  /**
+   * Consecutive returns to the session's own model before the fallback is left
+   * latched. `null` never stops returning. Each attempt on a model that keeps
+   * being flagged spends that model's rate limit and returns no answer, so the
+   * budget trades staying on the chosen model against that waste.
+   */
+  refusalFallbackMaxReturns: number | null;
   outputStyleTurnReminder: boolean;
   autoModeClassifierModel: AutoModeClassifierModel;
   suppressDeferredTools: boolean;
@@ -217,10 +241,8 @@ export interface FablePlanConfig {
   enabled: boolean;
   /** Alias used while `permissionMode === 'plan'`. */
   planModel: 'fable' | 'opus' | 'sonnet' | 'haiku';
-  planEffort: RouterEffort;
   /** Alias used for everything else — the model that executes the plan. */
   execModel: 'fable' | 'opus' | 'sonnet' | 'haiku';
-  execEffort: RouterEffort;
   /**
    * Force Claude Code's `showClearContextOnPlanAccept` setting on, so the
    * plan-approval dialog offers "Yes, clear context (N% used) and …". Claude
@@ -232,6 +254,11 @@ export interface FablePlanConfig {
 }
 
 export interface ComplexityRouterConfig {
+  provider?: 'haiku' | 'jev';
+  jevModel?: string;
+  jevTimeoutMs?: number;
+  contextBudgetBytes?: number;
+  summaryMaxChars?: number;
   enabled: boolean;
   pinPerTask: boolean; // default TRUE - monotonic floor: routed level never drops below the session max (only escalates). Off = track each message up and down.
   messageCap: number; // max chars of a user message (new + previous) fed to the classifier
@@ -250,6 +277,7 @@ export interface Settings {
   misc: MiscConfig;
   toolsets: Toolset[];
   defaultToolset: string | null;
+  acceptEditsToolset: string | null;
   planModeToolset: string | null;
   subagentModels: SubagentModelsConfig;
   // Non-optional like subagentModels (its analog): DEFAULT_SETTINGS always

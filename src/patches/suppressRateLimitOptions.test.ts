@@ -25,7 +25,18 @@ const FIXTURE_JSX_A =
 const FIXTURE_JSX_B =
   'Fo.jsx(UXe,{messages:ug.messages,deferMessages:ug.isMain&&!Uge&&bs,tools:_o,commands:Dn,verbose:re,toolJSX:as,inProgressToolUseIDs:ug.inProgressToolUseIDs,isMessageSelectorVisible:Hv,conversationId:ug.conversationKey,screen:lr,streamingToolUses:ec,showAllInTranscript:fr,agentDefinitions:ee,onOpenRateLimitOptions:CCt,isLoading:bs});';
 
+const FIXTURE_IMPORTED_JSX =
+  'LYe=i(uR,{messages:Di.messages,tools:tR,commands:rue,inProgressToolUseIDs:Di.inProgressToolUseIDs,conversationId:Di.conversationKey,screen:"transcript",turn:iue,showAllInTranscript:Il,onOpenRateLimitOptions:sue,scrollRef:jc});';
+
 describe('writeSuppressRateLimitOptions', () => {
+  it('replaces the callback var in the imported jsx helper shape (method 4)', () => {
+    const out = writeSuppressRateLimitOptions(FIXTURE_IMPORTED_JSX);
+
+    expect(out).not.toBeNull();
+    expect(out).toContain('onOpenRateLimitOptions:()=>{}');
+    expect(out).not.toContain('onOpenRateLimitOptions:sue');
+  });
+
   it('replaces the callback var in the jsx() runtime shape (method 3)', () => {
     const out = writeSuppressRateLimitOptions(FIXTURE_JSX_A);
 
@@ -95,5 +106,28 @@ describe('writeSuppressRateLimitOptions', () => {
       writeSuppressRateLimitOptions('x=1;Q.createElement(K$,{foo:bar})')
     ).toBeNull();
     errSpy.mockRestore();
+  });
+});
+
+// CC 2.1.247 shipped `onOpenRateLimitOptions:m?.openRateLimitOptions` — an
+// optional-chained member, not a bare identifier. Reading only `[$\w]+` left
+// `?.openRateLimitOptions` dangling after the arrow, which Bun refuses to parse.
+describe('writeSuppressRateLimitOptions — member-expression prop value', () => {
+  it('replaces the whole optional-chained value, not just its leading identifier', () => {
+    const input =
+      'var a=1;wo=r(jg,{message:b,canAnimate:ze,onOpenRateLimitOptions:m?.openRateLimitOptions,onRateLimitAutoQueueContinue:m?.armRateLimit});';
+    const out = writeSuppressRateLimitOptions(input);
+    expect(out).not.toBeNull();
+    expect(out).toContain('onOpenRateLimitOptions:()=>{}');
+    expect(out).not.toContain('()=>{}?.openRateLimitOptions');
+    expect(out).toContain('onRateLimitAutoQueueContinue:m?.armRateLimit');
+  });
+
+  it('still replaces a bare identifier value', () => {
+    const input =
+      'var a=1;o(Ol,{param:Je,onOpenRateLimitOptions:Xp,verbose:et});';
+    const out = writeSuppressRateLimitOptions(input);
+    expect(out).toContain('onOpenRateLimitOptions:()=>{}');
+    expect(out).toContain('verbose:et');
   });
 });

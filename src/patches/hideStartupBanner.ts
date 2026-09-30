@@ -18,6 +18,14 @@ const getStartupBannerLocation = (oldFile: string): LocationResult | null => {
   return null;
 };
 
+const insertReturnNullAt = (oldFile: string, insertIndex: number): string => {
+  const insertion = 'return null;';
+  const newFile =
+    oldFile.slice(0, insertIndex) + insertion + oldFile.slice(insertIndex);
+  showDiff(oldFile, newFile, insertion, insertIndex, insertIndex);
+  return newFile;
+};
+
 export const writeHideStartupBanner = (oldFile: string): string | null => {
   const location = getStartupBannerLocation(oldFile);
   if (location) {
@@ -27,6 +35,40 @@ export const writeHideStartupBanner = (oldFile: string): string | null => {
       oldFile.slice(location.endIndex);
     showDiff(oldFile, newFile, ',', location.startIndex, location.endIndex);
     return newFile;
+  }
+
+  // Method 0 (CC >= 2.1.246): the startup card is still a zero-arg component
+  // that owns both "Welcome to Claude Code" and the Apple_Terminal theme
+  // branch, but React-compiler cache allocation is an imported `cache(N)`
+  // call (`let e=lo(39)`) rather than `obj.c(N)`, and Apple_Terminal now sits
+  // AFTER the compact-welcome `return` — so the older `[^}]{0,500}` lookahead
+  // never sees it. Find the zero-arg function whose body contains both
+  // literals and early-return null.
+  const welcome = '"Welcome to Claude Code"';
+  const apple = 'Apple_Terminal';
+  let welcomeAt = oldFile.indexOf(welcome);
+  while (welcomeAt !== -1) {
+    const searchStart = Math.max(0, welcomeAt - 12000);
+    const region = oldFile.slice(searchStart, welcomeAt);
+    const zeroArgFn = /function ([$\w]+)\(\)\{/g;
+    let last: RegExpExecArray | null = null;
+    let fnMatch: RegExpExecArray | null;
+    while ((fnMatch = zeroArgFn.exec(region)) !== null) {
+      last = fnMatch;
+    }
+    if (last && last.index !== undefined) {
+      const bodyStart = searchStart + last.index + last[0].length;
+      const bodyPreview = oldFile.slice(bodyStart, bodyStart + 12000);
+      const nextFn = bodyPreview.search(/function [$\w]+\(/);
+      const body = nextFn === -1 ? bodyPreview : bodyPreview.slice(0, nextFn);
+      if (body.includes(welcome) && body.includes(apple)) {
+        if (oldFile.startsWith('return null;', bodyStart)) {
+          return oldFile;
+        }
+        return insertReturnNullAt(oldFile, bodyStart);
+      }
+    }
+    welcomeAt = oldFile.indexOf(welcome, welcomeAt + welcome.length);
   }
 
   // CC >=2.1.156: the startup card component contains both the full-logo

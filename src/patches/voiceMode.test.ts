@@ -42,6 +42,20 @@ describe('voiceMode', () => {
     );
   });
 
+  it('force-enables the allow_voice_mode combined gate (CC >=2.1.246)', () => {
+    const file =
+      'function a(){try{if(!n())return!1;return t()}catch{return!1}}' +
+      'function c(){return o("allow_voice_mode")}' +
+      'function p(){return a()&&c()}' +
+      'gNs={type:"local",name:"voice",description:"Toggle voice mode",' +
+      'get isHidden(){return!p()}}';
+
+    const result = writeVoiceMode(file, false);
+
+    expect(result).not.toBeNull();
+    expect(result).toContain('function p(){return !0;return a()&&c()}');
+  });
+
   it('returns null when the amber quartz gate is absent', () => {
     const consoleError = vi
       .spyOn(console, 'error')

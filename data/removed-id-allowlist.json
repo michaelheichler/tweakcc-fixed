@@ -1,0 +1,2930 @@
+{
+  "agent-prompt-managed-agents-onboarding-flow": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive mid-body probes are absent from the 2.1.246 bundle and catalogue. The interview script left the binary; leftover hits are the command-name token managed-agents-onboard."
+  },
+  "data-artifact-decision-component-styles": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive CSS (carved VERBATIM, ws-rot, .ws-banner[data-ws-state=ready]) is absent from the 2.1.246 bundle. Remaining data-ws-state hits are live workshop HTML, not this stylesheet."
+  },
+  "data-artifact-spreadsheet-html-template": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "data-artifact-watch-auto-classifier-input": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "data-batches-api-reference-csharp": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-batches-api-reference-php": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-batches-api-reference-python": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-claude-api-reference-csharp": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive C# SDK reference prose is absent from the 2.1.246 bundle. BetaToolRunner hits are SDK class identifiers, not this document."
+  },
+  "data-claude-api-reference-java": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive Java SDK reference prose is absent from the 2.1.246 bundle and catalogue."
+  },
+  "data-files-api-reference-csharp": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-files-api-reference-go": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-files-api-reference-java": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-files-api-reference-python": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-files-api-reference-typescript": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive Files API TypeScript reference prose is absent from the 2.1.246 bundle and catalogue."
+  },
+  "data-managed-agents-client-patterns": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive client-patterns document prose is absent from the 2.1.246 bundle. Short tokens such as agent.custom_tool_use are SDK event names, not this guide."
+  },
+  "data-managed-agents-reference-ruby": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive Ruby managed-agents reference prose is absent from the 2.1.246 bundle and catalogue."
+  },
+  "data-managed-agents-reference-typescript": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive TypeScript managed-agents README prose is absent from the 2.1.246 bundle. client.beta.sessions.events.send( is SDK client code, not this document."
+  },
+  "data-message-batches-api-typescript": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-platform-availability": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive Platform Availability table prose is absent from the 2.1.246 bundle and catalogue."
+  },
+  "data-streaming-reference-csharp": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-streaming-reference-go": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-streaming-reference-java": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-streaming-reference-php": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "data-task-notification-artifact-auto-reply-interrupt-stop-disclosure": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "data-tool-use-reference-php": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive PHP tool-use reference prose is absent from the 2.1.246 bundle and catalogue."
+  },
+  "skill-artifact-editor-template-capabilities-with-commenting": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "skill-artifact-editor-template-capabilities-without-commenting": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "skill-artifact-editor-template-runtime-capabilities-note": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Renamed to skill-artifact-template-runtime-capabilities-note-live-doc in CC 2.1.239 (the two commenting ternary arms collapsed into one G30() .replace()). The orphan trim only changed \"an editor\" to \"a live editor\"; the new pristine already reads \"an editor whose editing and saving are already wired\", so nothing was carried."
+  },
+  "skill-artifact-slides-html-template": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "skill-claude-api-files-php": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-cowork-plugin-authoring-mcp-discovery": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive MCP-discovery skill prose (search_mcp_registry) is absent from the 2.1.246 bundle and catalogue."
+  },
+  "skill-cowork-plugin-authoring-search-strategies": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-dataviz-anti-patterns": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-dataviz-choosing-a-form": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-dataviz-color-formula": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive color-formula skill prose (MachadoOliveiraFernandes, four color jobs) is absent from the 2.1.246 bundle and catalogue."
+  },
+  "skill-dataviz-components": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-dataviz-interaction": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-dataviz-marks-and-anatomy": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-design-sync-package-source-adapter": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive adapter source (__dsDecorate, ZERO_MATCH, NO_DIST) is absent from the 2.1.246 bundle and catalogue."
+  },
+  "skill-design-sync-storybook-probe": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive Storybook probe source (NO_CHROMIUM, fiber-walk) is absent from the 2.1.246 bundle and catalogue."
+  },
+  "skill-design-sync-storybook-source-adapter": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive Storybook source-adapter prose (__dsDecorate, reduceRight note) is absent from the 2.1.246 bundle and catalogue."
+  },
+  "skill-run-example-browser-driven-web-app": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-run-example-cli-tool": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-run-example-library-sdk": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-run-example-web-server-api": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-sheet": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "skill-slides": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "skill-verify-cli-changes-example-for-verify-skill": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "skill-verify-server-api-changes-example-for-verify-skill": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "slash-command-cd-already-in-directory": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "slash-command-cd-trust-declined-staying": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "system-prompt-artifact-attached-republish-notify-note": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "system-prompt-interactive-intro-conditional": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Renamed to system-prompt-harness-instructions-2 in CC 2.1.239 (the shared intro prefix moved inside both ternary arms and a third arm was added). Its real trim — cutting Anthropic's \"IMPORTANT: You must NEVER generate or guess URLs\" paragraph — was carried to the successor as a rephrase into the positive house form, which is stronger than the outright cut."
+  },
+  "tool-description-artifact-comments-remote-no-watch": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-description-artifact-live-room": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-description-artifacttool": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Renamed to tool-description-artifact in CC 2.1.239. The orphan carried a 37% trim against superseded pristine; the successor was re-trimmed this run against current pristine with a full corpus check (23%), which is authoritative per the re-trim-never-keep-stale rule."
+  },
+  "tool-description-devicebash-local-sandbox-intro": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-parameter-artifact-action-watch-remote-unsupported": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-parameter-artifact-force": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Renamed to tool-parameter-artifact-force-overwrite-guidance in CC 2.1.239, which rewrote the parameter substantially (491 to 710 chars, adding the save-from-page case). The orphan's light de-shouting trim was against the old text; the successor was audited this run and ruled pristine-keep on corpus evidence."
+  },
+  "tool-parameter-device-bash-timeout-ms": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-parameter-devicebash-command": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: the full string 'Shell command to execute (passed to bash -c).' is absent from the 2.1.246 bundle. Shorter 'Shell command to execute' windows match unrelated shell-parameter copy."
+  },
+  "tool-result-artifact-asset-list-action-description": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-asset-read-action-description": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-asset-read-conversation-approval-scope": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-asset-read-invalid-url": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-asset-read-plan-mode-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-asset-upload-cowork-no-consent-surface": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-asset-upload-cowork-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-comment-reply-cowork-no-consent-surface": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-comment-reply-cowork-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-comment-resolve-cowork-no-consent-surface": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-comment-resolve-cowork-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-db-write-cowork-no-consent-surface": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-db-write-cowork-per-write-approval-scope": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-db-write-cowork-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-decisions-island-absent": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-durable-wake-flag-off": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-files-path-empty": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-files-path-reserved-thumbnail": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-list-assets-plan-mode-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-live-subscription-comment-wake-clause-unarmed": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-multifile-not-enabled": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-artifact-publish-conflict-force-note": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-publish-conflict-lead": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-publish-mcp-reserved-connector-rename-fragment": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-artifact-republished-by-another-session": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-resume-replies-cowork-approval-reason": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-resume-replies-cowork-deny-reason": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-resume-replies-cowork-no-consent-surface": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-unsupported-file-type-add-extension": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-unsupported-file-write-as-html-or-md": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-unsupported-text-save-as-md": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-upload-412": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-upload-intercepted": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-artifact-watch-permission-required": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-watches-list-remote-unsupported": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Absent from prompts-2.1.239.json; the override body matched superseded pristine, so nothing unique was lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.239/."
+  },
+  "tool-result-artifact-workshop-decisions-are-data": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239. The override was an empty-body suppression, which is moot once the id no longer exists."
+  },
+  "tool-result-artifact-workshop-decisions-header": {
+    "verdict": "archived",
+    "version": "2.1.239",
+    "why": "Removed from the catalogue in CC 2.1.239; no literal run survives in the bundle. Overrides archived to ~/.tweakcc/orphans-removed-for-2.1.239/ and recoverable from git history."
+  },
+  "tool-result-computer-use-request-access-allowlist": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-all-unix-sockets-refused": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-cancelled": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-concurrency-limit-refused": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-output-limit": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-sandbox-disabled": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-sandbox-unconfined": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-sandbox-unsupported": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-device-bash-timeout": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-devicebash-sandbox-credential-injection-refused": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive refusal prose (inject real credentials, sandbox.credentials mode mask) is absent from the 2.1.246 bundle and catalogue."
+  },
+  "tool-result-devicebash-sandbox-start-failed": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive refusal prose (sandboxing is enabled on this device but failed to start) is absent from the 2.1.246 bundle and catalogue."
+  },
+  "tool-result-file-not-found-did-you-mean": {
+    "verdict": "archived",
+    "why": "Text absent from the 2.1.246 bundle and catalogue on distinctive single-line mid-body probes; the override was archived to ~/.tweakcc/orphans-removed-for-2.1.246/."
+  },
+  "tool-result-multi-file-publish-not-enabled": {
+    "verdict": "archived",
+    "version": "2.1.246",
+    "why": "False-positive of the 25-char sliding-window gate: distinctive 'multi-file publish is not enabled' prose is absent from the 2.1.246 bundle and catalogue."
+  },
+  "tool-result-design-no-credential": {
+    "verdict": "archived",
+    "why": "Removed in CC 2.1.247; the design no-credential tool_result is gone from the bundle. Override was a pristine stub, so no curated decision is lost."
+  },
+  "slash-command-fast-mode-enabled": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-mcp-reconnect-threw": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-mcp-server-disabled-enable-first": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-mcp-server-not-found": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-mcp-toggle-already-in-state": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-mcp-toggle-result": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-mcp-toggle-threw": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-model-set-remote": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-model-status-current": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-moved-to-config-redirect": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "slash-command-resume-session-still-running-as-agent": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-artifact-db-batch-write-ask-detail": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-artifact-stored-capability": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-cloud-session-nothing-was-changed": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-cloud-session-nothing-was-read": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-cloud-session-unattested-outside-launch-dir": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-cloud-session-unattested-special-file": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-served-read-path-changed-during-read": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "tool-result-served-write-cloud-unattested-sensitive-path": {
+    "verdict": "archived",
+    "version": "2.1.251",
+    "why": "Removed in CC 2.1.251. Distinctive literal runs are absent from the 2.1.251 bundle, the new catalogue and the classify sidecar. The /mcp and /model command output and the cloud-session/served-file tool results were reworked wholesale alongside the new directory-sync subsystem. Archived to ~/.tweakcc/orphans-removed-for-2.1.251/."
+  },
+  "agent-prompt-narration-next-line-format": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "agent-prompt-narration-next-line-rule": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "agent-prompt-permission-explainer-input": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "system-prompt-opus5-no-agenttool-unless-requested": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "system-prompt-permission-explainer": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-description-explain-command": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-description-explain-command-explanation": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-description-explain-command-reasoning": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-description-explain-command-risk": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-parameter-explain-command-risk-level": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-result-artifact-db-batch-fallback-write-failed": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-result-remote-host-plan-mode-blocked": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "tool-result-remote-host-result-missing-after-timeout": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Gone from the CC 2.1.257 bundle: zero literal runs survive. Override archived to ~/.tweakcc/orphans-removed-for-2.1.257/ (git history also retains it)."
+  },
+  "data-auto-mode-projects-owner-ask-reply-wrapper": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "data-auto-mode-projects-owner-comment-prefix-wrapper": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "data-local-command-wrapper": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "slash-command-code-review-inline-assembly": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "system-prompt-mcp-resource-text-content-wrapper": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-parameter-claude-in-chrome-coordinate": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-result-artifact-asset-list-composition": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-result-artifact-live-doc-version": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-result-computer-use-batch-step-prefix": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-result-memory-list-entries-wrapper": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-result-onboarding-guide-share-link-status": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-result-readmcpresourcedir-listing": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "tool-result-sendmessage-inline-handoff-resumed-report": {
+    "verdict": "archived",
+    "version": "2.1.257",
+    "why": "Not a prompt: the template carries no prose outside its ${...} slots (interpolation scaffold only), so no override could change anything the model reads, and its punctuation-only regex matched unrelated sites of the same shape — on 2.1.257 the readmcpresourcedir entry absorbed the Workflow description builder and spliced a bare identifier into it. Excluded by the extractor prose rule; the archived .md is pristine content."
+  },
+  "slash-command-rate-limit-team-upgrade-browser-failed": {
+    "verdict": "archived",
+    "version": "2.1.259",
+    "why": "Team-upgrade browser hand-off removed with the rate-limit upsell path; distinctive mid-body probes absent from the 2.1.259 bundle, catalogue and classify sidecar."
+  },
+  "slash-command-rate-limit-team-upgrade-browser-opened": {
+    "verdict": "archived",
+    "version": "2.1.259",
+    "why": "Sibling of the -failed branch, removed with the same rate-limit upsell path; absent from the 2.1.259 bundle, catalogue and classify sidecar."
+  },
+  "tool-result-bash-remote-deny-list-unenforceable": {
+    "verdict": "archived",
+    "version": "2.1.259",
+    "why": "Remote bash deny-list result dropped when the remote tool-host guard was reworked for the attached-machines feature; absent from the 2.1.259 bundle."
+  },
+  "tool-result-remote-host-not-served-omit-local": {
+    "verdict": "archived",
+    "version": "2.1.259",
+    "why": "Remote host not-served result dropped in the same attached-machines rework; absent from the 2.1.259 bundle."
+  },
+  "data-claude-code-changelog": {
+    "verdict": "archived",
+    "version": "2.1.259",
+    "why": "Not a removal but a FACING correction: oen() returns the bundled release notes consumed only by the lastReleaseNotesSeen What's New UI, while the claude-code-guide path reads the fetched NWe()/changelogLastFetched cache. Ruled ui this bump, so the id leaves a model-facing catalogue. Also embeds a literal version heading, which would have made it a build-stamped catalogue hazard."
+  },
+  "slash-command-plugin-types-wrote": {
+    "verdict": "archived",
+    "version": "2.1.259",
+    "why": "Superseded: the /plugin types wrote-message was split and re-catalogued as slash-command-plugin-types-wrote-plugin-api this bump."
+  },
+  "tool-result-proposeskills-existing-skillmd-unread": {
+    "verdict": "archived",
+    "version": "2.1.259",
+    "why": "ProposeSkills existing-SKILL.md result reworded past the continuity window and re-catalogued under the reworked proposeskills family; original id absent from the 2.1.259 catalogue."
+  },
+  "agent-prompt-narration-status-line-running-tools": {
+    "verdict": "archived",
+    "version": "2.1.261",
+    "why": "Removed in CC 2.1.261. Every >=25-char literal run of the 2.1.259 body was swept at stride 5 against the pristine 2.1.261 bundle, the new catalogue and the classify sidecar with zero hits; the override in each set was a pristine stub, so nothing curated is lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.261/."
+  },
+  "agent-prompt-narration-sub-goal-definition": {
+    "verdict": "archived",
+    "version": "2.1.261",
+    "why": "Removed in CC 2.1.261. Every >=25-char literal run of the 2.1.259 body was swept at stride 5 against the pristine 2.1.261 bundle, the new catalogue and the classify sidecar with zero hits; the override in each set was a pristine stub, so nothing curated is lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.261/."
+  },
+  "tool-result-artifact-publish-html-base-element": {
+    "verdict": "archived",
+    "version": "2.1.261",
+    "why": "Removed in CC 2.1.261. Every >=25-char literal run of the 2.1.259 body was swept at stride 5 against the pristine 2.1.261 bundle, the new catalogue and the classify sidecar with zero hits; the override in each set was a pristine stub, so nothing curated is lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.261/."
+  },
+  "tool-result-bash-command-stopped-output-so-far": {
+    "verdict": "archived",
+    "version": "2.1.261",
+    "why": "Removed in CC 2.1.261. Every >=25-char literal run of the 2.1.259 body was swept at stride 5 against the pristine 2.1.261 bundle, the new catalogue and the classify sidecar with zero hits; the override in each set was a pristine stub, so nothing curated is lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.261/."
+  },
+  "tool-result-bash-read-deny-rule-covers-location-ask": {
+    "verdict": "archived",
+    "version": "2.1.261",
+    "why": "Removed in CC 2.1.261. Every >=25-char literal run of the 2.1.259 body was swept at stride 5 against the pristine 2.1.261 bundle, the new catalogue and the classify sidecar with zero hits; the override in each set was a pristine stub, so nothing curated is lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.261/."
+  },
+  "tool-result-git-bundle-no-changes-read-rule-clause": {
+    "verdict": "archived",
+    "version": "2.1.261",
+    "why": "Removed in CC 2.1.261. Every >=25-char literal run of the 2.1.259 body was swept at stride 5 against the pristine 2.1.261 bundle, the new catalogue and the classify sidecar with zero hits; the override in each set was a pristine stub, so nothing curated is lost. Archived to ~/.tweakcc/orphans-removed-for-2.1.261/."
+  },
+  "data-task-notification-background-agents-relaunch-all": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"data-task-notification-background-agents-aggregate-lost\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "data-task-notification-background-agents-resume-all-or-check": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"system-reminder-orphaned-agents-aggregate-stopped-count\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "data-task-notification-background-agents-resume-all-webfetch": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"system-reminder-orphaned-agents-aggregate-stopped-count\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "skill-plan-artifact-description": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json, from the 2.1.265 bundle and from the classify sidecar. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "slash-command-plan-publish-failed": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json, from the 2.1.265 bundle and from the classify sidecar. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "slash-command-plan-publish-unavailable": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"data-artifact-watch-auto-classifier-no-watch-rail-note\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "slash-command-plan-published-artifact-url": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json, from the 2.1.265 bundle and from the classify sidecar. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "slash-command-plan-share-cloud-workspace-unsupported": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"slash-command-plan-open-cloud-workspace-unsupported\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "slash-command-plugin-types-outside-project": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json, from the 2.1.265 bundle and from the classify sidecar. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "slash-command-plugin-types-symlink": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json, from the 2.1.265 bundle and from the classify sidecar. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "system-prompt-artifact-comment-list-framing": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-comments-untrusted-header\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "system-reminder-deferred-tools-removed-summary": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json, from the 2.1.265 bundle and from the classify sidecar. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "system-reminder-orphaned-agents-aggregate-lost-count": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"system-reminder-background-agents-stopped\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-description-artifact-list-assets": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-description-artifact-delete-asset\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-description-artifact-list-files-dynamic": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-parameter-artifact-action-files\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-description-artifact-read-asset": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-description-artifact-delete-asset\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-description-artifact-read-file-dynamic": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-publish-multifile-change-clause\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-parameter-artifact-files-path": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-parameter-artifact-files-list-path\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-asset-read-outside-working-paths-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-read-db-outside-working-paths-user-approval-required\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-consent-ask-rule-covers-this-url-4": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-consent-ask-rule-covers-this-url-3\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-files-outside-working-dir": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-description-edit-outside-working-directory\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-list-files-consent-ask": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json, from the 2.1.265 bundle and from the classify sidecar. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-approval-scope-clause": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-read-db-approval-covers-conversation\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-cowritten-ownership-label": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-read-cowritten-files-no-consent-label\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-file-save-outside-scratchpad-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-file-upload-multiple-hard-links\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-file-save-protected-name-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-read-file-save-protected-name-needs-approval\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-file-save-symlink-outside-carve-out-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-read-file-save-link-outside-carve-out-needs-approval\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-from-type-ownership-label": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-yours-from-type-files-label\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-plan-mode-first-listing-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-resume-replies-plan-mode-approval-reason\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-plan-mode-first-read-user-approval-required": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-resume-replies-plan-mode-approval-reason\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-read-save-consent-ask": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-read-save-folder-outside-working-folders-note\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-root-outside-workdir": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-description-edit-outside-working-directory\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-artifact-type-lock-read-note": {
+    "verdict": "archived",
+    "version": "2.1.265",
+    "why": "Absent from prompts-2.1.265.json. The gate's 25-char window pointed at \"tool-result-artifact-type-lock-publish-data-files\", but full-body similarity does not support a rename, so the override was archived rather than re-pointed; the successor id is audited on its own. Archived to ~/.tweakcc/orphans-removed-for-2.1.265/."
+  },
+  "tool-result-read-file-unchanged-2": {
+    "verdict": "archived",
+    "version": "2.1.266",
+    "why": "Never a real prompt. The release-notes changelog was force-captured under this collision id because a NEW_PROMPT_ASSIGNMENTS matcher used a bare includes() on \"File unchanged since last read\", which a 2.1.266 release note quotes verbatim in a /rewind bug-fix entry; a curated assignment outranks both the classification cache and the prose gate, so no verdict could suppress it. The changelog is now hard-excluded by shape and the matcher is anchored at the start, so the real 154-char prompt keeps the unsuffixed id. Archived to ~/.tweakcc/orphans-removed-for-2.1.266/."
+  },
+  "tool-description-artifact-separate-tools-endpoints-mcp": {
+    "verdict": "archived",
+    "version": "2.1.267",
+    "why": "The MCP-server surface for artifact endpoints is gone; the data-tool action form (tool-description-artifact-separate-tools-data) already existed and carries the surviving guidance. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.267/."
+  },
+  "tool-result-artifact-fix-declaration-fragment": {
+    "verdict": "archived",
+    "version": "2.1.267",
+    "why": "The declaration-fix clause was folded into the reworked contract/capability publish results (tool-result-artifact-publish-correct-declaration and siblings). Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.267/."
+  },
+  "tool-result-artifact-mcp-check-superseded": {
+    "verdict": "archived",
+    "version": "2.1.267",
+    "why": "MCP-surface artifact argument checks were removed with the MCP tools; no successor text in the bundle. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.267/."
+  },
+  "tool-result-artifact-mcp-endpoints-inexact-keys": {
+    "verdict": "archived",
+    "version": "2.1.267",
+    "why": "MCP-surface endpoints key check removed with the MCP tools. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.267/."
+  },
+  "tool-result-org-compliance-policy-unavailable": {
+    "verdict": "archived",
+    "version": "2.1.267",
+    "why": "Compliance-policy gating became the HIPAA latch (tool-result-hipaa-latched-feature-disabled-for-session) and the Projects policy result; the generic clause is gone. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.267/."
+  },
+  "system-prompt-env-info-block": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "The <env> block builder is gone; environment facts now render through the # Environment section. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-description-bash-sandbox-adjust-settings": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Sandbox section rewritten; the adjust-settings line became tool-description-bash-sandbox-restriction-tell-user. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-description-bash-sandbox-no-exceptions": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Sandbox section rewritten; no successor states the no-exceptions rule. Suppression override, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-description-connect-browser-result": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Browser connect result reworded to the selected-browser results (tool-description-chrome-selected-browser). Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-description-connect-browser-result-named": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Browser connect result reworded to tool-description-chrome-selected-browser-switch. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-description-read-max-size": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Read description dropped the inline max-size slot. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-description-read-offset-limit": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Read description dropped the offset/limit option; the targeted-read note is now a constant. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-result-agent-output-check-tool": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Background-agent notification tails reworded to the SendMessage status-report family. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-result-artifact-reads-blocked-deny-rule": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "Artifact deny-rule results consolidated into tool-result-webfetch-artifact-read-deny-rule and siblings. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "tool-result-error-calling-tool-retry": {
+    "verdict": "archived",
+    "version": "2.1.268",
+    "why": "The retry instruction is gone; only an \"Error calling tool\" label survives as glue in tool-result-permission-denied-wrapper. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.268/."
+  },
+  "system-reminder-cloud-review-post-login-required": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Cloud-review post-to-GitHub failure notes were rewritten into new sign-in/GitHub-token reminders (system-reminder-ultrareview-post-sign-in-*, -github-*); this wording is gone from the bundle. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "system-reminder-cloud-review-post-routine-refresh-failed": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Routine refresh failure note removed with the cloud-review post-routine rewrite. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "system-reminder-cloud-review-post-routine-request-rate-limited": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Routine request rate-limit note removed with the cloud-review post-routine rewrite. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "system-reminder-cloud-review-post-routine-run-rate-limited": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Routine run rate-limit note removed with the cloud-review post-routine rewrite. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "system-reminder-cloud-review-post-routine-verification-failed": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Routine verification-failed note removed with the cloud-review post-routine rewrite. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "system-reminder-ultrareview-post-environment-setup-failed": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Ultrareview post environment-setup failure note removed; the post family now reports sign-in and GitHub-connection failures instead. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "system-reminder-ultrareview-post-routine-organization-disabled": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Ultrareview post organization-disabled note removed with the post-routine rewrite. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "tool-description-artifact-separate-tools-load-hint": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "Artifact tool description restructured (separate-tools framing replaced by the Calls section and the app-wording arm); the load hint is gone. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "tool-parameter-artifact-list-scope-assets-clause": {
+    "verdict": "archived",
+    "version": "2.1.269",
+    "why": "The list scope parameter no longer carries a separate assets clause; asset listing is described in the rewritten action surface. Pristine stub, archived. Archived to ~/.tweakcc/orphans-removed-for-2.1.269/."
+  },
+  "system-prompt-coordinator-git-worker-skills": {
+    "verdict": "archived",
+    "version": "2.1.273",
+    "why": "CC 2.1.273 reversed the 2.1.269 commit/PR-skill routing: the conditional that fed workers the /commit and /create-pr skill names is gone and the coordinator brief states the commit instruction as plain literal text. No mid-body probe survives in the bundle."
+  },
+  "tool-parameter-artifact-lang": {
+    "verdict": "archived",
+    "version": "2.1.273",
+    "why": "Artifact lang parameter retired; no distinctive run of the previous body appears in the 2.1.273 bundle, the catalogue or the classify sidecar."
+  },
+  "tool-parameter-artifact-lang-2": {
+    "verdict": "archived",
+    "version": "2.1.273",
+    "why": "Second site of the retired Artifact lang parameter; gone with its sibling."
+  },
+  "tool-result-artifact-comments-notification-triggered-ask-reason": {
+    "verdict": "archived",
+    "version": "2.1.273",
+    "why": "Comment-notification ask-reason clause removed; absent from the bundle, the catalogue and the sidecar."
+  },
+  "tool-result-artifact-list-by-type-curated-empty-clause": {
+    "verdict": "archived",
+    "version": "2.1.273",
+    "why": "Curated-empty clause dropped from the list-by-type result; absent from the bundle, the catalogue and the sidecar."
+  },
+  "tool-result-artifact-live-subscription-session-context": {
+    "verdict": "archived",
+    "version": "2.1.273",
+    "why": "Superseded by the reshaped live-subscription reason table. The surviving publish-context text is catalogued this run as tool-result-artifact-live-subscription-publish-context and its short reason-table sibling -publish-context-reason; this id's own body is gone."
+  },
+  "tool-result-bash-edit-deny-rule-write-undetermined": {
+    "verdict": "archived",
+    "version": "2.1.273",
+    "why": "Deny-rule undetermined-write result removed; absent from the bundle, the catalogue and the sidecar. Its near sibling tool-result-bash-deny-rules-unjudged-explicit-approval was NOT removed — that text survives and was re-catalogued this run as the seven tool-result-bash-dangerous-op-* prompts."
+  },
+  "data-artifact-from-type-files-classifier-qualifier": {
+    "verdict": "archived",
+    "version": "2.1.274",
+    "why": "Artifact from-type files classifier qualifier removed with the quickstart classifier-input rework; absent from bundle, catalogue and sidecar."
+  },
+  "data-artifact-type-index-path-with-root-fallback": {
+    "verdict": "archived",
+    "version": "2.1.274",
+    "why": "Type index path root-fallback note removed; absent from bundle, catalogue and sidecar."
+  },
+  "system-reminder-artifact-watch-ended": {
+    "verdict": "archived",
+    "version": "2.1.274",
+    "why": "Artifact watch-ended reminder removed: republishes no longer notify the session (starts no turn)."
+  },
+  "tool-parameter-artifact-auto-open-omit-for-repl": {
+    "verdict": "archived",
+    "version": "2.1.274",
+    "why": "REPL omit clause dropped from the auto_open parameter; absent from bundle."
+  },
+  "tool-result-artifact-read-public-files-not-readable-this-way": {
+    "verdict": "archived",
+    "version": "2.1.274",
+    "why": "Public-files-not-readable result removed with the read-file rework; absent from bundle."
+  },
+  "tool-result-memory-write-tombstone-identical-recreate-refused": {
+    "verdict": "archived",
+    "version": "2.1.274",
+    "why": "Memory write tombstone identical-recreate refusal removed; absent from bundle, catalogue and sidecar."
+  },
+  "system-reminder-repl-vm-state-cleared-on-compaction": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-description-repl-execution-timeout": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-description-shquote-powershell": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-description-tool-only-available-inside-context": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-description-waitformcpservers-repl-environment": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "WaitForMcpServers REPL-environment wording removed with the REPL tool; absent from bundle."
+  },
+  "tool-description-waitformcpservers-repl-ready-when": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "WaitForMcpServers REPL-environment wording removed with the REPL tool; absent from bundle."
+  },
+  "tool-parameter-artifact-from-url-person-can-open": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Absent from the 2.1.276 bundle, catalogue and sidecar."
+  },
+  "tool-parameter-send-message-recipient": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Absent from the 2.1.276 bundle, catalogue and sidecar."
+  },
+  "tool-result-artifact-favicon-emoji": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Artifact emoji favicon replaced by a one-word icon in 2.1.276; the favicon text is absent from the bundle."
+  },
+  "tool-result-artifact-publish-favicon-required-with-files": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Artifact emoji favicon replaced by a one-word icon in 2.1.276; the favicon text is absent from the bundle."
+  },
+  "tool-result-artifact-publish-required-new-artifact-clause": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Artifact emoji favicon replaced by a one-word icon in 2.1.276; the favicon text is absent from the bundle."
+  },
+  "tool-result-artifact-read-paths-need-prior-path-approval": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Artifact read-paths approval wording reworked in 2.1.276; distinctive probes absent from bundle, catalogue and sidecar."
+  },
+  "tool-result-artifact-read-paths-never-asks": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Artifact read-paths approval wording reworked in 2.1.276; distinctive probes absent from bundle, catalogue and sidecar."
+  },
+  "tool-result-artifact-read-paths-omit-out-dir-scratchpad": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Artifact read-paths approval wording reworked in 2.1.276; distinctive probes absent from bundle, catalogue and sidecar."
+  },
+  "tool-result-artifact-read-paths-session-approval-not-kept": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "Artifact read-paths approval wording reworked in 2.1.276; distinctive probes absent from bundle, catalogue and sidecar."
+  },
+  "tool-result-registertool-name-collision": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "RegisterTool results removed with the REPL tool; absent from bundle, catalogue and sidecar."
+  },
+  "tool-result-registertool-name-invalid": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "RegisterTool results removed with the REPL tool; absent from bundle, catalogue and sidecar."
+  },
+  "tool-result-registertool-schema-invalid": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "RegisterTool results removed with the REPL tool; absent from bundle, catalogue and sidecar."
+  },
+  "tool-result-repl-async-cancelled-before-start": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-async-dispatch-queue-depth-cap": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-async-dispatched": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-async-dispatched-queued-behind": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-async-settle-output-truncated": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-base64-moved-to-result": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-documents-omitted": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-images-omitted": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-inner-watchdog": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-module-loading-blocked": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-url-elicitation-declined": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "tool-result-repl-wallclock-limit": {
+    "verdict": "archived",
+    "version": "2.1.276",
+    "why": "REPL tool removed from CC 2.1.276 (description, params, async dispatch and VM-state reminder all absent from the bundle)."
+  },
+  "slash-command-mcp-reconnect-pending-approval": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "No literal run survives in the 2.1.277 bundle; override archived to ~/.tweakcc/orphans-removed-for-2.1.277/."
+  },
+  "tool-parameter-task-output-block": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "TaskOutput tool removed in 2.1.277"
+  },
+  "tool-parameter-task-output-task-id": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "TaskOutput tool removed in 2.1.277"
+  },
+  "tool-parameter-task-output-timeout": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "TaskOutput tool removed in 2.1.277"
+  },
+  "tool-result-artifact-publish-custom-thumbnails-clause": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "No literal run survives in the 2.1.277 bundle; override archived to ~/.tweakcc/orphans-removed-for-2.1.277/."
+  },
+  "tool-result-bash-dangerous-op-unset-variable-expansion-condition": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "No literal run survives in the 2.1.277 bundle; override archived to ~/.tweakcc/orphans-removed-for-2.1.277/."
+  },
+  "tool-result-mcp-task-elicitation-dialog-open": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "No literal run survives in the 2.1.277 bundle; override archived to ~/.tweakcc/orphans-removed-for-2.1.277/."
+  },
+  "tool-result-mcp-task-survives-session": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "No literal run survives in the 2.1.277 bundle; override archived to ~/.tweakcc/orphans-removed-for-2.1.277/."
+  },
+  "tool-result-task-output-truncated-tail-only": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "TaskOutput tool removed in 2.1.277"
+  },
+  "tool-result-task-output-web-fetch-agent-no-report": {
+    "verdict": "archived",
+    "version": "2.1.277",
+    "why": "TaskOutput tool removed in 2.1.277"
+  },
+  "system-reminder-dir-sync-after-command-applied-summary": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "dir-sync after-command reminder family rewritten in 2.1.281; this summary line has no successor text in the bundle"
+  },
+  "system-reminder-dir-sync-after-command-changes-not-here-yet": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "dir-sync after-command reminder family rewritten in 2.1.281; text gone from the bundle"
+  },
+  "system-reminder-dir-sync-files-not-taken": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "dir-sync not-taken notice reworded into the new not-taken-from-user-machine reminder; old text gone"
+  },
+  "system-reminder-dir-sync-host-push-take-in-failed": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "dir-sync host-push reminders removed in 2.1.281; text gone from the bundle"
+  },
+  "system-reminder-dir-sync-not-applied-reason-released": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "dir-sync not-applied reason clause removed in 2.1.281"
+  },
+  "system-reminder-dir-sync-parked-reason-already-on-remote": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "parked-reason clause replaced by the published-commits reminders in 2.1.281"
+  },
+  "system-reminder-tool-hosts-file-sync-timing-write-notice": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "tool-hosts file-sync timing split into new clauses in 2.1.281; this write notice is gone"
+  },
+  "tool-result-dir-sync-deferred-until-handoff": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "deferred-until-handoff tool result removed in 2.1.281"
+  },
+  "tool-result-remote-host-bridge-and-no-announce": {
+    "verdict": "archived",
+    "version": "2.1.281",
+    "why": "remote-host bridge-and-no-announce result removed in 2.1.281"
+  },
+  "data-compaction-summary-repl-bindings-listed": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "compaction summary REPL-bindings line removed in 2.1.282"
+  },
+  "data-compaction-summary-repl-bindings-unnamed-count": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "compaction summary REPL-bindings count removed in 2.1.282"
+  },
+  "system-reminder-dir-sync-abandoned-reason-background-upload": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "system-reminder-dir-sync-abandoned-reason-emergency-switch": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "system-reminder-dir-sync-abandoned-reason-gave-up-offline": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "system-reminder-tool-hosts-powershell-repl-other-tools-there-too": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "system-reminder-tool-hosts-repl-machine-argument": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "tool-description-bash-pre-commit-skill-checks-exemption-no-status-sentence": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "exemption sentence replaced by an empty string in 2.1.282"
+  },
+  "tool-result-dir-sync-kept-here": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "tool-result-dir-sync-kept-here-detail-refused": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "tool-result-dir-sync-kept-here-detail-unauthorized": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "tool-result-dir-sync-kept-here-file-store-full": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "dir-sync / tool-hosts branch removed in 2.1.282"
+  },
+  "tool-result-mcp-wait-connected-repl": {
+    "verdict": "archived",
+    "version": "2.1.282",
+    "why": "REPL variant of the MCP-wait connected result removed in 2.1.282"
+  },
+  "agent-prompt-narration-digest-how-started": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-digest-just-now": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-digest-previous-reply": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-digest-user-request": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-status-line-examples": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-status-line-one-line": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-status-line-previous-line": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-status-line-system": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-status-line-voice": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "agent-prompt-narration-previous-line": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "client-side narration status-line agent removed in 2.1.284 (narration now arrives as server-tagged thinking blocks)"
+  },
+  "slash-command-effort-ultracode-level": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "/effort and /model effort strings rewritten in 2.1.284 when ultracode became a session setting"
+  },
+  "slash-command-effort-usage-header": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "/effort and /model effort strings rewritten in 2.1.284 when ultracode became a session setting"
+  },
+  "slash-command-model-effort-env-override-suffix": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "/effort and /model effort strings rewritten in 2.1.284 when ultracode became a session setting"
+  },
+  "slash-command-model-effort-session-only-suffix": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "/effort and /model effort strings rewritten in 2.1.284 when ultracode became a session setting"
+  },
+  "slash-command-model-ultracode-session-only-suffix": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "/effort and /model effort strings rewritten in 2.1.284 when ultracode became a session setting"
+  },
+  "skill-design-description": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "design skill description removed in 2.1.284"
+  },
+  "tool-result-artifact-db-write-committed": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "artifact db single-write committed result removed in 2.1.284"
+  },
+  "tool-result-artifact-live-doc-shim-published": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "slot-only live-doc shim publish result removed in 2.1.284"
+  },
+  "tool-result-skill-permission-rule-covers-old-name": {
+    "verdict": "archived",
+    "version": "2.1.284",
+    "why": "skill permission-rule old-name note removed in 2.1.284"
+  },
+  "data-automem-memory-index-header": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-apply-interrupted-partial-checkout": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-apply-partial-rewrite-undone": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-deleted-files-moved-to-trash": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-nested-repo-inside-uncarried-dir": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-nested-repo-keep-as-ordinary-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-nested-repo-ordinary-except-uncarried": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-overcap-file-listing": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-partial-writes-remain-in-worktree": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-restore-reason-no-basis-agent": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-restore-reason-not-stored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-restore-reason-rolled-back-no-basis-agent": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-shadowed-files-moved-to-trash": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-dir-sync-trash-restore-failed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "data-memory-index-listing-cap-note": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "data-memory-truncation-byte-limit-detail": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-commits-carried-along": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-commits-parked": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-commits-reparented": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-files-created-before-arrival-trashed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-snapshot-commits-restored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-staging-contents-unchanged": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-staging-dropped": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-staging-no-longer-in-checkout": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-agent-staging-reread-before-relying": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-bookkeeping-newest-snapshot-ref-command": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-bookkeeping-reset-to-user-commit": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-bookkeeping-user-commit-not-in-history": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-carried-commits-many-sync-snapshots": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-carried-commits-one-sync-snapshot": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-changed-during-read": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-checkout-back-on-user-branch": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-checkout-follows-user-branch": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-checkout-unready-mid-operation": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-checkout-unready-unmerged": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-checkout-update-unfinished": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-claude-changes-did-not-reach-machine": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-cloud-branch-name-collides-rename": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-cloud-changes-not-applied-turn-retry": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-cloud-checkout-unready-not-sent": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-conflicts-resolved-on-laptop": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-credential-named-uncommitted-skipped": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-device-link-unusable-resend-current-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-device-upload-gone-resend-asked": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-device-upload-lacks-history-unchanged": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-device-upload-refused-fresh-snapshot": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-duplicate-generation-ignored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-earlier-update-now-reached": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-earlier-work-not-restored-told": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-edit-over-delete": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-empty-start-directory-not-empty": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-empty-start-files-may-not-come": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-empty-start-first-upload-did-not-verify": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-empty-start-git-could-not-write-checkout": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-empty-start-upload-begun": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-environment-recreated-happened": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-environment-recreated-local-state-gone": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-environment-recreated-setup-gone": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-file-store-full-refused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-file-store-share-used-up": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-file-store-share-used-up-counts": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-files-displaced": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-files-refused-write-summary": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-files-trashed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-files-updated-in-place": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-filter-attributed-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-from-stays-put": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-git-error-detail-diff-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-halt-line-lane-full": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-halt-line-layout-unserved": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-halt-line-offline": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-halt-line-refused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-halt-line-set-aside-failed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-halt-line-start-gone": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-head-fast-forwarded": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-head-moved": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-head-on-sync-snapshot-commit": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-head-restored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-held-back-work-now-sent": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-index-not-mirrored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-info-attributes-changed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-info-attributes-unusable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-kept-in-cloud-only-list": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-latest-upload-unusable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-merge-driver-unswitchable-name": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-merge-drivers-too-many": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-merge-tree-unsupported": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-merge-unsettled": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-missing-link-upload-unusable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-name-list-overflow-suffix": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-nested-git-repos-left-in-cloud": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-nested-repository-not-entered": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-bad-bundle": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-detached-head": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-git-error": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-mid-operation": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-prerequisites-missing": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-refused-here": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-unborn": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-unexpected": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-unmerged-index": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-applied-reason-worktree-changed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-installed-list-truncated": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-installed-on-user-machine": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-installed-reason-deferred": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-installed-reason-outside-checkout": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-installed-stale-basis": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-taken-from-user-machine": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-uploaded-reason-compliance-restricted": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-not-uploaded-reason-git-error": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-off-head-unreadable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-oversize-files-not-sent": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-oversize-turn-version-stays-cloud": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-parked-commits-still-kept": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-parked-reason-cannot-recreate": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-parked-reason-published": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-published-commits-off-work-branch": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-published-remote-changes-guidance": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-renamed-on-user-machine": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-restored-files-no-longer-match-user-commits": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-restored-user-commits": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-rewrite-reparented-guidance": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-rewrite-uncommitted-guidance": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-service-answering-again": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-service-answering-again-resumes-this-turn": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-service-resumed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-stopped-emptied-only-marker-left": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-stopped-no-checkout-to-empty": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-stopped-reason-commit-not-held": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-stopped-reason-machine-stopped": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-stopped-redo-on-machine": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-stopped-set-aside-redo-on-machine": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-stopped-unsent-files-when-ended": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-too-large-on-laptop": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-trash-files-not-moved-back-clause": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-turn-changes-too-large-to-send": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-turn-overcap": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-uncommitted-too-large-largest-file": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-unresolved-conflicts-on-laptop": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-update-record-not-taken": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-update-record-refused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-uploads-going-through-again": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-branch-followed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-changes-fetch-gave-up": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-changes-reaching-again": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-changes-refused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-file-replaced-agent-directory": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-file-replaced-agent-directory-many-more": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-file-replaced-agent-directory-one-more": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-user-switched-checkout-followed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-withheld-rules-unreadable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-withheld-summary-current-and-tracked": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-withheld-summary-tracked-only": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-dir-sync-written-during-read-not-synced": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-branch-name-collision": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-branch-switch-parked-work": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-recreated": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-recreated-comes-back-after-refused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-recreated-comes-back-later-upload": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-recreated-comes-back-on-resend": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-recreated-comes-back-taken": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-recreated-from-user-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-recreated-wait-for-files-tail": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-reset-partial-restore-commits-missing": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-rolled-back": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-rolled-back-local-state-gone": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-rolled-back-not-restored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-rolled-back-setup-gone": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-unready-git-unreadable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-checkout-unready-unborn-branch": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-cloud-only-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-disabled-container-recreated": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-disabled-device-key-unreadable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-disabled-first-object-unreadable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-disabled-set-aside-failed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-disabled-trash-unavailable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-environment-replaced-work-restored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-git-keeps-failing-upload": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-lane-down": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-latest-changes-unusable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-latest-not-uploaded": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-live-checkout-guidance": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-not-applied": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-not-sent-checkout-unreadable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-not-sent-git-unreadable": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-service-not-answering": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-service-offline-this-turn": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-service-unreachable-no-user-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-snapshot-commit-reset": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-stopped-checkout-kept": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-switched-back-on-by-anthropic": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-turn-held-waiting-service": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-upload-began-before-turn": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-upload-began-before-turn-newer-changes": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-user-edits-won": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-directory-sync-working-directory-not-yet-user-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-settings-sync-dropped": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-settings-sync-pending": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-file-sync-timing": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-file-sync-timing-after-task": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-file-sync-timing-mid-turn": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-here-no-synced-copy": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-housekeeping-either-machine": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-look-for-it-there": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-machine-files-synced-copy-work-here": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-not-in-session-copy": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-project-sync-scope-checkout-or-folder": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-project-sync-scope-containing-checkout": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-project-upload-only": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-project-upload-only-changes-in-scope": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-two-way-commit-timing": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "system-reminder-tool-hosts-upload-only-absolute-path": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-description-directory-sync-device-sync-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-file-sync-back-on-catching-up": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-file-sync-compliance-policy-blocked": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-file-sync-git-symlink-refused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-file-sync-off-anthropic-side-continues": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-file-sync-off-before-files-reached": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-file-sync-off-holds-none-yet": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-file-sync-repo-setting-steers-git": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-first-upload-unexpected": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-folder-seed-bundle-seed-switched-off": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-folder-seed-git-entry-unvouched": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-folder-seed-packaging-failed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-github-clone-would-lack": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-no-github-remote": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-pass-ref-github-file-sync-off": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-cloud-session-run-cloud-ref-file-sync-off": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-anchor-not-opened-reading": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-attribute-rule-setting-cannot-follow": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-branch-changed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-branch-could-not-be-put-back": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-branch-not-put-back-index-old": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-changes-unapplied": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-checkout-unready-cause": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-could-not-ask-catch-up": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-could-not-send-first": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-could-not-take-in-failed": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-file-store-full-ends-sync": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-files-held-open-cause": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-held-open-command-ran-note": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-held-open-read-older-copy-note": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-host-not-syncing": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-host-stopped-syncing": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-ignore-case-included-file": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-layout-changed-reflog-not-plain-file": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-layout-changed-refs-dir-changed-not-restored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-layout-changed-refs-dir-changed-undone": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-layout-changed-refs-dir-not-plain": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-layout-changed-session-ref-log-not-plain": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-layout-changed-session-ref-log-replaced": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-next-sync-point-remedy": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-overcap-remedy": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-peer-refused-reason": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-peer-upload-did-not-go": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-pre-forward-internal-error": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-publish-refused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-read-ran-on-stale-files": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-ref-moved-head-mismatch": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-seed-anchor-not-opened": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-stale-files-hold": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-stale-remedy-next-upload": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-stale-remedy-turn-end": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-switch-back-remedy": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-unreadable-sync-response": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-dir-sync-user-clears-on-machine-remedy": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-fork-unavailable-in-parent-mode": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-git-bundle-forged-path-names": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-git-bundle-git-could-not-read": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-memory-paused": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-remote-host-session-copy-omits-gitignored": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "removed in 2.1.285: distinctive text absent from bundle and catalogue"
+  },
+  "tool-result-remote-tool-plumbing-not-served-dir-sync-hold": {
+    "verdict": "archived",
+    "version": "2.1.285",
+    "why": "directory-sync subsystem removed in 2.1.285 (its tengu_dir_sync_* flags are gone); distinctive text absent from bundle and catalogue"
+  }
+}

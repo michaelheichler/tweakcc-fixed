@@ -73,6 +73,10 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const parser = require('@babel/parser');
+const {
+  splitModuleBundle,
+  parseModuleSegment,
+} = require('./lib/moduleBundle.cjs');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ALLOWLIST = path.join(
@@ -310,55 +314,68 @@ export function findSlotLiterals(source, catalogue) {
     .flatMap(p => p.pieces || [])
     .join('\n');
 
-  const ast = parser.parse(source, {
+  const parseOptions = {
     sourceType: 'unambiguous',
     errorRecovery: true,
-  });
+  };
 
   const findings = [];
-  walk(ast.program, [], (node, fnStack) => {
-    if (node.type !== 'TemplateLiteral' || !node.expressions.length) return;
-    const prompt = matchPrompt(node.quasis.map(q => q.value.raw));
-    if (!prompt) return;
+  const visitProgram = program => {
+    walk(program, [], (node, fnStack) => {
+      if (node.type !== 'TemplateLiteral' || !node.expressions.length) return;
+      const prompt = matchPrompt(node.quasis.map(q => q.value.raw));
+      if (!prompt) return;
 
-    node.expressions.forEach((expr, slot) => {
-      let subtrees;
-      let resolvedVia;
-      if (expr.type === 'Identifier') {
-        const decls = resolveIdentifier(expr.name, fnStack, expr.start);
-        if (!decls) return;
-        subtrees = decls;
-        resolvedVia = 'identifier ' + expr.name;
-      } else {
-        subtrees = [expr];
-        resolvedVia = 'inline';
-      }
-      for (const sub of subtrees) {
-        for (const lit of collectLiterals(sub)) {
-          if (!isCandidateText(lit.text)) continue;
-          // Already catalogued in any of three forms. `pieces` are not raw and
-          // not cooked but a MIX: raw source with unicode escapes decoded
-          // (decodeUnicodeEscapesInPiece in the extractor). A string carrying
-          // both an escaped backtick and a `—` em dash therefore matches
-          // neither pure form — the cooked one differs at the backtick, the raw
-          // one at the dash — which is how the MCP remote-auth suffix and the
-          // SendMessage cross-session guidance read as uncatalogued.
-          if (forms(lit).some(f => catalogued.has(norm(f)))) continue;
-          if (forms(lit).some(f => cataloguedBlob.includes(f.trim()))) continue;
-          findings.push({
-            promptId: prompt.id,
-            slot,
-            label: labelFor(prompt, slot),
-            resolvedVia,
-            offset: lit.start,
-            hash: hash(lit.text),
-            text:
-              lit.text.length > 300 ? lit.text.slice(0, 300) + '...' : lit.text,
-          });
+      node.expressions.forEach((expr, slot) => {
+        let subtrees;
+        let resolvedVia;
+        if (expr.type === 'Identifier') {
+          const decls = resolveIdentifier(expr.name, fnStack, expr.start);
+          if (!decls) return;
+          subtrees = decls;
+          resolvedVia = 'identifier ' + expr.name;
+        } else {
+          subtrees = [expr];
+          resolvedVia = 'inline';
         }
-      }
+        for (const sub of subtrees) {
+          for (const lit of collectLiterals(sub)) {
+            if (!isCandidateText(lit.text)) continue;
+            // Already catalogued in any of three forms. `pieces` are not raw and
+            // not cooked but a MIX: raw source with unicode escapes decoded
+            // (decodeUnicodeEscapesInPiece in the extractor). A string carrying
+            // both an escaped backtick and a `—` em dash therefore matches
+            // neither pure form — the cooked one differs at the backtick, the raw
+            // one at the dash — which is how the MCP remote-auth suffix and the
+            // SendMessage cross-session guidance read as uncatalogued.
+            if (forms(lit).some(f => catalogued.has(norm(f)))) continue;
+            if (forms(lit).some(f => cataloguedBlob.includes(f.trim()))) continue;
+            findings.push({
+              promptId: prompt.id,
+              slot,
+              label: labelFor(prompt, slot),
+              resolvedVia,
+              offset: lit.start,
+              hash: hash(lit.text),
+              text:
+                lit.text.length > 300 ? lit.text.slice(0, 300) + '...' : lit.text,
+            });
+          }
+        }
+      });
     });
-  });
+  };
+
+  const segments = splitModuleBundle(source);
+  if (segments) {
+    for (const seg of segments) {
+      const ast = parseModuleSegment(seg, parseOptions, 'slot-literals');
+      if (!ast) continue;
+      visitProgram(ast.program);
+    }
+  } else {
+    visitProgram(parser.parse(source, parseOptions).program);
+  }
 
   // One finding per (prompt, hash): a prompt emitted from several sites would
   // otherwise report the same slot repeatedly.

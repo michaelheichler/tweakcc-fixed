@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   writeToolsetFieldToAppState,
+  getToolsetFallbackExpression,
   getAppStateSelectorAndUseState,
   writeToolFetchingUseMemo,
   writeComputeToolsFilter,
@@ -40,10 +41,46 @@ const TS: Toolset[] = [
   { name: 'all', allowedTools: '*' },
 ];
 
+// The mode-aware toolset-fallback expression injected in place of the old
+// `state.toolset ?? default`, with no acceptEdits/planMode bindings configured
+// (so every mode falls back to the default, overridable via TWEAKCC_TOOLSET_*).
+const fallbackFor = (s: string, def: string | null): string => {
+  const dv = `(process.env.TWEAKCC_TOOLSET_DEFAULT||${
+    def ? JSON.stringify(def) : 'undefined'
+  })`;
+  return `${s}.toolPermissionContext?.mode!=="plan"&&${s}.toolsetAutoMode==="plan"?${dv}:(${s}.toolset??(${s}.toolPermissionContext?.mode==="plan"?(process.env.TWEAKCC_TOOLSET_PLAN||${dv}):(${s}.toolPermissionContext?.mode==="acceptEdits"?(process.env.TWEAKCC_TOOLSET_ALLOW_EDITS||${dv}):(${s}.toolPermissionContext?.mode==="auto"?(process.env.TWEAKCC_TOOLSET_AUTO||${dv}):${dv}))))`;
+};
+
 describe('getAppStateSelectorAndUseState', () => {
+  it('finds the selector + setState fns in the CC >=2.1.251 helper-delegating store', () => {
+    const mod =
+      'function e(){let t=We(MP);if(!t)throw ReferenceError("useAppState/useSetAppState cannot be called outside of an <AppStateProvider />");return t}' +
+      'function W(t){let r=e();return Xe(r,t)}' +
+      'function At(){return e().setState}';
+    expect(getAppStateSelectorAndUseState(mod)).toEqual({
+      appStateUseSelectorFn: 'W',
+      appStateSetState: 'At',
+      selectorIndex: expect.any(Number),
+      setStateIndex: expect.any(Number),
+    });
+  });
+
+  it('finds the selector + setState fns in the CC >=2.1.246 ESM store', () => {
+    const mod =
+      'function o(){let t=r(p);if(!t)throw ReferenceError("useAppState/useSetAppState cannot be called outside of an <AppStateProvider />");return t}' +
+      'function v(t){let e=o(),n=()=>{let i=e.getState();return t(i)};return s(e.subscribe,n,n)}' +
+      'function y(){return o().setState}';
+    expect(getAppStateSelectorAndUseState(mod)).toEqual({
+      appStateUseSelectorFn: 'v',
+      appStateSetState: 'y',
+      selectorIndex: expect.any(Number),
+      setStateIndex: expect.any(Number),
+    });
+  });
+
   it('finds the selector + setState fns in the CC >=2.1.83 shape', () => {
     const info = getAppStateSelectorAndUseState(APP_STATE);
-    expect(info).toEqual({
+    expect(info).toMatchObject({
       appStateUseSelectorFn: 'D8',
       appStateSetState: 'iA',
     });
@@ -54,7 +91,7 @@ describe('getAppStateSelectorAndUseState', () => {
     const old =
       'function D8(A){let q=`Your selector in something`;return q}' +
       'function iA(){return ST().setState}';
-    expect(getAppStateSelectorAndUseState(old)).toEqual({
+    expect(getAppStateSelectorAndUseState(old)).toMatchObject({
       appStateUseSelectorFn: 'D8',
       appStateSetState: 'iA',
     });
@@ -68,35 +105,55 @@ describe('getAppStateSelectorAndUseState', () => {
 });
 
 describe('writeToolsetFieldToAppState', () => {
-  it('inserts a JSON-quoted toolset field after every thinkingEnabled:X()', () => {
+  it('starts both fields empty after every thinkingEnabled:X()', () => {
     const input = 'a={thinkingEnabled:k1()};b={thinkingEnabled:k2()};';
-    const out = writeToolsetFieldToAppState(input, 'readonly');
+    const out = writeToolsetFieldToAppState(input);
     expect(out).toBe(
-      'a={thinkingEnabled:k1(),toolset:"readonly"};' +
-        'b={thinkingEnabled:k2(),toolset:"readonly"};'
+      'a={thinkingEnabled:k1(),toolset:undefined,toolsetAutoMode:null};' +
+        'b={thinkingEnabled:k2(),toolset:undefined,toolsetAutoMode:null};'
     );
   });
 
-  it('emits the literal undefined (not a string) when no default toolset', () => {
-    const out = writeToolsetFieldToAppState('x={thinkingEnabled:k()}', null);
-    expect(out).toBe('x={thinkingEnabled:k(),toolset:undefined}');
-  });
-
-  it('JSON-escapes a malicious default-toolset name (config is untrusted)', () => {
-    // settings.misc default toolset names are reachable via --config-url, so a
-    // quote/backslash must not break out of the toolset:"..." literal.
-    const evil = 'ev"il\\x';
-    const out = writeToolsetFieldToAppState('x={thinkingEnabled:k()}', evil)!;
-    expect(out).toContain(`toolset:${JSON.stringify(evil)}`);
-    expect(out).not.toContain(`toolset:"${evil}"`);
-    const lit = out.match(/toolset:("(?:[^"\\]|\\.)*")/)![1];
-    expect(() => JSON.parse(lit)).not.toThrow();
+  it('seeds no starting toolset, so the mode bindings are reachable', () => {
+    // The selection expression is `state.toolset ?? <mode binding>`, so any
+    // starting value short-circuits it and neither the permission mode nor the
+    // TWEAKCC_TOOLSET_* variables are ever consulted.
+    const out = writeToolsetFieldToAppState('x={thinkingEnabled:k()}')!;
+    expect(out).toContain('toolset:undefined');
+    expect(out).not.toMatch(/toolset:"/);
   });
 
   it('returns null when no thinkingEnabled site exists', () => {
     const err = silenceErr();
-    expect(writeToolsetFieldToAppState('nothing here', 'readonly')).toBeNull();
+    expect(writeToolsetFieldToAppState('nothing here')).toBeNull();
     err.mockRestore();
+  });
+});
+
+describe('getToolsetFallbackExpression', () => {
+  it('JSON-escapes a malicious toolset name (config is untrusted)', () => {
+    // settings.misc toolset names are reachable via --config-url, so a quote or
+    // backslash must not break out of the emitted string literal. The default is
+    // no longer written into app state, but it is still emitted here as the tail
+    // of the selection expression, which is where the escaping has to hold.
+    const evil = 'ev"il\\x';
+    const out = getToolsetFallbackExpression('s', evil);
+    expect(out).toContain(JSON.stringify(evil));
+    expect(out).not.toContain(`"${evil}"`);
+    const lit = out.match(/\|\|("(?:[^"\\]|\\.)*")\)/)![1];
+    expect(() => JSON.parse(lit)).not.toThrow();
+  });
+
+  it('reads each mode binding from its TWEAKCC_TOOLSET_* variable', () => {
+    const out = getToolsetFallbackExpression('s', 'def', 'edits', 'plan');
+    for (const v of [
+      'TWEAKCC_TOOLSET_DEFAULT',
+      'TWEAKCC_TOOLSET_ALLOW_EDITS',
+      'TWEAKCC_TOOLSET_PLAN',
+      'TWEAKCC_TOOLSET_AUTO',
+    ]) {
+      expect(out).toContain(`process.env.${v}`);
+    }
   });
 });
 
@@ -109,7 +166,7 @@ describe('writeToolFetchingUseMemo', () => {
     const out = writeToolFetchingUseMemo(FIXTURE, TS, 'readonly')!;
     // currentToolset comes from the discovered selector fn (D8) + default.
     expect(out).toContain(
-      'let currentToolset = D8(state => state.toolset) ?? "readonly";'
+      `let currentToolset = D8(state => ${fallbackFor('state', 'readonly')});`
     );
     // The toolsets map is emitted as JSON and consulted with hasOwnProperty.
     expect(out).toContain(
@@ -128,6 +185,20 @@ describe('writeToolFetchingUseMemo', () => {
     expect(writeToolFetchingUseMemo(APP_STATE, TS, 'readonly')).toBeNull();
     err.mockRestore();
   });
+
+  it('filters renderingTools inside derive() on the CC >=2.1.251 host class', () => {
+    const src =
+      'derive(){let S=this.store.getState(),x=FL(),de=[];' +
+      'return{tools:de,renderingTools:this.addDisplayOnlyTools(de)}}';
+    const out = writeToolFetchingUseMemo(src, TS, 'readonly')!;
+    expect(out).toContain(
+      'derive(){const __ts={"readonly":["Read","Grep"],"all":"*"}'
+    );
+    expect(out).toContain(
+      'renderingTools:this.addDisplayOnlyTools(__tf(de,S))'
+    );
+    expect(out).toContain(fallbackFor('s', 'readonly'));
+  });
 });
 
 describe('writeComputeToolsFilter', () => {
@@ -144,7 +215,7 @@ describe('writeComputeToolsFilter', () => {
     // Records the active toolset on globalThis for the error helper.
     expect(out).toContain('globalThis.__tweakcc_toolset=');
     // Reads the toolset straight from the store state in this closure.
-    expect(out).toContain('__tc=S.toolset??"all"');
+    expect(out).toContain('__tc=' + fallbackFor('S', 'all'));
     // The '*' fast-path and the .filter restriction are both present.
     expect(out).toContain('if(a==="*")return t');
     expect(out).toContain('t.filter(d=>a.includes(d.name))');
@@ -191,7 +262,9 @@ describe('writeComputeToolsFilter', () => {
     expect(out).toContain(
       '$up=$NS.useCallback(()=>{const __ts={"readonly":["Read","Grep"],"all":"*"}'
     );
-    expect(out).toContain('__tf=(t,s)=>{const n=s.toolset??"all";');
+    expect(out).toContain(
+      '__tf=(t,s)=>{const n=' + fallbackFor('s', 'all') + ';'
+    );
     expect(out).toContain('globalThis.__tweakcc_toolset=');
     expect(out).toContain('if(a==="*")return t');
     // Cache-hit exit and fresh-compute exit are both filtered.
@@ -214,6 +287,19 @@ describe('writeComputeToolsFilter', () => {
   it('prefers the memoized shape but still handles the legacy closure', () => {
     const out = writeComputeToolsFilter(FIXTURE, TS, 'all')!;
     expect(out).toContain('if(!AG)return __tf(MG);');
+  });
+
+  it('wraps computeToolPoolFresh on the CC >=2.1.251 host class', () => {
+    const src =
+      'computeTools=()=>this.computeToolPoolFresh().tools;' +
+      'computeToolPoolFresh=()=>{let S=this.store.getState(),x=FL(),' +
+      'P=this.computeToolPool(S,this.combinedInitialToolsFor(S,x),x);' +
+      'if(P.tools!==this.snapshot.tools)this.refresh();return P};';
+    const out = writeComputeToolsFilter(src, TS, 'all')!;
+    expect(out).toContain('globalThis.__tweakcc_appStore=this.store');
+    expect(out).toContain('return{...P,tools:__tf(P.tools,S)}');
+    expect(out).toContain('if(P.tools!==this.snapshot.tools)this.refresh()');
+    expect(out).not.toContain('return P}');
   });
 });
 
@@ -336,28 +422,42 @@ describe('findModeChange / writeModeChangeUpdateToolset', () => {
     expect(r.index).toBe(0);
   });
 
-  it('injects a plan/default toolset switch before the mode change', () => {
-    const out = writeModeChangeUpdateToolset(MODE, 'plan-only', 'readonly')!;
+  it('injects a 4-mode toolset switch before the mode change', () => {
+    const out = writeModeChangeUpdateToolset(
+      MODE,
+      'readonly',
+      'accept-only',
+      'plan-only'
+    )!;
     expect(out).toContain(
-      'if($md==="plan"){$s((prev)=>({...prev,toolset:"plan-only"}));}' +
-        'else{$s((prev)=>({...prev,toolset:"readonly"}));}'
+      'if($md==="plan"){$s((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_PLAN||"plan-only",toolsetAutoMode:"plan"}));}' +
+        'else if($md==="acceptEdits"){$s((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_ALLOW_EDITS||"accept-only",toolsetAutoMode:null}));}' +
+        'else if($md==="auto"){$s((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_AUTO||process.env.TWEAKCC_TOOLSET_DEFAULT||"readonly",toolsetAutoMode:null}));}' +
+        'else{$s((prev)=>({...prev,toolset:process.env.TWEAKCC_TOOLSET_DEFAULT||"readonly",toolsetAutoMode:null}));}'
     );
     // The injection sits before the original mode-change expression.
-    expect(out.indexOf('toolset:"plan-only"')).toBeLessThan(
-      out.indexOf('if($s(')
-    );
+    expect(
+      out.indexOf('toolset:process.env.TWEAKCC_TOOLSET_PLAN||"plan-only"')
+    ).toBeLessThan(out.indexOf('if($s('));
   });
 
-  it('JSON-escapes plan/default toolset names with quotes', () => {
-    const out = writeModeChangeUpdateToolset(MODE, 'pl"an', 'de"f')!;
-    expect(out).toContain('toolset:"pl\\"an"');
-    expect(out).toContain('toolset:"de\\"f"');
+  it('JSON-escapes toolset names with quotes', () => {
+    const out = writeModeChangeUpdateToolset(MODE, 'de"f', 'ac"c', 'pl"an')!;
+    expect(out).toContain(
+      'toolset:process.env.TWEAKCC_TOOLSET_PLAN||"pl\\"an"'
+    );
+    expect(out).toContain(
+      'toolset:process.env.TWEAKCC_TOOLSET_ALLOW_EDITS||"ac\\"c"'
+    );
+    expect(out).toContain(
+      'toolset:process.env.TWEAKCC_TOOLSET_DEFAULT||"de\\"f"'
+    );
   });
 
   it('returns null when no mode-change site exists', () => {
     const err = silenceErr();
     expect(findModeChange('x=1')).toBeNull();
-    expect(writeModeChangeUpdateToolset('x=1', 'a', 'b')).toBeNull();
+    expect(writeModeChangeUpdateToolset('x=1', 'a', 'b', 'c')).toBeNull();
     err.mockRestore();
   });
 });
@@ -375,6 +475,16 @@ describe('appendToolsetToModeDisplay', () => {
     const err = silenceErr();
     expect(appendToolsetToModeDisplay('nope')).toBeNull();
     err.mockRestore();
+  });
+
+  it('rewrites the hoisted CC >=2.1.251 " on" const', () => {
+    const src =
+      'function Dk(p){let c=_(14),{bare:B}=p;const L=B?"":" on";return L}';
+    const out = appendToolsetToModeDisplay(src)!;
+    expect(out).toContain(
+      'const L=B?"":(currentToolset?` on [${currentToolset}]`:" on")'
+    );
+    expect(out).not.toContain('const L=B?"":" on"');
   });
 });
 
@@ -466,7 +576,7 @@ describe('insertShiftTabAppStateVar', () => {
   it('declares currentToolset at the top of the status line component', () => {
     const out = insertShiftTabAppStateVar(STATUS_LINE_FILE, 'readonly')!;
     expect(out).toContain(
-      'function ctl($L){let currentToolset=D8(state => state.toolset) ?? "readonly";let bm=wOn.c(143)'
+      `function ctl($L){let currentToolset=D8(state => ${fallbackFor('state', 'readonly')});let bm=wOn.c(143)`
     );
   });
 
@@ -481,7 +591,7 @@ describe('insertShiftTabAppStateVar', () => {
       'function QQ(T){z=or.createElement(k,{color:"bashBorder"},"! for shell mode")}';
     const out = insertShiftTabAppStateVar(legacy, null)!;
     expect(out).toContain(
-      'function QQ(T){let currentToolset=D8(state => state.toolset) ?? undefined;'
+      `function QQ(T){let currentToolset=D8(state => ${fallbackFor('state', null)});`
     );
   });
 
@@ -547,6 +657,21 @@ describe('findToolChangeComponentScope', () => {
     const src =
       'a=1;Wai(I,function(Wt){M("tengu_ext_at_mentioned",{}),eQ(Gai(Wt))});';
     expect(findToolChangeComponentScope(src)).toBe(src.indexOf('Wai('));
+  });
+
+  it('accepts the CC >=2.1.247 useCallback-arrow shape and returns a statement boundary', () => {
+    // The handler became an arrow assigned inside a comma-declarator chain, so
+    // its own start is NOT a statement boundary — splicing there would emit
+    // `...]),const currentToolset=...;HM=B(...)`. The index must land after the
+    // `;` that terminates the whole chain.
+    const src =
+      'let d=1,q=B((ee)=>{r(ee)},[d,q]),HM=B((E)=>{U("tengu_ext_at_mentioned",{}),Sa(eEe(E,d))},[d,Sa]);ZAe(h,HM);';
+    const at = findToolChangeComponentScope(src);
+    expect(at).toBe(src.indexOf('ZAe(h,HM);'));
+    // Splicing a declaration there must keep the file parseable.
+    const spliced =
+      src.slice(0, at!) + 'const currentToolset=z();' + src.slice(at!);
+    expect(() => new Function(spliced)).not.toThrow();
   });
 
   it('returns null when the at-mention handler is absent', () => {

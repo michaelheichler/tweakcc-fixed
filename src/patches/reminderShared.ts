@@ -17,10 +17,6 @@ export interface ReminderInjection {
   description: string;
   placeholders: Record<string, string>;
   defaultBody: string;
-  // Named-prompt ids this built-in override consumes during --apply: it
-  // splices the shared cli.js region the named prompt would otherwise anchor
-  // on, so the named-prompt pass cannot match a second time. loadShadowSet
-  // unions these into the shadow set (alongside runtime .md `shadows:`).
   shadows?: string[];
   apply: (
     content: string,
@@ -29,7 +25,7 @@ export interface ReminderInjection {
   ) => string | null;
 }
 
-export const findAndReplace = (
+const findAndReplace = (
   content: string,
   pattern: RegExp,
   buildReplacement: (match: RegExpMatchArray) => string,
@@ -57,26 +53,12 @@ export const findAndReplace = (
   return newContent;
 };
 
-// A reminder-registry entry matched by its KEY and its code SHAPE, never by the
-// English prose inside it. Anthropic rewords these bodies freely — CC 2.1.234
-// alone rewrote `date_change` and `edited_text_file` and routed every filename
-// through a new escaper (`Oie(e.filename)`), which broke six prose-anchored
-// regexes at once even though the surrounding code was unchanged. The key
-// (`selected_lines_in_ide:` etc.) is unique in the bundle, so it identifies the
-// site on its own; the prose only ever existed in these patterns to locate the
-// placeholder expressions, and `slotExpr` recovers those from the matched
-// template instead.
-export const simpleEntryPattern = (key: string): RegExp =>
+const simpleEntryPattern = (key: string): RegExp =>
   new RegExp(
     `${key}:\\(([$\\w]+)\\)=>([$\\w]+)\\(\\[([$\\w]+)\\(\\{content:\`((?:[^\`\\\\]|\\\\.)*)\`,isMeta:!0\\}\\)\\]\\)`
   );
 
-// The full expression a `${…}` slot holds for `<param>.<prop>`, including any
-// wrapper calls around it. 2.1.233 emitted `${e.filename}`; 2.1.234 emits
-// `${Oie(e.filename)}`. Returning the whole inner expression keeps the override
-// bound to whatever CC actually interpolates, so a future wrapper needs no
-// further change here.
-export const slotExpr = (
+const slotExpr = (
   template: string,
   param: string,
   prop: string
@@ -87,21 +69,82 @@ export const slotExpr = (
   return m ? m[1] : null;
 };
 
-// A placeholder the override body may contain, and how to recover the
-// expression it must be rewritten to from the pristine template.
-export interface ReminderSlot {
-  // The `${…}` text as it appears in a .md body after substitutePlaceholders.
+interface ReminderSlot {
   placeholder: string;
-  // Recovers the replacement expression from the pristine template.
   resolve: (template: string, param: string) => string | null;
 }
 
-export const propSlot = (placeholder: string, prop: string): ReminderSlot => ({
+const propSlot = (placeholder: string, prop: string): ReminderSlot => ({
   placeholder,
   resolve: (template, param) => slotExpr(template, param, prop),
 });
 
-export const applySimpleEntry = (
+const toolNameSlot = (placeholder: string): ReminderSlot => ({
+  placeholder,
+  resolve: (template, param) =>
+    template.match(/\$\{([$\w]+\.name)\}/)?.[1] ??
+    template
+      .match(/\$\{([$\w]+)\}/g)
+      ?.map(x => x.slice(2, -1))
+      .find(x => x !== param) ??
+    null,
+});
+
+interface MatchedEntry {
+  index: number;
+  length: number;
+  hParam: string;
+  wrapFn: string;
+  metaFn: string;
+  template: string;
+}
+
+const matchSimpleEntry = (
+  content: string,
+  key: string
+): MatchedEntry | null => {
+  const m = content.match(simpleEntryPattern(key));
+  if (!m || m.index === undefined) return null;
+  return {
+    index: m.index,
+    length: m[0].length,
+    hParam: m[1],
+    wrapFn: m[2],
+    metaFn: m[3],
+    template: m[4],
+  };
+};
+
+const matchComposedEntry = (
+  content: string,
+  key: string
+): MatchedEntry | null => {
+  const head = new RegExp(
+    `${key}:\\(([$\\w]+)\\)=>([$\\w]+)\\(\\[([$\\w]+)\\(\\{content:`
+  );
+  const m = content.match(head);
+  if (!m || m.index === undefined) return null;
+  const objOpen = m.index + m[0].length - 'content:'.length - 1;
+  if (content[objOpen] !== '{') return null;
+  const objClose = matchingBrace(content, objOpen);
+  if (objClose < 0) return null;
+  const tail = ',isMeta:!0';
+  const objBody = content.slice(objOpen + 1, objClose);
+  if (!objBody.startsWith('content:') || !objBody.endsWith(tail)) return null;
+  const close = ')])';
+  if (content.slice(objClose + 1, objClose + 1 + close.length) !== close)
+    return null;
+  return {
+    index: m.index,
+    length: objClose + 1 + close.length - m.index,
+    hParam: m[1],
+    wrapFn: m[2],
+    metaFn: m[3],
+    template: objBody.slice('content:'.length, objBody.length - tail.length),
+  };
+};
+
+const applySimpleEntry = (
   content: string,
   key: string,
   slots: ReminderSlot[],
@@ -109,14 +152,15 @@ export const applySimpleEntry = (
   isSuppressed: boolean
 ): string | null => {
   const patchName = key.replace(/_/g, '-');
-  const match = content.match(simpleEntryPattern(key));
-  if (!match || match.index === undefined) {
+  const found =
+    matchSimpleEntry(content, key) ?? matchComposedEntry(content, key);
+  if (!found) {
     if (new RegExp(`${key}:\\([$\\w]+\\)=>\\[\\]`).test(content))
       return content;
     console.error(`patch: reminder ${patchName}: failed to find anchor`);
     return null;
   }
-  const [, hParam, wrapFn, metaFn, template] = match;
+  const { index, length, hParam, wrapFn, metaFn, template } = found;
   let replacement: string;
   if (isSuppressed) {
     replacement = `${key}:(${hParam})=>[]`;
@@ -126,9 +170,6 @@ export const applySimpleEntry = (
       if (!built.includes(slot.placeholder)) continue;
       const expr = slot.resolve(template, hParam);
       if (expr === null) {
-        // Emitting the body anyway would splice a live `${H.filename}` into
-        // cli.js — a ReferenceError at reminder time that no apply-side gate
-        // sees. Fail the patch instead.
         console.error(
           `patch: reminder ${patchName}: no pristine expression for ${slot.placeholder}`
         );
@@ -139,23 +180,12 @@ export const applySimpleEntry = (
     replacement = `${key}:(${hParam})=>${wrapFn}([${metaFn}({content:\`${built}\`,isMeta:!0})])`;
   }
   const newContent =
-    content.slice(0, match.index) +
-    replacement +
-    content.slice(match.index + match[0].length);
-  showDiff(
-    content,
-    newContent,
-    replacement,
-    match.index,
-    match.index + replacement.length
-  );
+    content.slice(0, index) + replacement + content.slice(index + length);
+  showDiff(content, newContent, replacement, index, index + replacement.length);
   return newContent;
 };
 
-// Index of the `}` matching the `{` at `openIdx`, or -1. Brace-balanced and
-// aware of the three JS string contexts plus `${…}` inside a template literal,
-// so a `{` in `T(\`… ${gFn} …\`,{level:"error"})` cannot end the walk early.
-export const matchingBrace = (content: string, openIdx: number): number => {
+const matchingBrace = (content: string, openIdx: number): number => {
   if (content[openIdx] !== '{') return -1;
   let depth = 0;
   let inTpl = false;
@@ -196,11 +226,15 @@ export const matchingBrace = (content: string, openIdx: number): number => {
   return -1;
 };
 
-export const findCaseBody = (
+const findCaseBody = (
   content: string,
   caseName: string,
   anchorEnglish: string
-): { headerIdx: number; bodyStart: number; bodyEnd: number } | null => {
+): {
+  headerIdx: number;
+  bodyStart: number;
+  bodyEnd: number;
+} | null => {
   const caseHeader = `case"${caseName}":{`;
   const occurrences: number[] = [];
   let scan = 0;
@@ -221,16 +255,12 @@ export const findCaseBody = (
   return { headerIdx, bodyStart, bodyEnd };
 };
 
-// Pull the array-wrapper / message-constructor minified identifiers from an
-// existing case body. Pattern: `return …X([Y({content:` — Mac builds give o5/j6,
-// Linux builds give o_/M8. The wrapper isn't always the first thing after
-// `return`: the memory_update case prepends a comma-expression
-// (`return K.push(rm6),HT([U6({content:`), so skip any non-`;` chars before the
-// match. Prefer the last match (case bodies sometimes call the wrappers earlier
-// with different ids for unrelated subcases).
-export const discoverWrappers = (
+const discoverWrappers = (
   caseBody: string
-): { arrayWrap: string; msgCtor: string } => {
+): {
+  arrayWrap: string;
+  msgCtor: string;
+} => {
   const re = /return\s+[^;]*?([$\w]+)\(\[([$\w]+)\(\{content:/g;
   let last: RegExpExecArray | null = null;
   let m: RegExpExecArray | null;
@@ -240,36 +270,32 @@ export const discoverWrappers = (
     : { arrayWrap: 'o5', msgCtor: 'j6' };
 };
 
-// Capture the whole `if(<condition>)return[]` feature-gate CONDITION verbatim
-// from the start of a case body, so the rewrite reuses the exact guard. Returning
-// the full condition — not a single identifier with a hardcoded fallback — is
-// load-bearing: the guard's shape AND its minified names churn across versions and
-// platforms (2.1.204 was a single `if(!ZI())return[]`; 2.1.205 is a two-clause
-// `if(!ZI()||YY())return[]`; linux renames both). The old single-identifier regex
-// silently missed the two-clause shape and fell back to a hardcoded name (`GX`) —
-// which a later build reused for an unrelated `class GX extends Error`, so the
-// rewrite emitted `if(!GX())` → "Cannot call a class constructor GX without new"
-// on every task-reminder render (a lazy path a parse-only apply check never hits).
-// The condition is a `||`/`&&` chain of `!?FN()` calls; null = shape drifted →
-// caller fails loud rather than guessing.
-export const discoverFeatureGuard = (caseBody: string): string | null => {
+const discoverFeatureGuard = (caseBody: string): string | null => {
   const m = caseBody.match(
     /^\s*if\((!?[$\w]+\(\)(?:(?:\|\||&&)!?[$\w]+\(\))*)\)return\s*\[\]/
   );
   return m ? m[1] : null;
 };
 
-// Pull the case-handler's delta-parameter name — the object each reminder reads
-// its fields off, written as `${H.x}` in our override placeholders — from a
-// pristine case body via a known field access. Mac and linux-x64 builds name it
-// `H`, but linux-arm64 names it differently (e.g. `q`), so findCaseBody-based
-// injections must discover it rather than hardcode `H` (which otherwise emits a
-// runtime `H is not defined` on linux-arm64). Same platform-minified-name
-// hazard the discoverWrappers / discoverFeatureGuard helpers above guard against.
-export const discoverDeltaParam = (
-  caseBody: string,
-  sampleProp: string
-): string => {
+const discoverDeltaParam = (caseBody: string, sampleProp: string): string => {
   const m = caseBody.match(new RegExp(`([$\\w]+)\\.${sampleProp}\\b`));
   return m ? m[1] : 'H';
+};
+
+export {
+  findAndReplace,
+  simpleEntryPattern,
+  slotExpr,
+  ReminderSlot,
+  propSlot,
+  toolNameSlot,
+  MatchedEntry,
+  matchSimpleEntry,
+  matchComposedEntry,
+  applySimpleEntry,
+  matchingBrace,
+  findCaseBody,
+  discoverWrappers,
+  discoverFeatureGuard,
+  discoverDeltaParam,
 };

@@ -13,31 +13,35 @@
 // Deliberate retentions live in data/stale-reinjection-allowlist.json, keyed by
 // "<id>::<sha1 of the sentence>" with a reason — because keeping a sentence
 // Anthropic dropped is often exactly the point of this project.
+// The committed baseline is keyed to the maintainer's overrides; for other users
+// NEW findings are still real defects in their overrides.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 // Windows are scoped to markdown blocks; see tools/lib/markdownBlocks.mjs for why.
 import { blocksOf } from './lib/markdownBlocks.mjs';
+import { isAdjacencyRun } from './lib/adjacency.mjs';
+const require = createRequire(import.meta.url);
+const {
+  parseOverrideArgs,
+  resolveOverrideSets,
+  remindersDirsFor,
+  printAuditedSets,
+} = require('./lib/overrideSets.cjs');
 
-const REPO = path.resolve(new URL('..', import.meta.url).pathname);
-const version = process.argv[2] || '';
+const parsed = parseOverrideArgs(process.argv.slice(2));
+const sets = resolveOverrideSets(parsed, { fallback: 'applied' });
+const version = parsed.rest[0] || '';
 if (!/^\d+\.\d+\.\d+$/.test(version)) {
   console.error('usage: checkStaleReinjection.mjs <version> [--set=<dir>…]');
   process.exit(2);
 }
+printAuditedSets(sets);
+const REPO = path.resolve(new URL('..', import.meta.url).pathname);
 const ALLOW = path.join(REPO, 'data/stale-reinjection-allowlist.json');
 const allow = fs.existsSync(ALLOW) ? JSON.parse(fs.readFileSync(ALLOW, 'utf8')) : {};
 const sha1 = s => crypto.createHash('sha1').update(s).digest('hex').slice(0, 12);
-
-const explicit = process.argv.filter(a => a.startsWith('--set=')).map(a => a.slice(6));
-const LCC = path.join(os.homedir(), '.tweakcc', 'lobotomized-claude-code');
-const sets = explicit.length
-  ? explicit
-  : fs.existsSync(LCC)
-    ? fs.readdirSync(LCC).filter(d => /^system-prompts-/.test(d)).map(d => path.join(LCC, d))
-    : [];
-if (!sets.length) { console.error('no override sets found'); process.exit(2); }
 
 // Reconstruct a prompt body. TWO invariants, both easy to get wrong and both
 // wrong in the first cut of this file:
@@ -94,15 +98,20 @@ const tokens = t =>
   t.toLowerCase().replace(/[^a-z0-9$_]+/g, ' ').split(' ').filter(Boolean);
 // A window is worth reporting only if it reads as instruction rather than code.
 const CODEY = new Set(['const','let','var','function','return','await','typeof','null','true','false','map','push','json','stringify']);
+// `pos` is the window's absolute stream position (blocks are spaced apart) so a
+// run can be rebuilt from real neighbours even where filtered windows left gaps.
 const windows = t => {
   const out = [];
+  let base = 0;
   for (const block of blocksOf(t)) {
     const tk = tokens(block);
+    const off = base;
+    base += tk.length + W;
     for (let i = 0; i + W <= tk.length; i++) {
       const w = tk.slice(i, i + W);
       if (w.filter(x => CODEY.has(x)).length > 1) continue;
       if (w.filter(x => x.length > 2).length < 7) continue;
-      out.push(w.join(' '));
+      out.push({ s: w.join(' '), pos: off + i });
     }
   }
   return out;
@@ -135,7 +144,7 @@ const norm = s =>
 const pastIdx = new Map();
 for (const [id, bodies] of past) {
   const m = new Map();
-  for (const [b, v] of bodies) for (const w of windows(norm(b))) m.set(w, v);
+  for (const [b, v] of bodies) for (const w of windows(norm(b))) m.set(w.s, v);
   pastIdx.set(id, m);
 }
 
@@ -155,7 +164,7 @@ try {
 } catch {
   /* patcher source not present; fall through */
 }
-for (const dir of [...sets, path.join(LCC, 'system-reminders')]) {
+for (const dir of [...sets.map(s => s.dir), ...remindersDirsFor(sets)]) {
   if (!fs.existsSync(dir)) continue;
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith('.md')) continue;
@@ -167,20 +176,22 @@ for (const dir of [...sets, path.join(LCC, 'system-reminders')]) {
 
 let findings = 0, allowed = 0;
 const rows = [];
-for (const dir of sets) {
-  const label = path.basename(dir).replace('system-prompts-', '');
-  for (const f of fs.readdirSync(dir)) {
+const curTokById = new Map();
+for (const set of sets) {
+  const label = set.name.replace('system-prompts-', '');
+  for (const f of fs.readdirSync(set.dir)) {
     if (!f.endsWith('.md')) continue;
     const id = f.slice(0, -3);
     if (!cur.has(id) || !past.has(id) || shadowed.has(id)) continue;
-    const body = norm(split(path.join(dir, f)).trim());
+    const body = norm(split(path.join(set.dir, f)).trim());
     if (!body) continue;
     const currentText = norm([...cur.get(id)].join('\n'));
     const curTok = tokens(currentText).join(' ');
+    curTokById.set(`${label}::${id}`, curTok);
     if (currentText.includes(body)) continue;   // pristine stub
     const seen = new Set();
     let i = -1;
-    for (const s of windows(body)) {
+    for (const { s, pos } of windows(body)) {
       i++;
       if (seen.has(s)) continue;
       if (curTok.includes(s)) continue;         // still in current pristine
@@ -188,9 +199,7 @@ for (const dir of sets) {
       let lastSeen = pastIdx.get(id)?.get(s) ?? null;
       if (!lastSeen || lastSeen === version) continue;
       const key = `${id}::${sha1(s)}`;
-      if (allow[key]) { allowed++; continue; }
-      findings++;
-      rows.push({ label, id, lastSeen, key, s, i });
+      rows.push({ label, id, lastSeen, key, s, i, pos, allowed: Boolean(allow[key]) });
     }
   }
 }
@@ -211,10 +220,36 @@ for (const r of rows.sort((a, b) => a.id.localeCompare(b.id) || a.label.localeCo
   const last = runs[runs.length - 1];
   if (last && last.id === r.id && last.label === r.label && r.i - last.iEnd <= 1) {
     last.iEnd = r.i;
-    last.s += ' ' + r.s.split(' ').slice(-1)[0];
+    const gap = Math.min(r.pos - last.pos, W);
+    last.s += ' ' + r.s.split(' ').slice(-gap).join(' ');
+    last.pos = r.pos;
+    last.allowed ||= r.allowed;
   } else runs.push({ ...r, iEnd: r.i });
 }
+// The allowlist silences a whole run, not one window. Applied per window before
+// collapsing, an allowlisted first window only promoted the next overlapping
+// window to be the run's key, so a reviewed passage re-reported under a fresh
+// key on every run (CC 2.1.285: three keys for one deliberate cut).
+// A run whose two halves both live in current pristine is a cut, not a
+// re-injection; it never counts and never enters the baseline.
+const adjacency = [];
+for (let k = runs.length - 1; k >= 0; k--) {
+  const r = runs[k];
+  if (isAdjacencyRun(r.s, curTokById.get(`${r.label}::${r.id}`) || '')) {
+    adjacency.unshift(r);
+    runs.splice(k, 1);
+  }
+}
+for (let k = runs.length - 1; k >= 0; k--) {
+  if (runs[k].allowed) { allowed++; runs.splice(k, 1); }
+}
+findings = runs.length;
 const keys = [...new Set(runs.map(r => r.key))].sort();
+if (adjacency.length) {
+  console.log('adjacency (both halves live in current pristine — a cut, not a re-injection):');
+  for (const r of adjacency) console.log(`  ${r.label.padEnd(9)} ${r.id}  ${r.key}`);
+}
+const adjNote = adjacency.length ? `; ${adjacency.length} adjacency` : '';
 if (!fs.existsSync(BASE)) {
   fs.writeFileSync(BASE, JSON.stringify(keys, null, 1));
   console.log(`stale re-injection: baseline recorded — ${keys.length} standing retention(s), 0 new`);
@@ -239,5 +274,5 @@ if (freshKeys.size) {
   console.log('Realign the override, or record the retention in data/stale-reinjection-allowlist.json with a reason.');
   process.exit(1);
 }
-console.log(`stale re-injection: 0 new (standing ${keys.length}, was ${baseline.size}; ${allowed} allowlisted)`);
+console.log(`stale re-injection: 0 new (standing ${keys.length}, was ${baseline.size}; ${allowed} allowlisted)${adjNote}`);
 process.exit(0);

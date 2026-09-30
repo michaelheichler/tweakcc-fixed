@@ -1,16 +1,16 @@
 import { showDiff } from './index';
 import {
   ReminderInjection,
-  findAndReplace,
   simpleEntryPattern,
   applySimpleEntry,
   propSlot,
+  findAndReplace,
   findCaseBody,
   discoverWrappers,
   discoverDeltaParam,
 } from './reminderShared';
 
-export const SELECTED_LINES_INJECTION: ReminderInjection = {
+const SELECTED_LINES_INJECTION: ReminderInjection = {
   id: 'selected-lines-in-ide',
   name: 'IDE selected-lines reminder',
   description:
@@ -24,10 +24,6 @@ export const SELECTED_LINES_INJECTION: ReminderInjection = {
   defaultBody:
     'The user selected the lines {{line_start}} to {{line_end}} from {{filename}}:\n{{selected_text}}\n\nThis may or may not be related to the current task.',
   apply(content, body, isSuppressed) {
-    // Method 1 (2.1.186+): direct arrow, the selected-text slot inlined as a
-    // call (`${dpm(e.content)}`) rather than a local var, and from 2.1.234 the
-    // filename slot wrapped in the reminder escaper. Matched on the registry
-    // key and code shape only, so a reworded body does not break it.
     if (simpleEntryPattern('selected_lines_in_ide').test(content)) {
       return applySimpleEntry(
         content,
@@ -42,9 +38,6 @@ export const SELECTED_LINES_INJECTION: ReminderInjection = {
         isSuppressed
       );
     }
-    // Method 2 (<=2.1.185): older shape that truncated content >2000 chars into
-    // a local `q` before emitting. Kept as a fallback for installs on prior
-    // builds; that shape predates both rewordings, so it stays prose-anchored.
     return findAndReplace(
       content,
       /selected_lines_in_ide:\(([$\w]+)\)=>\{let ([$\w]+)=\1\.content\.length>2000\?\1\.content\.substring\(0,2000\)\+`\n\.\.\. \(truncated\)`:\1\.content;return ([$\w]+)\(\[([$\w]+)\(\{content:`The user selected the lines \$\{\1\.lineStart\} to \$\{\1\.lineEnd\} from \$\{\1\.filename\}:\n\$\{\2\}\n\nThis may or may not be related to the current task\.`,isMeta:!0\}\)\]\)\}/,
@@ -64,7 +57,7 @@ export const SELECTED_LINES_INJECTION: ReminderInjection = {
   },
 };
 
-export const OPENED_FILE_INJECTION: ReminderInjection = {
+const OPENED_FILE_INJECTION: ReminderInjection = {
   id: 'opened-file-in-ide',
   name: 'IDE opened-file reminder',
   description:
@@ -85,7 +78,7 @@ export const OPENED_FILE_INJECTION: ReminderInjection = {
   },
 };
 
-export const PLAN_FILE_REF_INJECTION: ReminderInjection = {
+const PLAN_FILE_REF_INJECTION: ReminderInjection = {
   id: 'plan-file-reference',
   name: 'Plan-file reference',
   description:
@@ -114,7 +107,7 @@ export const PLAN_FILE_REF_INJECTION: ReminderInjection = {
   },
 };
 
-export const PLAN_MODE_EXIT_INJECTION: ReminderInjection = {
+const PLAN_MODE_EXIT_INJECTION: ReminderInjection = {
   id: 'plan-mode-exit',
   name: 'Plan-mode exit reminder',
   description:
@@ -140,7 +133,7 @@ export const PLAN_MODE_EXIT_INJECTION: ReminderInjection = {
   },
 };
 
-export const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
+const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
   id: 'auto-mode-exit',
   name: 'Auto-mode exit reminder',
   description:
@@ -149,11 +142,6 @@ export const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
   defaultBody:
     '## Exited Auto Mode\n\nYou have exited auto mode. The user may now want to interact more directly. You should ask clarifying questions when the approach is ambiguous rather than making assumptions.',
   apply(content, body, isSuppressed) {
-    // Method 1 (2.1.221+): the handler became `(e)=>{…}` with two arms selected
-    // by `e.steerOnly` (a terse variant and the full text), and both arms gained
-    // a `${t}` bashFirst suffix. Only the full arm carries the overridable text;
-    // the steerOnly arm is left pristine, and the suffix var is re-emitted so the
-    // bashFirst nudge survives the override.
     const newShape =
       /auto_mode_exit:\(([$\w]+)\)=>\{let ([$\w]+)=\1\.bashFirst\?(" [^"]*"):"",([$\w]+)=\1\.steerOnly\?(`[^`]*`):`## Exited Auto Mode\n\nYou have exited auto mode\. The user may now want to interact more directly\. You should ask clarifying questions when the approach is ambiguous rather than making assumptions\.\$\{\2\}`;return ([$\w]+)\(\[([$\w]+)\(\{content:\4,isMeta:!0\}\)\]\)\}/;
     if (newShape.test(content)) {
@@ -173,7 +161,6 @@ export const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
         c => /auto_mode_exit:\([$\w]+\)=>\[\]/.test(c)
       );
     }
-    // Method 2 (<=2.1.220): flat `()=>` handler with a single inline literal.
     return findAndReplace(
       content,
       /auto_mode_exit:\(\)=>([$\w]+)\(\[([$\w]+)\(\{content:`## Exited Auto Mode\n\nYou have exited auto mode\. The user may now want to interact more directly\. You should ask clarifying questions when the approach is ambiguous rather than making assumptions\.`,isMeta:!0\}\)\]\)/,
@@ -188,7 +175,7 @@ export const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
   },
 };
 
-export const NESTED_MEMORY_INJECTION: ReminderInjection = {
+const NESTED_MEMORY_INJECTION: ReminderInjection = {
   id: 'nested-memory',
   name: 'Nested memory reference',
   description:
@@ -219,7 +206,7 @@ export const NESTED_MEMORY_INJECTION: ReminderInjection = {
   },
 };
 
-export const AGENT_MENTION_INJECTION: ReminderInjection = {
+const AGENT_MENTION_INJECTION: ReminderInjection = {
   id: 'agent-mention',
   name: 'Agent-mention nudge',
   description:
@@ -230,7 +217,6 @@ export const AGENT_MENTION_INJECTION: ReminderInjection = {
   defaultBody:
     'The user has expressed a desire to invoke the agent "{{agent_type}}". Please invoke the agent appropriately, passing in the required context to it. ',
   apply(content, body, isSuppressed) {
-    // cli.js template literal contains a trailing space before the closing backtick.
     return findAndReplace(
       content,
       /agent_mention:\(([$\w]+)\)=>([$\w]+)\(\[([$\w]+)\(\{content:`The user has expressed a desire to invoke the agent "\$\{\1\.agentType\}"\. Please invoke the agent appropriately, passing in the required context to it\. `,isMeta:!0\}\)\]\)/,
@@ -249,13 +235,11 @@ export const AGENT_MENTION_INJECTION: ReminderInjection = {
   },
 };
 
-export const MEMORY_UPDATE_INJECTION: ReminderInjection = {
+const MEMORY_UPDATE_INJECTION: ReminderInjection = {
   id: 'memory-update',
   name: 'Memory-update reminder',
   description:
     'Fires after dream / consolidation writes new memory files. Conditional. Empty .md body = silent updates.',
-  // The stale-copy sentence is part of this reminder's body, so this patch
-  // splices the region the named prompt would otherwise anchor on.
   shadows: ['system-reminder-memory-update-loaded-copy-stale'],
   placeholders: {
     source: '${YT3[H.source]}',
@@ -279,8 +263,6 @@ export const MEMORY_UPDATE_INJECTION: ReminderInjection = {
     const caseBody = content.slice(bodyStart, bodyEnd);
     const { arrayWrap, msgCtor } = discoverWrappers(caseBody);
     const p = discoverDeltaParam(caseBody, 'summary');
-    // The `${YT3[H.source]}` placeholder hardcodes both the delta param and the
-    // source-label map var; discover the map var (Mac: YT3, linux-arm64: Xj3).
     const sourceMap = caseBody.match(/\$\{([$\w]+)\[/)?.[1] ?? 'YT3';
     const bodyForBuild = body
       .replace(/\$\{YT3\[H\.source\]\}/g, `\${${sourceMap}[${p}.source]}`)
@@ -295,7 +277,7 @@ export const MEMORY_UPDATE_INJECTION: ReminderInjection = {
   },
 };
 
-export const VERIFY_PLAN_INJECTION: ReminderInjection = {
+const VERIFY_PLAN_INJECTION: ReminderInjection = {
   id: 'verify-plan-reminder',
   name: 'Verify-plan reminder',
   description:
@@ -312,12 +294,6 @@ export const VERIFY_PLAN_INJECTION: ReminderInjection = {
       'You have completed implementing the plan'
     );
     if (!found) {
-      // CC 2.1.187 gutted the verify-plan reminder: `verify_plan_reminder`
-      // survives only as a type label with no case body / no injected text.
-      // No-op gracefully for builds past the removal; older supported CC
-      // (< 2.1.187) still carries the case body and patches normally. If the
-      // anchor text is still present but unmatched, it's a real shape drift —
-      // surface that as a failure.
       if (!content.includes('You have completed implementing the plan')) {
         return content;
       }
@@ -329,8 +305,6 @@ export const VERIFY_PLAN_INJECTION: ReminderInjection = {
     const { bodyStart, bodyEnd } = found;
     const caseBody = content.slice(bodyStart, bodyEnd);
     const { arrayWrap, msgCtor } = discoverWrappers(caseBody);
-    // `${J7}` placeholder hardcodes the plan-verifier tool var (Mac: J7,
-    // linux-arm64: J_); discover it from the pristine "NOT the X tool" phrase.
     const verifierTool =
       caseBody.match(/\(NOT the \$\{([$\w]+)\} tool/)?.[1] ?? 'J7';
     const bodyForBuild = body.replace(/\$\{J7\}/g, `\${${verifierTool}}`);
@@ -342,4 +316,16 @@ export const VERIFY_PLAN_INJECTION: ReminderInjection = {
     showDiff(content, newContent, newBody, bodyStart, bodyEnd);
     return newContent;
   },
+};
+
+export {
+  SELECTED_LINES_INJECTION,
+  OPENED_FILE_INJECTION,
+  PLAN_FILE_REF_INJECTION,
+  PLAN_MODE_EXIT_INJECTION,
+  AUTO_MODE_EXIT_INJECTION,
+  NESTED_MEMORY_INJECTION,
+  AGENT_MENTION_INJECTION,
+  MEMORY_UPDATE_INJECTION,
+  VERIFY_PLAN_INJECTION,
 };

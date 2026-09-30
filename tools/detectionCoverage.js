@@ -29,6 +29,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const parser = require('@babel/parser');
+const {
+  splitModuleBundle,
+  parseModuleSegment,
+} = require('./lib/moduleBundle.cjs');
 
 const ALLOWLIST = path.join(
   __dirname,
@@ -124,10 +128,10 @@ const concatLeaves = node => {
 };
 
 function collectComposites(code) {
-  const ast = parser.parse(code, {
+  const parseOptions = {
     sourceType: 'module',
     plugins: ['jsx', 'typescript'],
-  });
+  };
   const out = [];
   const seenStart = new Set();
 
@@ -176,7 +180,17 @@ function collectComposites(code) {
     }
   };
 
-  visit(ast.program);
+  const segments = splitModuleBundle(code);
+  if (segments) {
+    for (const seg of segments) {
+      const ast = parseModuleSegment(seg, parseOptions, 'detection-coverage');
+      if (!ast) continue;
+      visit(ast.program);
+    }
+  } else {
+    const ast = parser.parse(code, parseOptions);
+    visit(ast.program);
+  }
   return out;
 }
 

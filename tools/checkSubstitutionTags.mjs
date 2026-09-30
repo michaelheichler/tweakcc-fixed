@@ -13,28 +13,43 @@
 // must carry it too. Tags are discovered from the binary, not hardcoded, so a new one added by
 // Anthropic is covered the run it appears.
 //
-// Usage: node tools/checkSubstitutionTags.mjs [--cli <cli.js>] [--json <prompts.json>] [--lcc <dir>]
+// Usage: node tools/checkSubstitutionTags.mjs [--cli <cli.js>] [--json <prompts.json>]
+//                                             [--overrides <dir>]... [--require-sets]
+//
+// With no --overrides, audits the system-prompts folder `--apply` actually reads.
+// --overrides may be repeated to audit specific folders instead, for a setup that
+// keeps several side by side.
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const {
+  parseOverrideArgs,
+  resolveOverrideSets,
+  printAuditedSets,
+  pristineCliPath,
+} = require('./lib/overrideSets.cjs');
+
+const parsed = parseOverrideArgs(process.argv.slice(2));
+const sets = resolveOverrideSets(parsed, { fallback: 'applied' });
+printAuditedSets(sets);
 
 const arg = (n, d) => {
-  const i = process.argv.indexOf(n);
-  return i === -1 ? d : process.argv[i + 1];
+  const i = parsed.rest.indexOf(n);
+  return i === -1 ? d : parsed.rest[i + 1];
 };
-const HOME = os.homedir();
-const LCC = arg('--lcc', path.join(HOME, '.tweakcc/lobotomized-claude-code'));
-const CLI = arg('--cli', path.join(HOME, '.tweakcc/native-claudejs-orig.js'));
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const CLI = arg('--cli', pristineCliPath());
+const REPO = path.resolve(
+  path.dirname(new URL(import.meta.url).pathname),
+  '..'
+);
 
 const promptsJson =
   arg('--json') ??
   fs
     .readdirSync(path.join(REPO, 'data/prompts'))
     .filter(f => /^prompts-\d+\.\d+\.\d+\.json$/.test(f))
-    .sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true })
-    )
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .pop();
 const jsonPath = path.isAbsolute(promptsJson)
   ? promptsJson
@@ -85,13 +100,11 @@ for (const p of [cliPath, jsonPath]) {
 // here explicitly rather than widening the pattern.
 const cli = fs.readFileSync(cliPath, 'utf8');
 const tags = new Set();
-for (const m of cli.matchAll(/\.replace\(\s*"(<[a-z0-9_]{3,60}>)"/g)) tags.add(m[1]);
+for (const m of cli.matchAll(/\.replace\(\s*"(<[a-z0-9_]{3,60}>)"/g))
+  tags.add(m[1]);
 
 const { prompts } = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-const sets = fs
-  .readdirSync(LCC)
-  .filter(d => d.startsWith('system-prompts-'))
-  .filter(d => fs.statSync(path.join(LCC, d)).isDirectory());
+const setDirs = sets.map(s => s.dir);
 
 const body = file => {
   const t = fs.readFileSync(file, 'utf8');
@@ -105,28 +118,36 @@ for (const p of prompts) {
   const pristine = (p.pieces ?? []).filter(x => typeof x === 'string').join('');
   const need = [...tags].filter(t => pristine.includes(t));
   if (need.length === 0) continue;
-  for (const set of sets) {
-    const file = path.join(LCC, set, `${p.id}.md`);
+  for (const setDir of setDirs) {
+    const set = path.basename(setDir);
+    const file = path.join(setDir, `${p.id}.md`);
     if (!fs.existsSync(file)) continue; // no override: pristine passes through, fine
     checked += 1;
     const b = body(file);
     if (b === '') {
-      failures.push({ set, id: p.id, why: `suppressed, but pristine carries ${need.join(' ')}` });
+      failures.push({
+        set,
+        id: p.id,
+        why: `suppressed, but pristine carries ${need.join(' ')}`,
+      });
       continue;
     }
     const missing = need.filter(t => !b.includes(t));
-    if (missing.length) failures.push({ set, id: p.id, why: `drops ${missing.join(' ')}` });
+    if (missing.length)
+      failures.push({ set, id: p.id, why: `drops ${missing.join(' ')}` });
   }
 }
 
 const label = 'substitution tags';
 if (failures.length === 0) {
   console.log(
-    `✓ ${label}: ${checked} override(s) across ${sets.length} set(s) keep every runtime injection site (${tags.size} tag(s) tracked)`
+    `✓ ${label}: ${checked} override(s) across ${setDirs.length} set(s) keep every runtime injection site (${tags.size} tag(s) tracked)`
   );
   process.exit(0);
 }
-console.error(`✗ ${label}: ${failures.length} override(s) drop a site CC substitutes into`);
+console.error(
+  `✗ ${label}: ${failures.length} override(s) drop a site CC substitutes into`
+);
 for (const f of failures) console.error(`    ${f.set}/${f.id} — ${f.why}`);
 console.error(
   '  A string .replace() finds nothing and silently injects nothing; the prompt still applies and boots.'

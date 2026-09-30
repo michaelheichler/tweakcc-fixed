@@ -23,7 +23,6 @@ import {
 } from './systemPromptPieceMatcher';
 import {
   encodeReplacementForDelimiter,
-  loadIdentifierMapUnion,
   loadSystemPromptsWithRegex,
   needsDelimiterAwareEscaping,
   pristineBodiesById,
@@ -88,7 +87,9 @@ export interface PreflightResult {
  * shadowed by someone", which cannot answer "may THIS override overlap THAT
  * one", so the ownership check reads the frontmatter itself.
  */
-const loadShadowDeclarations = async (): Promise<Map<string, Set<string>>> => {
+export const loadShadowDeclarations = async (): Promise<
+  Map<string, Set<string>>
+> => {
   const out = new Map<string, Set<string>>();
   const record = (owner: string, ids: unknown): void => {
     if (!Array.isArray(ids)) return;
@@ -449,7 +450,6 @@ export const runSystemPromptPreflight = async ({
     return { version, promptsChecked: 0, sitesChecked: 0, findings: [] };
   }
   const bodiesById = await pristineBodiesById(version);
-  const identifierMapUnion = await loadIdentifierMapUnion();
   const groupNames = new Map<string, Set<string>>();
   for (const entry of prompts) {
     const names = groupNames.get(entry.promptId) ?? new Set<string>();
@@ -585,17 +585,24 @@ export const runSystemPromptPreflight = async ({
         ) {
           return true;
         }
-        const leaked = leakedPromptPlaceholders(
-          content,
-          entry.prompt.content,
-          identifierMapUnion
-        );
+        const leaked = leakedPromptPlaceholders(content, entry.prompt.content);
         const ownNames = new Set(Object.values(entry.identifierMap));
         const siblingNames = groupNames.get(entry.promptId);
         const siblingShape =
           leaked.length > 0 &&
           leaked.every(name => !ownNames.has(name) && siblingNames?.has(name));
-        return siblingShape || (siteDelimiter === '`' && leaked.length > 0);
+        // Mirror of the apply: a survivor skips the site in EVERY delimiter,
+        // except a literal the pristine span itself carries.
+        const drifted =
+          siteDelimiter === '`'
+            ? leaked
+            : leaked.filter(
+                name =>
+                  !new RegExp(
+                    '(?<!\\\\)\\$\\{' + name + '(?![A-Za-z0-9_])'
+                  ).test(match[0])
+              );
+        return siblingShape || drifted.length > 0;
       };
       const encoded = encodeReplacementForDelimiter(
         interpolatedContent,

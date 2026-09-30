@@ -1,16 +1,16 @@
 import { showDiff } from './index';
 import {
   ReminderInjection,
-  findAndReplace,
-  applySimpleEntry,
-  propSlot,
-  matchingBrace,
   findCaseBody,
   discoverWrappers,
   discoverDeltaParam,
+  matchingBrace,
+  findAndReplace,
+  applySimpleEntry,
+  propSlot,
 } from './reminderShared';
 
-export const CLAUDEMD_INJECTION: ReminderInjection = {
+const CLAUDEMD_INJECTION: ReminderInjection = {
   id: 'claudemd-context',
   name: 'claudeMd context wrapper',
   description:
@@ -25,7 +25,7 @@ export const CLAUDEMD_INJECTION: ReminderInjection = {
       IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.`,
   apply(content, body, isSuppressed) {
     const pattern =
-      /function ([$\w]+)\(([$\w]+),([$\w]+)\)\{if\(Object\.entries\(\3\)\.length===0\)return \2;return\[([$\w]+)\(\{content:`<system-reminder>\n[\s\S]*?\n<\/system-reminder>\n`,isMeta:!0\}\),\.\.\.\2\]\}/;
+      /function ([$\w]+)\(([$\w]+),([$\w]+)\)\{if\(Object\.entries\(\3\)\.length===0\)return \2;return\[([$\w]+)\(\{content:[\s\S]{0,600}?,isMeta:!0\}\),\.\.\.\2\]\}/;
     const match = content.match(pattern);
     if (!match || match.index === undefined) {
       if (/function [$\w]+\([$\w]+,[$\w]+\)\{return [$\w]+;\}/.test(content)) {
@@ -37,7 +37,6 @@ export const CLAUDEMD_INJECTION: ReminderInjection = {
       return null;
     }
     const [fullMatch, fnName, msgsParam, ctxParam, j6Name] = match;
-
     let replacement: string;
     if (isSuppressed) {
       replacement = `function ${fnName}(${msgsParam},${ctxParam}){return ${msgsParam};}`;
@@ -66,7 +65,7 @@ export const CLAUDEMD_INJECTION: ReminderInjection = {
   },
 };
 
-export const SKILLS_INJECTION: ReminderInjection = {
+const SKILLS_INJECTION: ReminderInjection = {
   id: 'skills-listing',
   name: 'Skills listing reminder',
   description:
@@ -119,7 +118,7 @@ export const SKILLS_INJECTION: ReminderInjection = {
   },
 };
 
-export const MCP_INSTRUCTIONS_INJECTION: ReminderInjection = {
+const MCP_INSTRUCTIONS_INJECTION: ReminderInjection = {
   id: 'mcp-instructions',
   name: 'MCP server instructions block',
   description:
@@ -160,7 +159,7 @@ The following MCP servers have provided instructions for how to use their tools 
   },
 };
 
-export const AGENT_LISTING_INJECTION: ReminderInjection = {
+const AGENT_LISTING_INJECTION: ReminderInjection = {
   id: 'agent-listing',
   name: 'Agent listing reminder',
   description:
@@ -196,7 +195,7 @@ export const AGENT_LISTING_INJECTION: ReminderInjection = {
   },
 };
 
-export const OUTPUT_STYLE_INJECTION: ReminderInjection = {
+const OUTPUT_STYLE_INJECTION: ReminderInjection = {
   id: 'output-style-banner',
   name: 'Output style banner',
   description:
@@ -207,17 +206,6 @@ export const OUTPUT_STYLE_INJECTION: ReminderInjection = {
       '${H.turnReminder??"Remember to follow the specific guidelines for this style."}',
   },
   defaultBody: `{{style_name}} output style is active. {{turn_reminder}}`,
-  // Anchored on the registry key plus the arrow's code shape, never on the
-  // guards that precede the return. CC 2.1.238 replaced the guard wholesale —
-  // `let t=Oke[e.style];if(!t)return[];` became a type/emptiness check, a
-  // 256-char cap and a control-char sanitizer (`pze(e.style)`) — which broke a
-  // regex that spelled the old guard out, even though the site, the key, the
-  // wrapper and the message builder were all unchanged. The guards are none of
-  // this patch's business: it owns the CONTENT template only. So find the arrow
-  // by key, keep whatever precedes the return verbatim, and recover both slot
-  // expressions from the pristine template the same way `slotExpr` does — that
-  // way the next guard rewrite (or a new wrapper around the style name) needs
-  // no change here at all.
   apply(content, body, isSuppressed) {
     const head = content.match(/output_style:\(([$\w]+)\)=>/);
     if (!head || head.index === undefined) {
@@ -228,7 +216,6 @@ export const OUTPUT_STYLE_INJECTION: ReminderInjection = {
     }
     const hParam = head[1];
     const afterArrow = head.index + head[0].length;
-    // Already suppressed (by us, or by a build that emits nothing) — idempotent.
     if (/^(\[\]|\{\s*return \[\];?\s*\})/.test(content.slice(afterArrow))) {
       return content;
     }
@@ -261,9 +248,6 @@ export const OUTPUT_STYLE_INJECTION: ReminderInjection = {
     if (isSuppressed) {
       replacement = `output_style:(${hParam})=>[]`;
     } else {
-      // `${_.name}` is whatever expression pristine interpolates immediately
-      // before " output style is active." — `${t.name}` up to 2.1.237,
-      // `${pze(e.style)}` from 2.1.238.
       const nameExpr = template.match(
         /\$\{((?:[^{}]|\{[^{}]*\})*)\} output style is active\./
       );
@@ -300,7 +284,7 @@ export const OUTPUT_STYLE_INJECTION: ReminderInjection = {
   },
 };
 
-export const THINKING_REMINDER_INJECTION: ReminderInjection = {
+const THINKING_REMINDER_INJECTION: ReminderInjection = {
   id: 'thinking-reminder',
   name: 'Thinking reminder (anti-thinking nudge / F97)',
   description:
@@ -326,7 +310,7 @@ export const THINKING_REMINDER_INJECTION: ReminderInjection = {
   },
 };
 
-export const ULTRATHINK_INJECTION: ReminderInjection = {
+const ULTRATHINK_INJECTION: ReminderInjection = {
   id: 'ultrathink-effort',
   name: 'Ultrathink keyword booster',
   description:
@@ -349,7 +333,7 @@ export const ULTRATHINK_INJECTION: ReminderInjection = {
   },
 };
 
-export const DATE_CHANGE_INJECTION: ReminderInjection = {
+const DATE_CHANGE_INJECTION: ReminderInjection = {
   id: 'date-change',
   name: 'Date change reminder',
   description:
@@ -357,8 +341,6 @@ export const DATE_CHANGE_INJECTION: ReminderInjection = {
   placeholders: {
     new_date: '${H.newDate}',
   },
-  // CC 2.1.234 reworded this ("DO NOT mention this to the user explicitly
-  // because they are already aware." -> the clock line below).
   defaultBody:
     "The date has changed. Today's date is now {{new_date}}. No need to announce the new date \u2014 the user's own clock shows it.",
   apply(content, body, isSuppressed) {
@@ -372,7 +354,7 @@ export const DATE_CHANGE_INJECTION: ReminderInjection = {
   },
 };
 
-export const HOOK_ADDITIONAL_CONTEXT_INJECTION: ReminderInjection = {
+const HOOK_ADDITIONAL_CONTEXT_INJECTION: ReminderInjection = {
   id: 'hook-additional-context',
   name: 'Hook additional-context wrapper',
   description:
@@ -383,7 +365,6 @@ export const HOOK_ADDITIONAL_CONTEXT_INJECTION: ReminderInjection = {
   },
   defaultBody: '{{hook_name}} hook additional context: {{hook_content}}',
   apply(content, body, isSuppressed) {
-    // cli.js has a real newline between the backticks (not the `\n` escape).
     return findAndReplace(
       content,
       /hook_additional_context:\(([$\w]+)\)=>\{if\(\1\.content\.length===0\)return\[\];return\[([$\w]+)\(\{content:([$\w]+)\(`\$\{\1\.hookName\} hook additional context: \$\{\1\.content\.join\(`\n`\)\}`\),isMeta:!0\}\)\]\}/,
@@ -404,7 +385,7 @@ export const HOOK_ADDITIONAL_CONTEXT_INJECTION: ReminderInjection = {
   },
 };
 
-export const HOOK_BLOCKING_ERROR_INJECTION: ReminderInjection = {
+const HOOK_BLOCKING_ERROR_INJECTION: ReminderInjection = {
   id: 'hook-blocking-error',
   name: 'Hook blocking-error wrapper',
   description:
@@ -441,7 +422,7 @@ export const HOOK_BLOCKING_ERROR_INJECTION: ReminderInjection = {
   },
 };
 
-export const HOOK_STOPPED_INJECTION: ReminderInjection = {
+const HOOK_STOPPED_INJECTION: ReminderInjection = {
   id: 'hook-stopped-continuation',
   name: 'Hook stopped-continuation wrapper',
   description:
@@ -467,4 +448,18 @@ export const HOOK_STOPPED_INJECTION: ReminderInjection = {
       c => /hook_stopped_continuation:\([$\w]+\)=>\[\]/.test(c)
     );
   },
+};
+
+export {
+  CLAUDEMD_INJECTION,
+  SKILLS_INJECTION,
+  MCP_INSTRUCTIONS_INJECTION,
+  AGENT_LISTING_INJECTION,
+  OUTPUT_STYLE_INJECTION,
+  THINKING_REMINDER_INJECTION,
+  ULTRATHINK_INJECTION,
+  DATE_CHANGE_INJECTION,
+  HOOK_ADDITIONAL_CONTEXT_INJECTION,
+  HOOK_BLOCKING_ERROR_INJECTION,
+  HOOK_STOPPED_INJECTION,
 };

@@ -26,7 +26,12 @@ export const writeWorktreeMode = (oldFile: string): string | null => {
   if (!match || match.index === undefined) {
     // Modern Claude Code versions include worktree isolation natively and no
     // longer expose the old GrowthBook gate. Treat that as already satisfied.
-    if (oldFile.includes('EnterWorktree')) return oldFile;
+    if (oldFile.includes('EnterWorktree')) {
+      console.log(
+        'patch: worktreeMode: EnterWorktree present, tengu_worktree_mode gate gone — no-op'
+      );
+      return oldFile;
+    }
 
     console.error(
       'patch: worktreeMode: failed to find worktree gate function pattern'

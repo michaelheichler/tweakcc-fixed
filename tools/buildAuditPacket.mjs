@@ -11,10 +11,24 @@
 // and prints the group descriptors the workflow wants as `groups`.
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
+import { createRequire } from 'node:module';
 import { packByWeight, packingFloor } from './lib/packByWeight.mjs';
+import { externalRefs } from './lib/externalRefs.mjs';
+import {
+  rewriteTableNeedles,
+  rewriteTablePairs,
+} from './checkScannedLiterals.mjs';
+const require = createRequire(import.meta.url);
+const {
+  parseOverrideArgs,
+  resolveOverrideSets,
+  appliedPromptsDir,
+  printAuditedSets,
+} = require('./lib/overrideSets.cjs');
 
-const [jsonPath, idsPath, outDirArg, groupSizeArg] = process.argv.slice(2);
+const parsed = parseOverrideArgs(process.argv.slice(2));
+const resolved = resolveOverrideSets(parsed, { fallback: 'applied' });
+const [jsonPath, idsPath, outDirArg, groupSizeArg] = parsed.rest;
 if (!jsonPath || !idsPath) {
   console.error(
     'usage: buildAuditPacket.mjs <prompts.json> <ids-file> [outDir] [groupSize]'
@@ -33,18 +47,25 @@ fs.mkdirSync(outDir, { recursive: true });
 // amortises the scan and a smaller one just pays it again.
 const groupSize = Math.max(1, Number(groupSizeArg || 30));
 
-const LCC = path.join(os.homedir(), '.tweakcc', 'lobotomized-claude-code');
 // The active set moves; resolve it, never hardcode it.
-const activeSet = fs.realpathSync(
-  path.join(os.homedir(), '.tweakcc', 'system-prompts')
-);
-const activeName = path.basename(activeSet);
-const allSets = [
-  activeName,
-  ...['system-prompts-opus-4-8', 'system-prompts-fable-5', 'system-prompts-opus-4-7'].filter(
-    s => s !== activeName
-  ),
-].filter(s => fs.existsSync(path.join(LCC, s)));
+let active = null;
+const applied = appliedPromptsDir();
+if (fs.existsSync(applied)) {
+  try {
+    const dir = fs.realpathSync(applied);
+    active = { dir, name: path.basename(dir) };
+  } catch {
+    active = null;
+  }
+}
+const others = resolved
+  .filter(s => !active || s.dir !== active.dir)
+  .slice()
+  .sort((a, b) => a.name.localeCompare(b.name));
+const setEntries = active ? [active, ...others] : others;
+const activeSet = active ? active.dir : '';
+const allSets = setEntries.map(s => s.name);
+printAuditedSets(setEntries);
 
 const prompts = JSON.parse(fs.readFileSync(jsonPath, 'utf8')).prompts;
 // The realign workflow's prompt tells the agent to read "the complete old
@@ -58,11 +79,19 @@ if (prevJsonPath && fs.existsSync(prevJsonPath)) {
   for (const p of JSON.parse(fs.readFileSync(prevJsonPath, 'utf8')).prompts) {
     if (!p.id) continue;
     if (!prevBodies.has(p.id)) prevBodies.set(p.id, []);
-    prevBodies.get(p.id).push((p.pieces || []).filter(x => typeof x === 'string').join('') || p.content || '');
+    prevBodies
+      .get(p.id)
+      .push(
+        (p.pieces || []).filter(x => typeof x === 'string').join('') ||
+          p.content ||
+          ''
+      );
   }
 }
 const bodyOf = p =>
-  (p.pieces || []).filter(x => typeof x === 'string').join('') || p.content || '';
+  (p.pieces || []).filter(x => typeof x === 'string').join('') ||
+  p.content ||
+  '';
 
 const byId = new Map();
 for (const p of prompts) {
@@ -86,9 +115,24 @@ const shingles = text => {
   }
   return out;
 };
+// Text something outside the prompt depends on (lib/externalRefs.mjs). The
+// bundle is optional: without TWEAKCC_CLI the packet still carries the
+// cross-prompt labels and the leading-slot flag, and says the rest was not run.
+const cliPath = process.env.TWEAKCC_CLI || '';
+const cliSrc =
+  cliPath && fs.existsSync(cliPath) ? fs.readFileSync(cliPath, 'utf8') : null;
+const needles = cliSrc ? [...rewriteTableNeedles(cliSrc)] : [];
+const replacements = cliSrc
+  ? [...new Set(rewriteTablePairs(cliSrc).map(p => p.replacement))]
+  : [];
+const corpus = new Map(
+  [...byId].map(([k, v]) => [k, v.map(bodyOf).join('\n')])
+);
+
 const shingleCache = new Map();
 const shinglesFor = id => {
-  if (!shingleCache.has(id)) shingleCache.set(id, shingles(bodyOf(byId.get(id)[0])));
+  if (!shingleCache.has(id))
+    shingleCache.set(id, shingles(bodyOf(byId.get(id)[0])));
   return shingleCache.get(id);
 };
 
@@ -104,8 +148,10 @@ if (missing.length) {
   process.exit(2);
 }
 
-const readIfExists = p => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
-const ccVersionOf = text => (text?.match(/^ccVersion:\s*(\S+)\s*$/m) || [])[1] || null;
+const readIfExists = p =>
+  fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+const ccVersionOf = text =>
+  (text?.match(/^ccVersion:\s*(\S+)\s*$/m) || [])[1] || null;
 
 const packetFor = id => {
   const entries = byId.get(id);
@@ -119,7 +165,8 @@ const packetFor = id => {
       let shared = 0;
       for (const g of mine) if (theirs.has(g)) shared++;
       const score = shared / Math.min(mine.size, theirs.size);
-      if (score >= 0.25) leads.push({ id: other, overlap: Number(score.toFixed(2)) });
+      if (score >= 0.25)
+        leads.push({ id: other, overlap: Number(score.toFixed(2)) });
     }
     leads.sort((a, b) => b.overlap - a.overlap);
   }
@@ -137,21 +184,35 @@ const packetFor = id => {
     identifierMap: entries[0].identifierMap || null,
     // All four target paths, with whatever already exists on disk. An empty
     // body means SUPPRESSED and covers nothing; no file means pristine applies.
-    setFiles: allSets.map(set => {
-      const file = path.join(LCC, set, `${id}.md`);
+    setFiles: setEntries.map(s => {
+      const file = path.join(s.dir, `${id}.md`);
       const text = readIfExists(file);
       return {
-        set,
+        set: s.name,
         path: file,
         exists: text !== null,
         ccVersion: text ? ccVersionOf(text) : null,
         body: text,
-        isActiveSet: set === activeName,
+        isActiveSet: Boolean(active) && s.dir === active.dir,
       };
     }),
     // Leads only. The workflow prompt already says similarity is never proof —
     // the agent must open the cited sibling's DEPLOYED body.
     duplicationLeads: leads.slice(0, 8),
+    // FROZEN text: keep verbatim, and check each lead in the bundle before any
+    // wipe. predicateRuns/rewriteNeedles are empty when TWEAKCC_CLI was not set.
+    externalRefs: {
+      ...externalRefs({
+        id,
+        bodies: entries.map(bodyOf),
+        corpus,
+        needles,
+        replacements,
+        src: cliSrc,
+        entries,
+      }),
+      bundleChecked: Boolean(cliSrc),
+    },
   };
 };
 
@@ -172,8 +233,8 @@ const weightOf = id => {
   let w = 0;
   for (const e of entries) w += bodyOf(e).length;
   // A prompt with an existing override costs the agent that read too.
-  for (const set of allSets) {
-    const f = path.join(LCC, set, `${id}.md`);
+  for (const s of setEntries) {
+    const f = path.join(s.dir, `${id}.md`);
     if (fs.existsSync(f)) w += fs.statSync(f).size;
   }
   // Floor so a tiny prompt still counts as a unit of attention, not zero.
@@ -187,13 +248,24 @@ const groups = [];
 for (const bin of bins) {
   // Restore input order inside a packet so a human reading it sees the familiar
   // id sequence rather than a weight ranking.
-  const slice = bin.items.slice().sort((a, b) => ids.indexOf(a) - ids.indexOf(b));
+  const slice = bin.items
+    .slice()
+    .sort((a, b) => ids.indexOf(a) - ids.indexOf(b));
   if (!slice.length) continue;
   const n = String(groups.length).padStart(2, '0');
   const file = path.join(outDir, `audit-packet-${n}.json`);
   fs.writeFileSync(
     file,
-    JSON.stringify({ version: JSON.parse(fs.readFileSync(jsonPath, 'utf8')).version, activeSet, sets: allSets, prompts: slice.map(packetFor) }, null, 1)
+    JSON.stringify(
+      {
+        version: JSON.parse(fs.readFileSync(jsonPath, 'utf8')).version,
+        activeSet,
+        sets: allSets,
+        prompts: slice.map(packetFor),
+      },
+      null,
+      1
+    )
   );
   groups.push({ name: `g${n}`, packet: file, ids: slice });
 }
@@ -206,8 +278,20 @@ console.log(
     `${(Math.max(...ws) / packingFloor(ids, binCount, weightOf)).toFixed(2)}x of the ` +
     `theoretical floor (heaviest ${Math.max(...ws)} ch, lightest ${Math.min(...ws)} ch)`
 );
-console.log(prevJsonPath ? `previous pristine: ${prevJsonPath}` : 'previous pristine: none (set TWEAKCC_PREV_JSON for realignment diffs)');
+console.log(
+  prevJsonPath
+    ? `previous pristine: ${prevJsonPath}`
+    : 'previous pristine: none (set TWEAKCC_PREV_JSON for realignment diffs)'
+);
+console.log(
+  cliSrc
+    ? `external refs: bundle ${cliPath} (${needles.length} rewrite needles)`
+    : 'external refs: no bundle (set TWEAKCC_CLI for predicate and rewrite-needle leads)'
+);
 console.log(`active set: ${activeSet}`);
 console.log(`sets: ${allSets.join(', ')}`);
-fs.writeFileSync(path.join(outDir, 'audit-groups.json'), JSON.stringify(groups, null, 1));
+fs.writeFileSync(
+  path.join(outDir, 'audit-groups.json'),
+  JSON.stringify(groups, null, 1)
+);
 console.log(`groups descriptor -> ${path.join(outDir, 'audit-groups.json')}`);

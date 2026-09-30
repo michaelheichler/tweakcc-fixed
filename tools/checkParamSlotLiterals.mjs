@@ -64,6 +64,10 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const parser = require('@babel/parser');
+const {
+  splitModuleBundle,
+  parseModuleSegment,
+} = require('./lib/moduleBundle.cjs');
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ALLOWLIST = path.resolve(HERE, '../data/param-slot-allowlist.json');
@@ -107,49 +111,7 @@ const allBodies = prompts.map(pieceJoin);
 const catHeads = new Set(allBodies.filter(b => b.length > 30).map(b => b.slice(0, 30)));
 const catAll = allBodies.join('\n\n');
 
-let ast;
-try {
-  ast = parser.parse(src, { sourceType: 'unambiguous', errorRecovery: true }).program;
-} catch (err) {
-  die(`could not parse ${cliPath}: ${err.message}`);
-}
-
-const templates = [];
-const fnByName = new Map();
-const calls = [];
-
-const walk = (node, chain) => {
-  if (!node || typeof node.type !== 'string') return;
-  const isFn = /Function/.test(node.type);
-  const next = isFn ? [...chain, node] : chain;
-  if (node.type === 'TemplateLiteral') templates.push({ node, chain: next });
-  if (
-    node.type === 'VariableDeclarator' &&
-    node.id?.type === 'Identifier' &&
-    node.init &&
-    /Function/.test(node.init.type)
-  ) {
-    fnByName.set(node.id.name, node.init);
-  }
-  if (node.type === 'FunctionDeclaration' && node.id) fnByName.set(node.id.name, node);
-  if (node.type === 'CallExpression' && node.callee?.type === 'Identifier') calls.push(node);
-  for (const key of Object.keys(node)) {
-    if (key === 'type' || key === 'start' || key === 'end' || key === 'loc') continue;
-    const v = node[key];
-    if (Array.isArray(v)) {
-      for (const c of v) if (c && typeof c.type === 'string') walk(c, next);
-    } else if (v && typeof v.type === 'string') walk(v, next);
-  }
-};
-walk(ast, []);
-
-const nameByFn = new Map([...fnByName].map(([k, v]) => [v, k]));
-const callsByName = new Map();
-for (const c of calls) {
-  const list = callsByName.get(c.callee.name);
-  if (list) list.push(c);
-  else callsByName.set(c.callee.name, [c]);
-}
+const PARSE_OPTIONS = { sourceType: 'unambiguous', errorRecovery: true };
 
 // A literal argument, in the same form the extractor would hash it: a template
 // keeps its structure with the identifier stripped from every substitution.
@@ -166,45 +128,102 @@ const hash = text =>
   crypto.createHash('sha256').update(text.replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 16);
 
 const findings = new Map();
-for (const { node, chain } of templates) {
-  const withSlots = node.quasis.map(q => q.value.cooked ?? '').join('${}');
-  const bare = node.quasis.map(q => q.value.cooked ?? '').join('');
-  if (!catHeads.has(withSlots.slice(0, 30)) && !catHeads.has(bare.slice(0, 30))) continue;
 
-  for (const expr of node.expressions) {
-    if (expr.type !== 'Identifier') continue;
-    // Innermost enclosing function that declares this name as a parameter.
-    for (let d = chain.length - 1; d >= 0; d -= 1) {
-      const fn = chain[d];
-      const idx = (fn.params || []).findIndex(
-        p => p.type === 'Identifier' && p.name === expr.name
-      );
-      if (idx === -1) continue;
-      const fname = nameByFn.get(fn);
-      if (fname) {
-        for (const call of callsByName.get(fname) || []) {
-          const lit = literalOf(call.arguments[idx]);
-          if (lit === null) continue;
-          const trimmed = lit.trim();
-          if (trimmed.length < MIN_LEN) continue;
-          // Already in the catalogue in its own right? Then nothing to report.
-          const probe = (lit.split('${}')[0] || lit).trim().slice(0, PROBE_LEN);
-          if (probe.length < MIN_LEN || catAll.includes(probe)) continue;
-          const key = hash(lit);
-          if (!findings.has(key)) {
-            findings.set(key, {
-              builder: fname,
-              param: expr.name,
-              paramIndex: idx,
-              offset: call.start,
-              text: lit,
-            });
+const ingest = ast => {
+  const templates = [];
+  const fnByName = new Map();
+  const calls = [];
+
+  const walk = (node, chain) => {
+    if (!node || typeof node.type !== 'string') return;
+    const isFn = /Function/.test(node.type);
+    const next = isFn ? [...chain, node] : chain;
+    if (node.type === 'TemplateLiteral') templates.push({ node, chain: next });
+    if (
+      node.type === 'VariableDeclarator' &&
+      node.id?.type === 'Identifier' &&
+      node.init &&
+      /Function/.test(node.init.type)
+    ) {
+      fnByName.set(node.id.name, node.init);
+    }
+    if (node.type === 'FunctionDeclaration' && node.id) fnByName.set(node.id.name, node);
+    if (node.type === 'CallExpression' && node.callee?.type === 'Identifier') calls.push(node);
+    for (const key of Object.keys(node)) {
+      if (key === 'type' || key === 'start' || key === 'end' || key === 'loc') continue;
+      const v = node[key];
+      if (Array.isArray(v)) {
+        for (const c of v) if (c && typeof c.type === 'string') walk(c, next);
+      } else if (v && typeof v.type === 'string') walk(v, next);
+    }
+  };
+  walk(ast, []);
+
+  const nameByFn = new Map([...fnByName].map(([k, v]) => [v, k]));
+  const callsByName = new Map();
+  for (const c of calls) {
+    const list = callsByName.get(c.callee.name);
+    if (list) list.push(c);
+    else callsByName.set(c.callee.name, [c]);
+  }
+
+  for (const { node, chain } of templates) {
+    const withSlots = node.quasis.map(q => q.value.cooked ?? '').join('${}');
+    const bare = node.quasis.map(q => q.value.cooked ?? '').join('');
+    if (!catHeads.has(withSlots.slice(0, 30)) && !catHeads.has(bare.slice(0, 30))) continue;
+
+    for (const expr of node.expressions) {
+      if (expr.type !== 'Identifier') continue;
+      // Innermost enclosing function that declares this name as a parameter.
+      for (let d = chain.length - 1; d >= 0; d -= 1) {
+        const fn = chain[d];
+        const idx = (fn.params || []).findIndex(
+          p => p.type === 'Identifier' && p.name === expr.name
+        );
+        if (idx === -1) continue;
+        const fname = nameByFn.get(fn);
+        if (fname) {
+          for (const call of callsByName.get(fname) || []) {
+            const lit = literalOf(call.arguments[idx]);
+            if (lit === null) continue;
+            const trimmed = lit.trim();
+            if (trimmed.length < MIN_LEN) continue;
+            // Already in the catalogue in its own right? Then nothing to report.
+            const probe = (lit.split('${}')[0] || lit).trim().slice(0, PROBE_LEN);
+            if (probe.length < MIN_LEN || catAll.includes(probe)) continue;
+            const key = hash(lit);
+            if (!findings.has(key)) {
+              findings.set(key, {
+                builder: fname,
+                param: expr.name,
+                paramIndex: idx,
+                offset: call.start,
+                text: lit,
+              });
+            }
           }
         }
+        break;
       }
-      break;
     }
   }
+};
+
+const segments = splitModuleBundle(src);
+if (segments) {
+  for (const seg of segments) {
+    const file = parseModuleSegment(seg, PARSE_OPTIONS, 'param-slot');
+    if (!file) continue;
+    ingest(file.program);
+  }
+} else {
+  let ast;
+  try {
+    ast = parser.parse(src, PARSE_OPTIONS).program;
+  } catch (err) {
+    die(`could not parse ${cliPath}: ${err.message}`);
+  }
+  ingest(ast);
 }
 
 let allow = {};

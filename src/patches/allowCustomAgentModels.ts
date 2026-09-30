@@ -24,6 +24,7 @@
 // +");let J=K&&typeof K==="string"
 // ```
 
+import { debug } from '../utils';
 import { showDiff } from './index';
 
 export const writeAllowCustomAgentModels = (file: string): string | null => {
@@ -38,6 +39,9 @@ export const writeAllowCustomAgentModels = (file: string): string | null => {
     const validPatternAny =
       /let\s+[$\w]+\s*=\s*([$\w]+)\s*&&\s*typeof\s+\1\s*===\s*"string"\s*&&\s*[$\w]+\.includes\(\1\)/;
     if (!newFile.match(validPatternAny)) {
+      debug(
+        'patch: allowCustomAgentModels: enum/includes gate removed in this CC build — no-op'
+      );
       return newFile;
     }
     console.error(

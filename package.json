@@ -1,10 +1,17 @@
 {
   "name": "tweakcc-fixed",
-  "version": "2.7.35",
+  "version": "2.8.32",
+  "supportedClaudeCode": "2.1.285",
   "type": "module",
   "description": "Maintained fork of tweakcc — patch an installed Claude Code (npm or native binary) with curated system-prompt overrides, system-reminder overrides, and fork-only patches. Pairs with skrabe/lobotomized-claude-code.",
   "main": "dist/lib/index.mjs",
   "types": "dist/lib/index.d.mts",
+  "files": [
+    "dist/**/*.mjs",
+    "dist/**/*.d.mts",
+    "LICENSE",
+    "README.md"
+  ],
   "bin": {
     "tweakcc-fixed": "./dist/index.mjs"
   },
@@ -15,18 +22,15 @@
     }
   },
   "scripts": {
-    "generate:union": "node tools/generateIdentifierUnion.mjs",
-    "build": "node tools/generateIdentifierUnion.mjs && tsc --noEmit && tsdown --minify --dts src/index.tsx src/lib/index.ts",
-    "build:dev": "node tools/generateIdentifierUnion.mjs && tsdown --dts src/index.tsx src/lib/index.ts",
+    "build": "tsc --noEmit && tsdown --minify --dts src/index.tsx src/lib/index.ts",
+    "build:dev": "tsdown --dts src/index.tsx src/lib/index.ts",
     "watch": "tsdown --watch --dts src/index.tsx src/lib/index.ts",
     "start": "node dist/index.mjs",
-    "prelint": "node tools/generateIdentifierUnion.mjs",
     "lint": "tsc --noEmit && eslint src tools",
     "test": "vitest run",
     "test:dev": "vitest",
-    "test:matcher": "TWEAKCC_MATCHER_CORPUS=1 vitest run --pool=threads --poolOptions.threads.singleThread --testTimeout=1200000 --hookTimeout=1200000 src/systemPromptPieceMatcherCorpus.test.ts",
-    "test:pristine": "TWEAKCC_PRISTINE_PATCHES=1 vitest run --testTimeout=600000 --hookTimeout=600000 src/patches/allPatchesAgainstPristine.test.ts",
-    "pretest": "node tools/generateIdentifierUnion.mjs",
+    "test:matcher": "TWEAKCC_MATCHER_CORPUS=1 node tools/runGate.mjs npx vitest run --disableConsoleIntercept --pool=threads --poolOptions.threads.singleThread --testTimeout=1200000 --hookTimeout=1200000 src/systemPromptPieceMatcherCorpus.test.ts",
+    "test:pristine": "TWEAKCC_PRISTINE_PATCHES=1 node tools/runGate.mjs npx vitest run --testTimeout=1200000 --hookTimeout=1200000 src/patches/allPatchesAgainstPristine.test.ts src/patches/refusalFallbackModelPristine.test.ts",
     "format": "prettier --write src",
     "version-bump:report": "node tools/versionBumpReport.js",
     "prepare": "husky",

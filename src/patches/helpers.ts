@@ -1,5 +1,30 @@
 import { escapeIdent } from '.';
 
+const TWEAKCC_MODULE_MARK = '/*@@TWEAKCC_MODULE:';
+
+/**
+ * Chalk as it is named INSIDE the module containing `at`.
+ *
+ * `findChalkVar` counts across the whole file, which on a 2.1.246 code-split
+ * bundle picks the winner from whichever module uses chalk most — a name that
+ * means something else, or nothing, in the module being patched. Splicing it
+ * there is a ReferenceError (or a `.rgb is not a function`) the first time the
+ * spliced code runs. Returns undefined when the enclosing module has no chalk
+ * of its own, which is a real answer: the caller must not splice a chain.
+ * On a single-module bundle this is exactly `findChalkVar`.
+ */
+export const findChalkVarInModule = (
+  fileContents: string,
+  at: number
+): string | undefined => {
+  const start = fileContents.lastIndexOf(TWEAKCC_MODULE_MARK, at);
+  if (start === -1) return findChalkVar(fileContents);
+  const next = fileContents.indexOf(TWEAKCC_MODULE_MARK, start + 1);
+  return findChalkVar(
+    fileContents.slice(start, next === -1 ? fileContents.length : next)
+  );
+};
+
 export const findChalkVar = (fileContents: string): string | undefined => {
   // Find chalk variable using the counting method
   const chalkPattern =

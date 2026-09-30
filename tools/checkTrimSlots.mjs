@@ -36,11 +36,29 @@
 //     --all  every override that differs from pristine. Report mode, exits 0.
 //     --json <path>  write the findings for a downstream verifier packet.
 //
+// A drop that was reviewed and ruled correct (the sentence carrying the slot
+// was itself justified to cut, or a suppressed example whose slot only named
+// a callee) is recorded in data/trim-slot-allowlist.json, keyed
+// `<id>` -> `{ <token>: <reason> }`. Until that file existed a ruled-on drop
+// re-entered the worklist every time its id was touched, and the review that
+// settled it lived only in a run transcript. The allowlist row is keyed on
+// the deployed body's hash so a later edit to the override re-opens the
+// question; a row for a token that is present again is reported as stale.
+//
 // Exit 0 = no findings (or --all), 1 = findings, 2 = could not run.
 
+import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
+
+const require = createRequire(import.meta.url);
+const {
+  parseOverrideArgs,
+  resolveOverrideSets,
+  printAuditedSets,
+} = require('./lib/overrideSets.cjs');
 
 const TOKEN = /\$\{[^}]{0,120}\}|\{\{[^}]{0,80}\}\}/g;
 
@@ -123,21 +141,25 @@ const main = () => {
     process.exit(code);
   };
 
-  const args = process.argv.slice(2);
+  const parsed = parseOverrideArgs(process.argv.slice(2));
+  const args = parsed.rest;
   const jsonPath = args.find(a => !a.startsWith('--'));
-  const setDir = (args.find(a => a.startsWith('--set=')) || '').slice(6);
   const idsFile = (args.find(a => a.startsWith('--ids=')) || '').slice(6);
   const all = args.includes('--all');
   const outIdx = args.indexOf('--json');
   const outPath = outIdx === -1 ? null : args[outIdx + 1];
 
-  if (!jsonPath || !setDir)
+  if (!jsonPath || !parsed.specified)
     die('usage: <prompts.json> --set=<dir> (--ids=<file> | --all) [--json <path>]');
   if (!idsFile && !all)
     die(
       'pass --ids=<file> to gate a bump, or --all to inventory the whole set — ' +
         'an unscoped gate reports every historical decision and gets ignored'
     );
+  const resolved = resolveOverrideSets(parsed, { fallback: 'none' });
+  if (resolved.length !== 1) die(`exactly one set (got ${resolved.length})`);
+  printAuditedSets(resolved);
+  const setDir = resolved[0].dir;
   if (!fs.existsSync(jsonPath)) die(`no prompts JSON at ${jsonPath}`);
   if (!fs.existsSync(setDir)) die(`no override set at ${setDir}`);
 
@@ -150,6 +172,27 @@ const main = () => {
   }
 
   const bodyOf = id => stripFrontmatter(fs.readFileSync(path.join(setDir, `${id}.md`), 'utf8'));
+
+  // Ids the system-reminder registry shadows are owned by that surface: the
+  // apply never iterates them from the prompt set, so a prompt-set file for
+  // one — empty or not — renders nothing and its tokens are not "lost" here.
+  // Three such ids (question-context, lines-selected-in-ide, large-pdf) sat in
+  // this inventory and drew a "CLAUDE.md delivery deleted" finding on
+  // 2026-09-02 that a look at system-reminders/claudemd-context.md refuted.
+  // `shadows:` is honoured from BOTH dirs by loadShadowSet in the patcher: a
+  // prompt-set override can own another id too (tool-description-agent-
+  // simple-usage-notes shadows tool-description-agent-usage-notes, whose
+  // empty file therefore renders nothing — the full branch stays pristine).
+  const shadowed = new Set();
+  for (const dir of [setDir, path.join(path.dirname(setDir), 'system-reminders')]) {
+    if (!fs.existsSync(dir)) continue;
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.md')) continue;
+      const fm = fs.readFileSync(path.join(dir, f), 'utf8').split('-->')[0];
+      const m = fm.match(/^shadows:\n((?:\s+-\s+.*\n?)+)/m);
+      if (m) for (const line of m[1].split('\n')) { const id = line.replace(/^\s+-\s+/, '').trim(); if (id) shadowed.add(id); }
+    }
+  }
 
   const ids = idsFile
     ? fs.readFileSync(idsFile, 'utf8').split('\n').map(s => s.trim()).filter(Boolean)
@@ -170,14 +213,37 @@ const main = () => {
       setTemplates.add(t);
   }
 
+  const allowPath = path.join(
+    path.dirname(url.fileURLToPath(import.meta.url)),
+    '..',
+    'data',
+    'trim-slot-allowlist.json'
+  );
+  const allow = fs.existsSync(allowPath) ? JSON.parse(fs.readFileSync(allowPath, 'utf8')) : {};
+  const bodyHash = b => crypto.createHash('sha1').update(b.trim()).digest('hex').slice(0, 12);
+
   const findings = [];
+  const justified = [];
+  const stale = [];
+  let shadowSkipped = 0;
   for (const id of ids) {
     if (!pristine.has(id) || !fs.existsSync(path.join(setDir, `${id}.md`))) continue;
+    if (shadowed.has(id)) { shadowSkipped++; continue; }
     const body = bodyOf(id);
-    const lost = lostTokens(pristine.get(id), body, setTemplates);
+    const all = lostTokens(pristine.get(id), body, setTemplates);
+    const rule = allow[id];
+    const live = rule && rule.bodyHash === bodyHash(body) ? rule.tokens || {} : {};
+    if (rule && rule.bodyHash !== bodyHash(body))
+      stale.push({ id, why: `override body changed (now ${bodyHash(body)}); re-review and re-key the row` });
+    for (const t of Object.keys(live)) if (!all.includes(t)) stale.push({ id, why: `${t} is present again; delete the row` });
+    const lost = all.filter(t => !(t in live));
+    for (const t of all) if (t in live) justified.push({ id, token: t, reason: live[t] });
     if (lost.length)
       findings.push({ id, suppressed: body.trim() === '', lost, remaining: [...tokensOf(body)] });
   }
+  for (const j of justified) console.log(`  ✓ ${j.id}: ${j.token} — justified: ${j.reason}`);
+  for (const st of stale) console.log(`  ! ${st.id}: allowlist row is stale — ${st.why}`);
+  if (shadowSkipped) console.log(`  · ${shadowSkipped} id(s) owned by another override skipped (shadows: in system-prompts or system-reminders frontmatter)`);
 
   if (outPath) fs.writeFileSync(outPath, JSON.stringify(findings, null, 1));
 
