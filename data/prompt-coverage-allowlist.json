@@ -4,11 +4,6 @@
     "version": "2.1.276",
     "why": "module 119 chunk-n55wtmpy.js, e_ type autocompact_state event .describe(): SDK/thin-client event so a host UI can show '% until auto-compact'. Schema description for stdout JSON; not sent as a prompt or tool schema."
   },
-  "data-background-tasks-changed-event-schema": {
-    "verdict": "not-model-facing",
-    "version": "2.1.276",
-    "why": "module 119 chunk-n55wtmpy.js, Lae system/background_tasks_changed .describe(): SDK stdout system-event schema description for host task-list replace semantics. Emitted as JSON values on the control/message stream, not as schema text to the model."
-  },
   "data-chrome-browser-hints-control-request": {
     "verdict": "not-model-facing",
     "version": "2.1.276",
@@ -278,5 +273,380 @@
     "verdict": "not-model-facing",
     "version": "2.1.285",
     "why": "Linux sandbox dependency-check error (EV in rT) pushed with bwrap/socat/ripgrep siblings to the /sandbox and startup warnings, and to the debug log; none of those siblings reach the model."
+  },
+  "data-sdk-initialize-response-sdk-mcp-manifests-parked-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.286",
+    "why": "sdk_mcp_manifests_parked .describe() on the SDK initialize control-response schema: host-facing control-protocol documentation, never in a model request."
+  },
+  "data-interrupt-send-now-parameter": {
+    "verdict": "not-model-facing",
+    "version": "2.1.288",
+    "why": "@internal send_now .describe() on the SDK interrupt control-request schema: host-facing control-protocol documentation, never in a model request."
+  },
+  "data-interrupt-send-now-message-uuid-parameter": {
+    "verdict": "not-model-facing",
+    "version": "2.1.288",
+    "why": "@internal message_uuid .describe() beside send_now on the SDK interrupt control-request schema: control-protocol documentation for hosts."
+  },
+  "data-turn-handoff-file-names-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.288",
+    "why": "@internal file_names .describe() on the SDK turn_handoff user-message member schema: host-facing wire contract, not a prompt or tool schema."
+  },
+  "data-sdk-thinking-duration-ms-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.288",
+    "why": "@internal thinking_duration_ms .describe() on the SDK stream-frame wrapper schema; the text itself says it is not replayed to the model."
+  },
+  "data-get-task-output-control-request": {
+    "verdict": "not-model-facing",
+    "version": "2.1.288",
+    "why": "get_task_output control-request .describe() in the SDK control-protocol union (next to background_tasks): documentation for SDK hosts, not sent to the model."
+  },
+  "data-plugin-manifest-types-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.288",
+    "why": "types .describe() on the plugin manifest (plugin.json) zod schema: validates plugin files; the manifest schema is not part of the settings schema sent by /update-config and never enters a model request."
+  },
+  "data-sdk-api-error-params-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "@internal .describe() in the SDK control-protocol schema: documentation for SDK hosts, never sent to the model."
+  },
+  "data-sdk-message-stop-abandoned-blocks-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "@internal .describe() in the SDK control-protocol schema: documentation for SDK hosts, never sent to the model."
+  },
+  "data-interrupt-worker-epoch-parameter": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "@internal .describe() in the SDK control-protocol schema: documentation for SDK hosts, never sent to the model."
+  },
+  "data-sdk-permission-check-status-event-schema": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "@internal .describe() in the SDK control-protocol schema: documentation for SDK hosts, never sent to the model."
+  },
+  "data-sdk-task-notification-handback-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "@internal .describe() in the SDK control-protocol schema: documentation for SDK hosts, never sent to the model."
+  },
+  "data-sdk-ui-prompt-autocomplete-request-schema": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "@internal .describe() in the SDK control-protocol schema: documentation for SDK hosts, never sent to the model."
+  },
+  "data-sdk-mcp-server-disableautobackground-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "@internal .describe() in the SDK control-protocol schema: documentation for SDK hosts, never sent to the model."
+  },
+  "data-network-path-settings-file-unread-recovery-guidance": {
+    "verdict": "not-model-facing",
+    "version": "2.1.292",
+    "why": "Settings-file network-path recovery text: classify path proof rules it ui (shown in the settings-load warning to the user; no model-bound caller)."
+  },
+  "data-tool-result-display-metadata-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.295",
+    "why": "@internal .describe() on the SDK message schema's tool_result_meta field: display metadata for SDK hosts, never replayed to the model."
+  },
+  "data-sdk-result-safety-stops-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.295",
+    "why": "@internal .describe() on the SDK result message's safety_stops counter: SDK consumer documentation, not sent to the model."
+  },
+  "data-background-tasks-changed-event-schema": {
+    "verdict": "not-model-facing",
+    "version": "2.1.295",
+    "why": ".describe() on the SDK background_tasks_changed system event: SDK control-protocol schema for host consumers, not sent to the model."
+  },
+  "data-turn-handoff-hydrates-carried-lines-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.296",
+    "why": "@internal .describe() on the SDK turn_handoff hydrates_carried_lines member: control-protocol schema for the session service, not sent to the model."
+  },
+  "data-sdk-set-model-only-if-model-is-current-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.296",
+    "why": "@internal .describe() on the SDK set_model only_if_model_is_current flag: control-protocol schema for host consumers, not sent to the model."
+  },
+  "data-self-hosted-runner-disabled-by-org-fatal-message": {
+    "verdict": "not-model-facing",
+    "version": "2.1.296",
+    "why": "[runner:fatal] line the self-hosted runner prints when RegisterRunner is refused; operator-facing process output, ruled ui by classify."
+  },
+  "data-managed-settings-x-whenunreadable-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.302",
+    "why": "Clause of the description string of the managed-settings bootstrap JSON schema (editor autocomplete, beside 'Structural reference for editor autocomplete'); the schema object is returned to config tooling, not sent as a prompt or tool schema. Sibling clauses are ruled internal in the classification cache."
+  },
+  "data-sdk-user-message-requeue-if-interrupted-within-ms-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2535433 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): user-message input schema (SDK stdin message from the host). The .describe() text is documentation for SDK hosts, consumed by the CLI input-queue handler, which reads the field from the host-sent user message. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-turn-handoff-required-rewind-request-id-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2921151 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): turn_handoff control_request schema (requires_rewind_request_id member). The .describe() text is documentation for SDK hosts, consumed by the SDK/CCR worker control handler that validates the host message. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-read-file-anchor-as-written-kind": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2880059 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): anchor discriminated-union member (kind:\"as_written\") of the read_file control request. The .describe() text is documentation for SDK hosts, consumed by the read_file control handler that resolves the path for the host client. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-result-model-usage-since-last-result-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2596683 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): result-message field description (YA const) in the success result schema. The .describe() text is documentation for SDK hosts, consumed by SDK hosts reading the stdout result JSON. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-read-file-anchor-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2882732 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): anchor field of the read_file control_request schema (subtype read_file, path, max_bytes, encoding). The .describe() text is documentation for SDK hosts, consumed by the read_file control handler that answers the host client; read_file is a host request, not a model tool. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-result-startup-garbage-collection-counts-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2638306 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): process_garbage_collections field of the success result schema. The .describe() text is documentation for SDK hosts, consumed by SDK hosts reading the stdout result JSON. It is not a model tool input schema or a settings schema."
+  },
+  "data-mcp-status-control-request-live-reply-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2838972 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): liveReply field of the mcp_status control_request schema. The .describe() text is documentation for SDK hosts, consumed by the control-request handler that publishes the reply to attached CCR clients. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-ui-prompt-paint-request-schema": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @3024175 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): ui_prompt_paint agent-to-client control request schema (describe on the request object). The .describe() text is documentation for SDK hosts, consumed by the attached UI client (ui_attach) that paints its composer. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-result-runtime-tuning-environment-bitmask-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2636983 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): process_start_tuning field of the success result schema. The .describe() text is documentation for SDK hosts, consumed by SDK hosts reading the stdout result JSON. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-set-model-error-response-model-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @3041749 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): model field of the control_response error schema (set_model refusals). The .describe() text is documentation for SDK hosts, consumed by the SDK host reading the control_response. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-result-process-model-request-turn-count-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2610751 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): process_turn_index field of the success result schema. The .describe() text is documentation for SDK hosts, consumed by SDK hosts reading the stdout result JSON. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-result-process-streaming-cpu-time-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2620347 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): process_cpu_ms_streaming field of the success result schema. The .describe() text is documentation for SDK hosts, consumed by SDK hosts reading the stdout result JSON. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-set-model-success-payload-model-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2835678 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): model field of the set_model success-payload schema (mY). The .describe() text is documentation for SDK hosts, consumed by the SDK host reading the control_response. It is not a model tool input schema or a settings schema."
+  },
+  "data-code-review-startup-token-file-descriptor-error": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Ln @20389727 chunk-bk10414k.js: process.stderr.write at startup before any turn; operator-facing stderr, never sent to a model."
+  },
+  "data-untrusted-folder-environment-variables-ignored-warning": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "asFromAFolderNobodyTrusted @4934214 chunk-hsd6za49.js: t(...,{level:\"warn\"}) log call for a human/operator; not injected into a model request."
+  },
+  "data-sdk-command-lifecycle-scheduled-for-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2745053 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): scheduled_for field of the command_lifecycle stdout message schema (type command_lifecycle, command_uuid, loop_wakeup). The .describe() text is documentation for SDK hosts, consumed by SDK hosts reading the stream; it is not a settings schema and not the ScheduleWakeup tool input. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-result-main-stream-chunk-count-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2622225 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): main_stream_chunk_count field of the success result schema. The .describe() text is documentation for SDK hosts, consumed by SDK hosts reading the stdout result JSON. It is not a model tool input schema or a settings schema."
+  },
+  "data-sdk-ui-attach-client-request-capabilities-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Verified at @2986452 in chunk-svc70m2z.js (SDK/control-protocol zod schemas, the file holding the stdout and control_request schemas): answers field of the ui_attach control_request schema (surface, client_id, viewport). The .describe() text is documentation for SDK hosts, consumed by the engine, which records which ui_* requests a UI client answers. It is not a model tool input schema or a settings schema."
+  },
+  "data-sandbox-worktrees-directory-listing-failure-warning": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "ao @7514189 chunk-x1rzzwwt.js: t(...,{level:\"warn\"}) debug/warn log from sandbox config build; not model-visible."
+  },
+  "data-server-classifier-beta-rejection-warning": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "_Ne @12472688 chunk-sq7yspzm.js: [server-classifier] message emitted via log/warn on HTTP 400 handling; operator-facing, not sent to a model."
+  },
+  "data-self-hosted-runner-diff-finds-nested-repository-exec-path-notice": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Bh @15279305 in chunk-ntr36ry9.js builds this [runner] notice; its only caller is TR @15279886 (self-hosted runner main), which passes it to the runner log writer v(ae) at startup, alongside the \"Connecting to ...\" log line. The text goes to the operator log, never to a model request."
+  },
+  "data-cloud-session-unverified-remote-branch-push-notice": {
+    "verdict": "not-model-facing",
+    "version": "2.1.314",
+    "why": "Template assigned to Ui @11773965 in g$ (chunk with the cloud-session bundle builder); Ui is read only by e.onBundleNotice on the launch path without an environmentId. Every onBundleNotice handler is ui (the --remote launcher writes it to stderr; session openers pass it to host streams); model-invoked callers of g$ set none."
+  },
+  "data-sdk-startup-failure-reason-codes": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "chunk-nxc9btm2 (module 119 SDK schema) describe() on the startup-failure reason enum; already cached internal. SDK/host control-protocol schema, never sent as a prompt or tool schema"
+  },
+  "data-sdk-result-request-build-detail-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the @internal result-message field (cli.js zod result schema, chunk-nxc9btm2). Timing telemetry for SDK hosts on stdout JSON"
+  },
+  "data-sdk-result-process-turn-states-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the @internal result-message field, SDK stdout schema for hosts; not a tool schema, not read by the model"
+  },
+  "data-sdk-result-tool-schema-build-detail-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the @internal result-message timing field, SDK stdout schema"
+  },
+  "data-sdk-get-settings-policy-origins-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() inside the get_settings control_response schema (cached internal literal); control-protocol reply to the host, not a model message"
+  },
+  "data-sdk-result-message-normalization-detail-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the @internal result-message timing field, SDK stdout schema"
+  },
+  "data-thin-client-diff-dialog-no-diff-reason-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() in the thin-client diff-response schema (cached internal); host protocol, no model route"
+  },
+  "data-sdk-warning-model-restriction-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the system/informational SDK event field (@internal); the model never sees the stdout event schema"
+  },
+  "data-self-named-extra-ca-certificate-warning": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "selfNamed message in we @2242379, a startup notice object routed to the terminal/host warning list (cached ui); not a model message"
+  },
+  "data-sdk-ui-attach-draws-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the ui_attach control_request field (@internal); SDK/remote-surface protocol schema"
+  },
+  "data-self-hosted-runner-control-plane-idle-release-notice": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "h() runner log line '[runner:session] ... idle limit ... from Anthropic's control plane' in onServerIdleLimit (cached ui); self-hosted-runner operator log, stderr only"
+  },
+  "data-sdk-user-message-ultrathink-typed-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the SDK user-message schema field (@internal); input-protocol schema for hosts"
+  },
+  "data-sdk-model-fallback-api-refusal-cyber-verification-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the system/model_refusal_fallback SDK event field (@internal); stdout event schema"
+  },
+  "data-sdk-result-credential-expires-at-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the result schema field (cached internal); SDK stdout schema"
+  },
+  "data-self-named-ca-certificate-drop-debug-guidance": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "t(`CA certs: Dropped the certificate ...`) debug-log call in the CA loader (cached internal); debug log only"
+  },
+  "data-sdk-system-init-ultrathink-typed-raises-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the system/init SDK event field (@internal); the field value is set at 19285713 into the init frame for hosts, the description is schema only"
+  },
+  "data-sdk-ui-invalidate-instances-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the system/ui_invalidate SDK event field (@internal)"
+  },
+  "data-mcp-server-status-urlhost-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the mcp status schema field (@internal) in the control_response; host protocol, not an MCP tool result"
+  },
+  "data-sdk-read-file-lossy-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the read_file control_response schema (cached internal); host file-read protocol, not the Read tool"
+  },
+  "data-sdk-initialize-response-hook-on-failure-supported-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the initialize control_response schema (cached internal); SDK handshake, host only"
+  },
+  "data-pending-elicitation-requests-initialization-response": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the initialize response field (cached internal); host protocol"
+  },
+  "data-sdk-ui-invalidate-event": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the system/ui_invalidate event schema (@internal); push to remote surfaces"
+  },
+  "data-ultrathink-availability-session-initialization": {
+    "verdict": "not-model-facing",
+    "version": "2.1.318",
+    "why": "describe() on the system/init SDK event field (@internal); value only informs hosts whether to color the word"
+  },
+  "data-sdk-result-process-turn-threads-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-khgpwghf.js SDK control-protocol zod schema (result/success message process_turn_threads field, @internal CPU telemetry) .describe(): host-facing documentation of the stdout/control protocol; bundleQuery sink sdk-control-schema [internal], not converted via toJSONSchema into any tool input schema and not in the settings oracle, never in a model request."
+  },
+  "data-mcp-call-check-permissions-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-khgpwghf.js SDK control-protocol zod schema (mcp_call control request check_permissions field) .describe(): host-facing documentation of the stdout/control protocol; bundleQuery sink sdk-control-schema [internal], not converted via toJSONSchema into any tool input schema and not in the settings oracle, never in a model request."
+  },
+  "data-sdk-set-has-subscribers-control-request": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-khgpwghf.js SDK control-protocol zod schema (set_has_subscribers control request) .describe(): host-facing documentation of the stdout/control protocol; bundleQuery sink sdk-control-schema [internal], not converted via toJSONSchema into any tool input schema and not in the settings oracle, never in a model request."
+  },
+  "data-sdk-voice-call-message-origin-schema": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-khgpwghf.js SDK control-protocol zod schema (voice-call message origin; the model sees a separate framing text, not this describe) .describe(): host-facing documentation of the stdout/control protocol; bundleQuery sink sdk-control-schema [internal], not converted via toJSONSchema into any tool input schema and not in the settings oracle, never in a model request."
+  },
+  "data-sdk-mcp-server-connectorid-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-khgpwghf.js SDK control-protocol zod schema (SDK MCP server connectorId field) .describe(): host-facing documentation of the stdout/control protocol; bundleQuery sink sdk-control-schema [internal], not converted via toJSONSchema into any tool input schema and not in the settings oracle, never in a model request."
+  },
+  "data-gateway-govcloud-upstream-isolation-warning": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-85d4q736.js awe() (called from swe gateway startup): returned warnings go to Cr(\"warn\", ...) which sinks to stdio (stderr/log) for the gateway operator; the gateway process is a proxy and the text is never a tool_result or system reminder."
+  },
+  "data-sdk-can-use-tool-decision-reason-code-field": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-khgpwghf.js SDK control-protocol zod schema (can_use_tool request decision_reason_code field and the sibling permission_denied system event) .describe(): host-facing documentation of the stdout/control protocol; bundleQuery sink sdk-control-schema [internal], not converted via toJSONSchema into any tool input schema and not in the settings oracle, never in a model request."
+  },
+  "data-gateway-model-policy-overlap-warning": {
+    "verdict": "not-model-facing",
+    "version": "2.1.319",
+    "why": "chunk-85d4q736.js awe() (called from swe gateway startup): returned warnings go to Cr(\"warn\", ...) which sinks to stdio (stderr/log) for the gateway operator; the gateway process is a proxy and the text is never a tool_result or system reminder."
   }
 }

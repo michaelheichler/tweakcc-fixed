@@ -1015,5 +1015,125 @@
     "verdict": "internal",
     "shape": "concat",
     "excerpt": "Host-asserted context shown to the auto-mode permission classifier alongside this tool call's result. In the live session the classifier may"
+  },
+  "4ac83759a6b28e2d": {
+    "verdict": "internal",
+    "note": "PostToolUse classifierContext .describe() in the hook-output zod schema (2.1.288 rewording of a34d88e8a275822d); validates hook JSON, never sent to the model; sibling describes cached internal",
+    "shape": "concat",
+    "excerpt": "Host-asserted context shown to the auto-mode permission classifier alongside this tool call's result. In the live session the classifier may"
+  },
+  "f167d18231d357bc": {
+    "verdict": "internal",
+    "note": "Set of exact 403 response bodies matched by Ne() to recognise an artifact-storage network-policy denial; a matcher, never rendered to the model",
+    "shape": "array",
+    "excerpt": "organization network policy denies artifact storage writes for this session organization network policy could not be determined for this ses"
+  },
+  "7b6dd3b2399a380b": {
+    "verdict": "internal",
+    "note": "Dead branch: only spliced by E() in chunk-25nf5ash, whose sole callers IAn/fXr reach it under PAn(), defined as function PAn(){return!1} (constant false), so this marketplace-name remediation text is never emitted",
+    "shape": "array",
+    "excerpt": "Removing it is the only fix. That also uninstalls its plugins and deletes what they saved: their data, options and secrets."
+  },
+  "9f31d5b3791a037f": {
+    "verdict": "internal",
+    "note": "Dead branch: only spliced by E() in chunk-25nf5ash, whose sole callers IAn/fXr reach it under PAn(), defined as function PAn(){return!1} (constant false), so this marketplace-name remediation text is never emitted",
+    "shape": "array",
+    "excerpt": "It was added from a settings file. To keep it, do these in order: 1. In that file, rename its entry under extraKnownMarketplaces (the key an"
+  },
+  "2a6edb5e634b41cd": {
+    "verdict": "ui",
+    "note": "Marketplace-name refusal steps joined by S()/Wxn()/_eo(); classify path proof: callers are the CLI console, a local error state and /plugin guidance JSX, and npm specs never reach the model-bound installer branch",
+    "shape": "array",
+    "excerpt": "It was added from a settings file. To keep it, do these in order (if your organization's managed settings add it, an administrator does step"
+  },
+  "85a627c50be627ac": {
+    "verdict": "ui",
+    "note": "Claude Desktop admin-console longDescription for the disableLocalConfigCache managed-config field (i18n settings metadata); no model route",
+    "shape": "concat",
+    "excerpt": "By default the app keeps on disk, from the last configuration the admin console served, your organization’s ID and name and the few settings"
+  },
+  "838ed596fdde7c30": {
+    "verdict": "internal",
+    "note": "Claude Desktop HybridServableConfig schema description (eue), read only by the generated hybrid-server schema artifact; classify ruled the same join internal",
+    "shape": "concat",
+    "excerpt": "The subset of Claude Desktop managed configuration an Anthropic-hosted (hybrid) config server may store — generated from buildHybridServable"
+  },
+  "efbcf6fdbf48b576": {
+    "verdict": "ui",
+    "note": "exit-time worktree resume hint printed to the terminal",
+    "shape": "array",
+    "excerpt": "This session ran in a worktree In its folder, run the command below to resume in it To find that folder, try git worktree list"
+  },
+  "78e200c6038ab2f8": {
+    "verdict": "ui",
+    "note": "window-scoped picker description for the effort command",
+    "shape": "array",
+    "excerpt": "effort Set effort for new sessions from this window (not saved)"
+  },
+  "d7d913cdeefd63d6": {
+    "verdict": "ui",
+    "note": "window-scoped picker description for the fast command",
+    "shape": "array",
+    "excerpt": "fast Turn fast mode on or off for new sessions from this window (not saved)"
+  },
+  "a5ba962c3d386929": {
+    "verdict": "internal",
+    "note": "SDK control-protocol zod schema description for the MCP tool-call result",
+    "shape": "concat",
+    "excerpt": "MCP tool result — the content array, structuredContent, and _meta from CallToolResult. Unless the request set result_not_for_model, content "
+  },
+  "5556679a10dbd132": {
+    "verdict": "internal",
+    "shape": "concat",
+    "excerpt": "Whether sandboxed commands may use local ports directly (default: false). macOS: allows binding and accepting on any local port and connecti",
+    "why": "zod .describe() on settings.json sandbox.network.allowLocalBinding — config schema"
+  },
+  "6fe2df429b0bfb87": {
+    "verdict": "ui",
+    "shape": "array",
+    "excerpt": "Select with numbers [1-2] or up / down arrow keys. Then Enter to submit or Escape to cancel: 12 Invalid selection \"12\". Enter a number betwe",
+    "why": "terminal layout fixture for the numbered approval selector, used to size rows — never sent to the model"
+  },
+  "d5477790ac568417": {
+    "excerpt": "create_webhook_trigger Claude wants to make an outside event, such as a GitHub event, start a routine under your claude.ai account.",
+    "shape": "array",
+    "verdict": "ui",
+    "why": "Routine tool's per-action description(input): read by the permission dialog (and teammate permission request) to word the approval prompt; not sent to the model."
+  },
+  "3733d4bcdcb88560": {
+    "excerpt": "create Claude wants to create a routine that runs Claude under your claude.ai account.",
+    "shape": "array",
+    "verdict": "ui",
+    "why": "Routine tool's per-action description(input): read by the permission dialog (and teammate permission request) to word the approval prompt; not sent to the model."
+  },
+  "29a8e86c2a753f25": {
+    "excerpt": "update Claude wants to change a routine that runs Claude under your claude.ai account.",
+    "shape": "array",
+    "verdict": "ui",
+    "why": "Routine tool's per-action description(input): read by the permission dialog (and teammate permission request) to word the approval prompt; not sent to the model."
+  },
+  "7d96ddc5004a3539": {
+    "excerpt": "hardlink(s); the deny would be kept or removed through one name only hardlink(s); ace_holders rows are path-keyed",
+    "shape": "array",
+    "verdict": "internal",
+    "why": "Windows sandbox init: substrings matched with includes() against an acl_grant_failed error message to collect hard-linked deny targets; never rendered."
+  },
+  "e6888d35eb603911": {
+    "verdict": "ui",
+    "shape": "concat",
+    "excerpt": "Couldn’t add the note. If the box has text, send or clear it, then try again.",
+    "why": "Side-note respond plugin: shown only as a ui.toast when the prompt box cannot take the note; never sent to the model."
+  },
+  "312cbda82b136038": {
+    "excerpt": "also . This list adds to the skills listed earlier in this conversation and is not the full list",
+    "note": "captured per-FRAGMENT as of 2.1.322 (the skill_listing renderer picks the pair by addsToEarlier at runtime; the joined form never exists in the bundle); coverage is judged on the fragments, catalogued as system-reminder-skill-listing-adds-to-earlier(-suffix)",
+    "shape": "array",
+    "verdict": "internal"
+  },
+  "f6ef18c4b5bd5032": {
+    "excerpt": "This machine may require organization login enforcement, but the policy file failed to load. Contact your administrator.",
+    "note": "ui: default text of the managed-policy-unreadable error returned by the forced-org-login check; shown to the user at login, never sent to the model.",
+    "shape": "array",
+    "verdict": "ui"
   }
 }

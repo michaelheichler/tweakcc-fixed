@@ -325,6 +325,52 @@ describe('bracket keys on an interpolated object are platform-generalized', () =
     ).toBe(1);
   });
 
+  // CC 2.1.286's html-saved viewed-once clause: `{ignoreHold:At}` sits deep in
+  // the slot expression, and `At` is `kt` on linux-x64.
+  it('generalizes a minified value behind an object-literal key', async () => {
+    const pieces = ['file${', '(', ',', '.slug,', '.ver,{ignoreHold:At})}'];
+    expect(
+      await bothEngines(
+        pieces,
+        'x=`file${WOe(n,e.slug,r.ver,{ignoreHold:At})}`'
+      )
+    ).toBe(1);
+    expect(
+      await bothEngines(
+        pieces,
+        'x=`file${NHe(n,e.slug,r.ver,{ignoreHold:kt})}`'
+      )
+    ).toBe(1);
+    expect(
+      await bothEngines(
+        pieces,
+        'x=`file${NHe(n,e.slug,r.ver,{ignoreHeld:kt})}`'
+      )
+    ).toBe(0);
+  });
+
+  // CC 2.1.286's live-doc shim: the spreads repeat `Oe` (`Le` on linux-x64);
+  // each occurrence matches independently.
+  it('generalizes every repeated minified name in spreads', async () => {
+    const pieces = [
+      '${',
+      '.line(',
+      '.file,{edits:',
+      '.edits,...',
+      '.copy!==void 0&&{copy:Oe.copy},...typeof Oe.live==="string"&&{live:Oe.live}})}',
+    ];
+    const darwin =
+      '${se.line(Oe.file,{edits:Oe.edits,...Oe.copy!==void 0&&{copy:Oe.copy},...typeof Oe.live==="string"&&{live:Oe.live}})}';
+    expect(await bothEngines(pieces, darwin)).toBe(1);
+    expect(await bothEngines(pieces, darwin.replace(/Oe/g, 'Le'))).toBe(1);
+    expect(
+      await bothEngines(pieces, darwin.replace(/Oe\.live\}/, 'Zz.live}'))
+    ).toBe(1);
+    expect(await bothEngines(pieces, darwin.replace('{copy:', '{kopy:'))).toBe(
+      0
+    );
+  });
+
   // Same class, comma and closing-bracket continuations.
   it('generalizes a bracket key followed by a comma or a closing bracket', async () => {
     const comma = ['call ${', '(', '[K], 2) end'];
@@ -333,5 +379,62 @@ describe('bracket keys on an interpolated object are platform-generalized', () =
     const close = ['idx ${', '[', '[K]] end'];
     expect(await bothEngines(close, 'x=`idx ${o[a[K]] end`;')).toBe(1);
     expect(await bothEngines(close, 'x=`idx ${o[a[Q9]] end`;')).toBe(1);
+  });
+});
+
+// A prompt with no 12-char word run (`\n</ax-summary>`, `${a}.path} → ${b}`)
+// used to fall back to its RegExp for every lookup, which over a MutableText
+// meant joining the whole bundle first: ~1,500 full copies per apply. It now
+// narrows on its longest exact literal run, so it must never reach the RegExp.
+describe('prompts without a long word run', () => {
+  // A spec whose RegExp cannot even compile: reaching the fallback throws.
+  const tokenOnly = (pieces: string[]): PromptMatchSpec => ({
+    ...spec(pieces),
+    regex: `(${pieces.join('|')}`,
+  });
+
+  it('agree with the RegExp engine on short and punctuation anchors', async () => {
+    const haystack =
+      'a=`\n</ax-summary>`;b="  ${o}.path} → ${q}";c="(x)"; d=`\n</ax-summary>`';
+    await expectEquivalent(['\n</ax-summary>'], haystack);
+    await expectEquivalent(['  ${', '.path} → ${', '}'], haystack);
+    await expectEquivalent(['(x)'], haystack);
+  });
+
+  it('are matched by the catalogue without the RegExp fallback', async () => {
+    const short = tokenOnly(['\n</ax-summary>']);
+    const tiny = tokenOnly(['(x)']);
+    const catalog = new PromptPieceMatcherCatalog([short, tiny]);
+    const content = 'a=`\n</ax-summary>`;c="(x)";';
+    catalog.index(content);
+    const working = new MutableText(content);
+    expect(
+      (await catalog.matchCurrent(short.regex, working)).map(signature)
+    ).toEqual([[3, '\n</ax-summary>']]);
+    expect(
+      (await catalog.matchCurrent(tiny.regex, working)).map(signature)
+    ).toEqual([[22, '(x)']]);
+  });
+
+  it('keeps short and tiny anchor occurrences current through a splice', async () => {
+    const short = tokenOnly(['\n</ax-summary>']);
+    const tiny = tokenOnly(['(x)']);
+    const catalog = new PromptPieceMatcherCatalog([short, tiny]);
+    const original = 'a=`OLD`;';
+    catalog.index(original);
+    const working = new MutableText(original);
+    const replacement = '\n</ax-summary>(x)';
+    working.splice(3, 6, replacement);
+    catalog.recordSplice(working, {
+      start: 3,
+      end: 6,
+      replacementLength: replacement.length,
+    });
+    expect(
+      (await catalog.matchCurrent(short.regex, working)).map(signature)
+    ).toEqual([[3, '\n</ax-summary>']]);
+    expect(
+      (await catalog.matchCurrent(tiny.regex, working)).map(signature)
+    ).toEqual([[17, '(x)']]);
   });
 });

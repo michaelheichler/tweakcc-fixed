@@ -1,3 +1,11 @@
+import {
+  FFF_BASH_READ_DESCRIPTION,
+  FFF_BASH_READ_TITLE,
+  FFF_FEATURE_DESCRIPTION,
+  FFF_FEATURE_TITLE,
+} from '../fffDescription';
+import { ensureFffViewerLinks } from '../fffBashSetup';
+import { writeFffBashReads } from './fffBashReads';
 import chalk from 'chalk';
 import * as fs from 'node:fs/promises';
 import * as fsSync from 'node:fs';
@@ -73,6 +81,7 @@ import { writeConversationTitle } from './conversationTitle';
 import { writeHideStartupBanner } from './hideStartupBanner';
 import { writeHideCtrlGToEdit } from './hideCtrlGToEdit';
 import { writeHideStartupClawd } from './hideStartupClawd';
+import { writeDisableAgentSummaries } from './disableAgentSummaries';
 import { writeIncreaseFileReadLimit } from './increaseFileReadLimit';
 import { writeSuppressLineNumbers } from './suppressLineNumbers';
 import { writeSuppressRateLimitOptions } from './suppressRateLimitOptions';
@@ -89,11 +98,13 @@ import { writeAgentsMd } from './agentsMd';
 import { writeAutoAcceptPlanMode } from './autoAcceptPlanMode';
 import { writeAllowBypassPermsInSudo } from './allowBypassPermsInSudo';
 import { writeSuppressNativeInstallerWarning } from './suppressNativeInstallerWarning';
+import { writeModelAtEffort } from './modelAtEffort';
 import { writeScrollEscapeSequenceFilter } from './scrollEscapeSequenceFilter';
 import { writeWorktreeMode } from './worktreeMode';
 import { writeResponsiveMode } from './responsiveMode';
 import { writeAllowCustomAgentModels } from './allowCustomAgentModels';
 import { writeMaxEffortDefault } from './maxEffortDefault';
+import { writeCompactionHighEffort } from './compactionHighEffort';
 import { writeAutonomousOperationAllModels } from './autonomousOperationAllModels';
 import { writeRefusalFallbackModel } from './refusalFallbackModel';
 import { writeOutputStyleTurnReminder } from './outputStyleTurnReminder';
@@ -103,10 +114,14 @@ import { writeComplexityRouterModels } from './complexityRouterModels';
 import { writeFablePlan } from './fablePlan';
 import { writeVoiceMode } from './voiceMode';
 import { writeChannelsMode } from './channelsMode';
+import { writeAttachedBackgroundInteractive } from './attachedBackgroundInteractive';
+import { writeProposeGoal } from './proposeGoal';
 import { writeClearScreen } from './clearScreen';
 import { writeSessionColor } from './sessionColor';
 import { writeReadDefaultLines } from './readDefaultLines';
 import { writeSwapRipgrepForFff } from './swapRipgrepForFff';
+import { writeFffInstructionHygiene } from './fffInstructions';
+import { writeEmptyEnvironment } from './emptyEnvironment';
 import { ensureRgFffWrapper } from '../ripgrepFff';
 import {
   writeSuppressDeferredTools,
@@ -119,6 +134,14 @@ import {
   restoreClijsFromBackup,
 } from '../installationBackup';
 import { compareVersions } from '../systemPromptSync';
+import { writePlanExitCommand } from './planExitCommand';
+import { writeKeybindingCustomization } from './keybindingCustomization';
+import { writeInputCursorColor } from './inputCursorColor';
+import { writeTmuxGraphicsPassthrough } from './tmuxGraphicsPassthrough';
+import { writeDisableCtrlZSuspend } from './disableCtrlZSuspend';
+import { writeSkipSkillShellValidation } from './skipSkillShellValidation';
+import { isShimmerCustomized, writeShimmerStyle } from './shimmerStyle';
+import { writeWebFetchUserAgent } from './webFetchUserAgent';
 
 export { showDiff, showPositionalDiff, globalReplace } from './patchDiffing';
 export {
@@ -160,6 +183,10 @@ export interface PatchResult {
   group: PatchGroup;
   applied: boolean;
   failed?: boolean;
+  // Returned a patched file but logged an error on the way: one of its
+  // sub-patches did not land. Reported apart from `failed` because the rest of
+  // the patch did apply and the repack proceeds.
+  partial?: boolean;
   skipped?: boolean;
   details?: string;
   description?: string;
@@ -221,6 +248,20 @@ const PATCH_DEFINITIONS = [
       'When a prompt override replaces one of Claude Code\'s identity lines, turn off the "global" cache scope that the first-party API rejects after a non-stock identity, so the prompt caches at organization scope instead. Does nothing while the identity lines are stock.',
   },
   {
+    id: 'empty-environment',
+    name: 'Suppress empty environment scaffolding',
+    group: PatchGroup.ALWAYS_APPLIED,
+    description:
+      'Omit the environment prose heading and list when every fragment is blank',
+  },
+  {
+    id: 'fff-instruction-hygiene',
+    name: 'Remove stale fff tool guidance',
+    group: PatchGroup.ALWAYS_APPLIED,
+    description:
+      'Remove stale fff guidance from active prompts and saved tool descriptions without modifying session records',
+  },
+  {
     id: 'fix-summarize-from-here',
     name: 'Fix "Summarize from here"',
     group: PatchGroup.MISC_CONFIGURABLE,
@@ -233,7 +274,7 @@ const PATCH_DEFINITIONS = [
     name: 'Honest rewind summary header',
     group: PatchGroup.MISC_CONFIGURABLE,
     description:
-      'Label a rewind summary as a deliberate rewind instead of the misleading "ran out of context" header',
+      'Note after a rewind summary that it came from a deliberate rewind, not a context overflow',
     modelFacing: true,
   },
   {
@@ -256,7 +297,61 @@ const PATCH_DEFINITIONS = [
     description:
       'Short-circuits CC\'s universal system-reminder wrapper so empty / "(no content)" inputs produce no reminder. Kills the drift-inducing "<system-reminder>(no content)</system-reminder>" blocks that get appended to roughly every other tool call.',
   },
+  {
+    id: 'plan-exit-command',
+    name: '/plan exit command',
+    group: PatchGroup.ALWAYS_APPLIED,
+    description:
+      'Add /plan exit to open the plan approval dialog without a model turn',
+  },
   // Misc Configurable
+  {
+    id: 'keybinding-customization',
+    name: 'Keybinding customization',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'Force-enable custom keybindings when CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1',
+  },
+  {
+    id: 'input-cursor-color',
+    name: 'Input cursor color',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'The input cursor uses your color instead of inverse video (not with CLAUDE_CODE_NATIVE_CURSOR=1)',
+  },
+  {
+    id: 'tmux-graphics-passthrough',
+    name: 'tmux graphics passthrough',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'Images show inside tmux (needs allow-passthrough on and CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1)',
+  },
+  {
+    id: 'disable-ctrl-z',
+    name: 'Disable Ctrl-Z suspend',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description: 'Ctrl-Z will no longer suspend Claude Code',
+  },
+  {
+    id: 'skip-skill-shell-validation',
+    name: 'Skip skill shell validation',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'Run !`...` commands in your own skills/commands without the permission check (SECURITY: includes project .claude skills; explicit deny rules still apply; plugins unaffected)',
+  },
+  {
+    id: 'shimmer-style',
+    name: 'Shimmer style',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description: 'Spinner message shimmer will be toggled, sped up, or widened',
+  },
+  {
+    id: 'webfetch-user-agent',
+    name: 'WebFetch User-Agent',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'WebFetch sends your User-Agent instead of "Claude-User (...)"',
+  },
   {
     id: 'model-customizations',
     name: 'Model customizations',
@@ -380,6 +475,13 @@ const PATCH_DEFINITIONS = [
       'The "Clawd" icon on startup will be hidden for a cleaner look',
   },
   {
+    id: 'disable-agent-summaries',
+    name: 'Disable agent progress summaries',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      "Stop the ~30 s Opus request that re-reads each background agent's transcript to label its row; rows show the task description instead",
+  },
+  {
     id: 'increase-file-read-limit',
     name: 'Increase file read limit',
     group: PatchGroup.MISC_CONFIGURABLE,
@@ -454,6 +556,13 @@ const PATCH_DEFINITIONS = [
     description: 'Suppress the native installer warning message at startup',
   },
   {
+    id: 'model-at-effort',
+    name: '/model name@effort',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      '/model opus@high sets the model and then runs /effort high, in one command',
+  },
+  {
     id: 'filter-scroll-escape-sequences',
     name: 'Filter scroll escape sequences',
     group: PatchGroup.MISC_CONFIGURABLE,
@@ -466,6 +575,14 @@ const PATCH_DEFINITIONS = [
     group: PatchGroup.MISC_CONFIGURABLE,
     description:
       'Opus 4.7 sessions default to "max" reasoning effort instead of "xhigh" (override with /effort or CLAUDE_CODE_EFFORT_LEVEL)',
+    modelFacing: true,
+  },
+  {
+    id: 'compaction-high-effort',
+    name: 'Compact at high effort',
+    group: PatchGroup.MISC_CONFIGURABLE,
+    description:
+      'The compaction summary is written at "high" reasoning effort regardless of the session effort, which keeps more of the state the next context window needs',
     modelFacing: true,
   },
   {
@@ -556,10 +673,16 @@ const PATCH_DEFINITIONS = [
   },
   {
     id: 'swap-ripgrep-for-fff',
-    name: '[EXPERIMENTAL] fff for Bash search (grep/find/rg → fff)',
+    name: FFF_FEATURE_TITLE,
     group: PatchGroup.FEATURES,
-    description:
-      "[EXPERIMENTAL] Route Claude Code's Bash search through fff (fast file finder). CC 2.1.186 shadows the shell `grep`→embedded ugrep and `find`→embedded bfs (and offers `rg`); the agent uses grep ~136x more than rg. This repoints all three at a per-platform fff wrapper that serves, relevance-ranked from a warm-index daemon: literal, regex (RE2 — the dialect the model writes), case-insensitive (-i), multi-word phrases, context (-A/-B/-C), extension globs (-g/--include '*.ts'), and multi-path (app lib scripts) searches. Anything fff can't serve faithfully — PCRE, multiline/newline- or empty-matching regex, only-matching (-o), single-file, non-recursive grep, --no-ignore, find, non-ASCII, lines over 512 bytes, piped stdin → re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships; any uncertainty falls back, so results never diverge from the model's intent. Transparent (no prompt-compliance reliance) and CC-scoped (the user's own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
+    description: FFF_FEATURE_DESCRIPTION,
+    modelFacing: true,
+  },
+  {
+    id: 'fff-bash-reads',
+    name: FFF_BASH_READ_TITLE,
+    group: PatchGroup.FEATURES,
+    description: FFF_BASH_READ_DESCRIPTION,
   },
   {
     id: 'dream-mode',
@@ -628,6 +751,22 @@ const PATCH_DEFINITIONS = [
       'Enable MCP channel notifications (--channels without allowlist or dev flag)',
   },
   {
+    id: 'attached-background-interactive',
+    name: 'Attached background sessions are interactive',
+    group: PatchGroup.FEATURES,
+    description:
+      'While a client is attached, a background session offers ProposeGoal, usage-limit auto-resume and the auto mode and workflow prompts',
+    modelFacing: true,
+  },
+  {
+    id: 'enable-propose-goal',
+    name: 'ProposeGoal',
+    group: PatchGroup.FEATURES,
+    description:
+      'Force the tengu_propose_goal flag on, so the model can propose session goals and /config shows "Claude-proposed goals"',
+    modelFacing: true,
+  },
+  {
     id: 'suppress-deferred-tools',
     name: 'Suppress deferred tools list (DANGEROUS)',
     group: PatchGroup.SYSTEM_REMINDERS,
@@ -689,7 +828,7 @@ export const escapeIdent = (ident: string): string => {
  * Apply patches to content using the implementations map, tracking results.
  * @param patchFilter - Optional list of patch IDs to apply (if provided, only matching patches are applied)
  */
-const applyPatchImplementations = (
+export const applyPatchImplementations = (
   content: string,
   implementations: Record<PatchId, PatchImplementation>,
   patchFilter?: string[] | null
@@ -706,7 +845,8 @@ const applyPatchImplementations = (
     if (
       patchFilter &&
       !patchFilter.includes(def.id) &&
-      def.id !== 'no-global-cache-scope'
+      def.id !== 'no-global-cache-scope' &&
+      def.id !== 'fff-instruction-hygiene'
     ) {
       results.push({
         id: def.id,
@@ -735,11 +875,23 @@ const applyPatchImplementations = (
     }
 
     debug(`Applying patch: ${def.name}`);
-    const result = impl.fn(content);
+    const errors: string[] = [];
+    const consoleError = console.error;
+    console.error = (...args: unknown[]) => {
+      errors.push(args.map(String).join(' '));
+      consoleError(...args);
+    };
+    let result: string | null;
+    try {
+      result = impl.fn(content);
+    } finally {
+      console.error = consoleError;
+    }
     const failed = result === null;
     const applied = !failed && result !== content;
+    const partial = !failed && errors.length > 0;
 
-    if (!failed) {
+    if (result !== null) {
       content = result;
     }
 
@@ -749,6 +901,10 @@ const applyPatchImplementations = (
       group: def.group,
       applied,
       failed,
+      ...(partial && {
+        partial,
+        details: `partially applied (${errors[0].replace(/^patch: [^:]+: /, '')})`,
+      }),
       description: def.description,
       modelFacing: (def as PatchDefinition).modelFacing,
     });
@@ -1035,6 +1191,19 @@ export const applyCustomization = async (
     }
   }
 
+  let fffViewerDirectory: string | null = null;
+  if (
+    rgFffWrapperPath &&
+    (config.settings.misc?.fffLearnFromBashReads ?? true)
+  ) {
+    fffViewerDirectory = await ensureFffViewerLinks(rgFffWrapperPath);
+    if (!fffViewerDirectory) {
+      console.log(
+        'patch: fffBashReads: viewer setup unavailable — keeping original file viewers'
+      );
+    }
+  }
+
   const patchImplementations: Record<PatchId, PatchImplementation> = {
     // Always Applied
     'verbose-property': {
@@ -1066,13 +1235,19 @@ export const applyCustomization = async (
       fn: c =>
         writeNoGlobalCacheScope(c, pristineContent, identityOverrideApplied),
     },
+    'fff-instruction-hygiene': {
+      fn: c => writeFffInstructionHygiene(c),
+    },
+    'empty-environment': {
+      fn: c => writeEmptyEnvironment(c),
+    },
     'fix-summarize-from-here': {
       fn: c => writeFixSummarizeFromHere(c),
       condition: config.settings.misc?.fixSummarizeFromHere !== false,
     },
     'fix-rewind-summary-header': {
       fn: c => writeFixRewindSummaryHeader(c),
-      condition: config.settings.misc?.fixRewindSummaryHeader !== false,
+      condition: config.settings.misc?.fixSummarizeFromHere !== false,
     },
     'statusline-update-throttle': {
       fn: c =>
@@ -1088,6 +1263,9 @@ export const applyCustomization = async (
     },
     'strip-empty-system-reminders': {
       fn: c => writeStripEmptySystemReminders(c),
+    },
+    'plan-exit-command': {
+      fn: c => writePlanExitCommand(c),
     },
     // Misc Configurable
     'patches-applied-indication': {
@@ -1216,6 +1394,10 @@ export const applyCustomization = async (
       fn: c => writeHideStartupClawd(c),
       condition: !!config.settings.misc?.hideStartupClawd,
     },
+    'disable-agent-summaries': {
+      fn: c => writeDisableAgentSummaries(c),
+      condition: !!config.settings.misc?.disableAgentSummaries,
+    },
     'increase-file-read-limit': {
       fn: c => writeIncreaseFileReadLimit(c),
       condition: !!config.settings.misc?.increaseFileReadLimit,
@@ -1264,6 +1446,10 @@ export const applyCustomization = async (
       fn: c => writeSuppressNativeInstallerWarning(c),
       condition: !!config.settings.misc?.suppressNativeInstallerWarning,
     },
+    'model-at-effort': {
+      fn: c => writeModelAtEffort(c),
+      condition: config.settings.misc?.modelAtEffort ?? true,
+    },
     'filter-scroll-escape-sequences': {
       fn: c => writeScrollEscapeSequenceFilter(c),
       condition: !!config.settings.misc?.filterScrollEscapeSequences,
@@ -1271,6 +1457,10 @@ export const applyCustomization = async (
     'max-effort-default': {
       fn: c => writeMaxEffortDefault(c),
       condition: !!config.settings.misc?.maxEffortDefault,
+    },
+    'compaction-high-effort': {
+      fn: c => writeCompactionHighEffort(c),
+      condition: !!config.settings.misc?.compactionHighEffort,
     },
     'autonomous-operation-all-models': {
       fn: c => writeAutonomousOperationAllModels(c),
@@ -1298,6 +1488,42 @@ export const applyCustomization = async (
       condition:
         (config.settings.misc?.autoModeClassifierModel ?? 'default') !==
         'default',
+    },
+    'keybinding-customization': {
+      fn: c => writeKeybindingCustomization(c),
+      condition: !!config.settings.misc?.keybindingCustomization,
+    },
+    'input-cursor-color': {
+      fn: c => {
+        const cursorColor = config.settings.inputBox!.cursorColor!;
+        const theme = config.settings.themes?.[0];
+        const resolved =
+          (theme?.colors as Record<string, string>)?.[cursorColor] ??
+          cursorColor;
+        return writeInputCursorColor(c, resolved);
+      },
+      condition: !!config.settings.inputBox?.cursorColor,
+    },
+    'tmux-graphics-passthrough': {
+      fn: c => writeTmuxGraphicsPassthrough(c),
+      condition: !!config.settings.misc?.tmuxGraphicsPassthrough,
+    },
+    'disable-ctrl-z': {
+      fn: c => writeDisableCtrlZSuspend(c),
+      condition: !!config.settings.misc?.disableCtrlZSuspend,
+    },
+    'skip-skill-shell-validation': {
+      fn: c => writeSkipSkillShellValidation(c),
+      condition: !!config.settings.misc?.skipSkillShellValidation,
+    },
+    'shimmer-style': {
+      fn: c => writeShimmerStyle(c, config.settings.misc!.shimmer),
+      condition: isShimmerCustomized(config.settings.misc?.shimmer),
+    },
+    'webfetch-user-agent': {
+      fn: c =>
+        writeWebFetchUserAgent(c, config.settings.misc!.webFetchUserAgent!),
+      condition: !!config.settings.misc?.webFetchUserAgent,
     },
     // Features
     'complexity-router': {
@@ -1333,6 +1559,10 @@ export const applyCustomization = async (
       // which would also silently accept null).
       fn: c => writeSwapRipgrepForFff(c, rgFffWrapperPath!),
       condition: swapRipgrepEnabled && !!rgFffWrapperPath,
+    },
+    'fff-bash-reads': {
+      fn: c => writeFffBashReads(c, fffViewerDirectory!, rgFffWrapperPath!),
+      condition: swapRipgrepEnabled && !!fffViewerDirectory,
     },
     'dream-mode': {
       fn: c => writeDreamMode(c),
@@ -1407,6 +1637,14 @@ export const applyCustomization = async (
     'channels-mode': {
       fn: c => writeChannelsMode(c),
       condition: !!config.settings.misc?.enableChannelsMode,
+    },
+    'attached-background-interactive': {
+      fn: c => writeAttachedBackgroundInteractive(c),
+      condition: !!config.settings.misc?.attachedBackgroundInteractive,
+    },
+    'enable-propose-goal': {
+      fn: c => writeProposeGoal(c),
+      condition: !!config.settings.misc?.enableProposeGoal,
     },
     'suppress-deferred-tools': {
       fn: c => writeSuppressDeferredTools(c),

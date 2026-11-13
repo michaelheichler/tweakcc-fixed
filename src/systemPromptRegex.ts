@@ -1,4 +1,8 @@
 import { escapeNonAscii } from './utils';
+import {
+  generalizeExpressionIdentifiers,
+  IDENTIFIER_SENTINEL,
+} from './systemPromptExpressionIdentifiers';
 
 const hexAlt = (hex: string): string =>
   hex
@@ -30,23 +34,14 @@ export const buildSearchRegexFromPieces = (
   let pattern = '';
   const INTERP_SENTINEL = '\x00INTERP\x00';
   const BS_SENTINEL = '\x00BS\x00';
-  const MEMBER_SENTINEL = '\x00MEMBER\x00';
-  const MEMBER_PREFIX_SENTINEL = '\x00MEMBERPFX\x00';
-  for (let i = 0; i < pieces.length; i++) {
-    let piece = pieces[i].replace(/<<CCVERSION>>/g, ccVersion);
-    if (buildTime) {
-      piece = piece.replace(/<<BUILD_TIME>>/g, buildTime);
-    }
-    if (i > 0) {
-      piece = piece.replace(
-        /^\[[A-Za-z_$][\w$]*\](?=\}|\.[A-Za-z_$][\w$]*|[):,;?\]]|$)/,
-        MEMBER_SENTINEL
-      );
-      piece = piece.replace(
-        /^\[[A-Za-z_$][\w$]*((?:\.[\w$]+)+|\s*[-+*/%]\s*[^\]]*)\](?=\}|\.[A-Za-z_$][\w$]*|[):,;?\]]|$)/,
-        (_m, tail) => `${MEMBER_PREFIX_SENTINEL}${tail}]`
-      );
-    }
+  const generalized = generalizeExpressionIdentifiers(
+    pieces.map(raw => {
+      const piece = raw.replace(/<<CCVERSION>>/g, ccVersion);
+      return buildTime ? piece.replace(/<<BUILD_TIME>>/g, buildTime) : piece;
+    })
+  );
+  for (let i = 0; i < generalized.length; i++) {
+    let piece = generalized[i];
     piece = piece.replace(/\$\{[^{}]*\}/g, INTERP_SENTINEL);
     piece = piece.replace(/\\/g, BS_SENTINEL);
     const escapedPiece = piece.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -67,16 +62,11 @@ export const buildSearchRegexFromPieces = (
       new RegExp(BS_SENTINEL, 'g'),
       '(?:\\\\|\\\\\\\\)'
     );
-    const withMemberHandling = withBackslashHandling.replace(
-      new RegExp(MEMBER_SENTINEL, 'g'),
-      '\\[[\\w$]+\\]'
+    pattern += withBackslashHandling.replace(
+      new RegExp(IDENTIFIER_SENTINEL, 'g'),
+      '[\\w$]+'
     );
-    const withMemberPrefixHandling = withMemberHandling.replace(
-      new RegExp(MEMBER_PREFIX_SENTINEL, 'g'),
-      '\\[[\\w$]+'
-    );
-    pattern += withMemberPrefixHandling;
-    if (i < pieces.length - 1) {
+    if (i < generalized.length - 1) {
       pattern += '([\\w$]+)';
     }
   }

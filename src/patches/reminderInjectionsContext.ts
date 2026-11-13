@@ -1,17 +1,23 @@
-import { showDiff } from './index';
 import {
   ReminderInjection,
   findCaseBody,
-  discoverWrappers,
-  discoverDeltaParam,
-  matchingBrace,
-  findAndReplace,
-  applySimpleEntry,
-  propSlot,
+  isSuppressedCase,
 } from './reminderShared';
+import { showDiff } from './index';
+import {
+  applyBuilderCase,
+  localFor,
+  segmentFor,
+  guardedValue,
+  guardedData,
+} from './reminderBuilder';
+import { interpolations, matchingBrace } from './reminderSyntax';
 
-const CLAUDEMD_INJECTION: ReminderInjection = {
+export const CLAUDEMD_INJECTION: ReminderInjection = {
   id: 'claudemd-context',
+  previousDefaultBodies: [
+    "As you answer the user's questions, you can use the following context:\n{{context_blocks}}\n\n      IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.",
+  ],
   name: 'claudeMd context wrapper',
   description:
     "Per-turn <system-reminder> that bundles { claudeMd, userEmail, currentDate } into a 'As you answer the user's questions...' block. Empty .md body = suppress entirely.",
@@ -22,10 +28,10 @@ const CLAUDEMD_INJECTION: ReminderInjection = {
   defaultBody: `As you answer the user's questions, you can use the following context:
 {{context_blocks}}
 
-      IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.`,
+      Claude Code attached this context automatically; it isn't part of the user's message. It describes the user's own account and workspace, so they don't need it reported back.`,
   apply(content, body, isSuppressed) {
     const pattern =
-      /function ([$\w]+)\(([$\w]+),([$\w]+)\)\{if\(Object\.entries\(\3\)\.length===0\)return \2;return\[([$\w]+)\(\{content:[\s\S]{0,600}?,isMeta:!0\}\),\.\.\.\2\]\}/;
+      /function ([$\w]+)\(([$\w]+),([$\w]+)\)\{if\(Object\.entries\(\3\)\.length===0\)return \2;return\[(\{\.\.\.)?([$\w]+)\(\{content:[\s\S]{0,600}?,isMeta:!0\}\)(,[$\w]+:!0\})?,\.\.\.\2\]\}/;
     const match = content.match(pattern);
     if (!match || match.index === undefined) {
       if (/function [$\w]+\([$\w]+,[$\w]+\)\{return [$\w]+;\}/.test(content)) {
@@ -36,7 +42,14 @@ const CLAUDEMD_INJECTION: ReminderInjection = {
       );
       return null;
     }
-    const [fullMatch, fnName, msgsParam, ctxParam, j6Name] = match;
+    const [fullMatch, fnName, msgsParam, ctxParam, spreadOpen, j6Name, flag] =
+      match;
+    if (!spreadOpen !== !flag) {
+      console.error(
+        'patch: reminder claudemd-context: unbalanced kY6 message wrapper'
+      );
+      return null;
+    }
     let replacement: string;
     if (isSuppressed) {
       replacement = `function ${fnName}(${msgsParam},${ctxParam}){return ${msgsParam};}`;
@@ -48,7 +61,7 @@ const CLAUDEMD_INJECTION: ReminderInjection = {
       replacement =
         `function ${fnName}(${msgsParam},${ctxParam}){` +
         `if(Object.entries(${ctxParam}).length===0)return ${msgsParam};` +
-        `return[${j6Name}({content:\`<system-reminder>\n${bodyForThisBuild}\n</system-reminder>\n\`,isMeta:!0}),...${msgsParam}]}`;
+        `return[${spreadOpen ?? ''}${j6Name}({content:\`<system-reminder>\n${bodyForThisBuild}\n</system-reminder>\n\`,isMeta:!0})${flag ?? ''},...${msgsParam}]}`;
     }
     const newContent =
       content.slice(0, match.index) +
@@ -65,73 +78,25 @@ const CLAUDEMD_INJECTION: ReminderInjection = {
   },
 };
 
-const SKILLS_INJECTION: ReminderInjection = {
-  id: 'skills-listing',
-  name: 'Skills listing reminder',
-  description:
-    'The "The following skills are available..." block. Empty .md body = suppress entirely.',
-  placeholders: {
-    skill_content: '${H.content}',
-  },
-  defaultBody: `The following skills are available for use with the Skill tool:
-
-{{skill_content}}`,
-  apply(content, body, isSuppressed) {
-    const pattern =
-      /skill_listing:\(([$\w]+)\)=>\{if\(!\1\.content\)return\[\];return ([$\w]+)\(\[([$\w]+)\(\{content:`The following skills are available for use with the Skill tool:\n\n\$\{\1\.content\}`,isMeta:!0\}\)\]\)\}/;
-    const match = content.match(pattern);
-    if (!match || match.index === undefined) {
-      if (
-        /skill_listing:\([$\w]+\)=>\{if\(!0\)return\[\]/.test(content) ||
-        /skill_listing:\([$\w]+\)=>\{return \[\]/.test(content)
-      ) {
-        return content;
-      }
-      console.error(
-        'patch: reminder skills-listing: failed to find skill_listing renderer'
-      );
-      return null;
-    }
-    const [fullMatch, argParam, o5Name, j6Name] = match;
-    let replacement: string;
-    if (isSuppressed) {
-      replacement = `skill_listing:(${argParam})=>{return [];}`;
-    } else {
-      const bodyForBuild = body.replace(/\$\{H\./g, `\${${argParam}.`);
-      replacement =
-        `skill_listing:(${argParam})=>{` +
-        `if(!${argParam}.content)return[];` +
-        `return ${o5Name}([${j6Name}({content:\`${bodyForBuild}\`,isMeta:!0})])}`;
-    }
-    const newContent =
-      content.slice(0, match.index) +
-      replacement +
-      content.slice(match.index + fullMatch.length);
-    showDiff(
-      content,
-      newContent,
-      replacement,
-      match.index,
-      match.index + fullMatch.length
-    );
-    return newContent;
-  },
-};
-
-const MCP_INSTRUCTIONS_INJECTION: ReminderInjection = {
+export const MCP_INSTRUCTIONS_INJECTION: ReminderInjection = {
   id: 'mcp-instructions',
+  previousDefaultBodies: [
+    '# MCP Server Instructions\n\nThe following MCP servers have provided instructions for how to use their tools and resources:\n\n{{added_blocks}}',
+  ],
   name: 'MCP server instructions block',
   description:
-    'The "# MCP Server Instructions..." block. Empty .md body = suppress entirely. Per-server pruning lives in mcp-<name>.md files.',
+    'The "# MCP Server Instructions..." delta block. Empty .md body = suppress entirely. Per-server pruning lives in mcp-<name>.md files. ' +
+    'A delta can add servers, remove them, or both: {{added_section}} is the whole pristine heading + instruction blocks and {{removed_section}} the pristine "have disconnected… no longer apply" list, each empty when that half of the delta is; ' +
+    '{{added_blocks}} / {{removed_names}} are the bare guarded data for your own wording; {{ambient_note}} is the ambient-context suffix pristine adds with a removal. ' +
+    'A line holding only such placeholders (plus your own text) disappears when they are all empty, with one adjacent blank line.',
   placeholders: {
+    added_section: '${H.addedSection}',
+    removed_section: '${H.removedSection}',
     added_blocks: '${H.addedBlocks.join(`\\n\\n`)}',
     removed_names: '${H.removedNames.join(`\\n`)}',
+    ambient_note: '${H.ambientNote}',
   },
-  defaultBody: `# MCP Server Instructions
-
-The following MCP servers have provided instructions for how to use their tools and resources:
-
-{{added_blocks}}`,
+  defaultBody: '{{added_section}}\n\n{{removed_section}}\n\n{{ambient_note}}',
   apply(content, body, isSuppressed) {
     const found = findCaseBody(
       content,
@@ -139,37 +104,83 @@ The following MCP servers have provided instructions for how to use their tools 
       '# MCP Server Instructions'
     );
     if (!found) {
+      if (isSuppressed && isSuppressedCase(content, 'mcp_instructions_delta'))
+        return content;
       console.error(
         'patch: reminder mcp-instructions: failed to find case body'
       );
       return null;
     }
-    const { bodyStart, bodyEnd } = found;
-    const caseBody = content.slice(bodyStart, bodyEnd);
-    const { arrayWrap, msgCtor } = discoverWrappers(caseBody);
-    const p = discoverDeltaParam(caseBody, 'addedBlocks');
-    const bodyForBuild = body.replace(/\$\{H\./g, `\${${p}.`);
-    const newBody = isSuppressed
-      ? 'return [];'
-      : `if(${p}.addedBlocks.length===0&&${p}.removedNames.length===0)return [];return ${arrayWrap}([${msgCtor}({content:\`${bodyForBuild}\`,isMeta:!0})])`;
-    const newContent =
-      content.slice(0, bodyStart) + newBody + content.slice(bodyEnd);
-    showDiff(content, newContent, newBody, bodyStart, bodyEnd);
-    return newContent;
+    return applyBuilderCase(
+      content,
+      'mcp-instructions',
+      found,
+      body,
+      isSuppressed,
+      'addedBlocks',
+      (b, p) => {
+        const addedLocal = localFor(b, p, 'addedBlocks');
+        const removedLocal = localFor(b, p, 'removedNames');
+        const added = segmentFor(b, addedLocal);
+        const removed = segmentFor(b, removedLocal);
+        return [
+          {
+            token: '${H.addedSection}',
+            expr: added && guardedValue(added, 0),
+            optional: true,
+          },
+          {
+            token: '${H.removedSection}',
+            expr: removed && guardedValue(removed, 0),
+            optional: true,
+          },
+          {
+            token: '${H.addedBlocks.join(`\\n\\n`)}',
+            expr: guardedData(added, addedLocal),
+            optional: true,
+          },
+          {
+            token: '${H.removedNames.join(`\\n`)}',
+            expr: guardedData(removed, removedLocal),
+            optional: true,
+          },
+          {
+            token: '${H.ambientNote}',
+            expr:
+              removed && removed.values.length > 1
+                ? guardedValue(removed, 1)
+                : null,
+            optional: true,
+          },
+        ];
+      }
+    );
   },
 };
 
-const AGENT_LISTING_INJECTION: ReminderInjection = {
+export const AGENT_LISTING_INJECTION: ReminderInjection = {
   id: 'agent-listing',
+  previousDefaultBodies: [
+    'Available agent types for the Agent tool:\n{{listing}}',
+  ],
   name: 'Agent listing reminder',
   description:
-    'The "Available agent types for the Agent tool" block emitted at session start. Empty .md body = suppress entirely.',
+    'The agent-type listing delta: the full list at session start, then additions and removals. Empty .md body = suppress entirely. ' +
+    '{{added_section}} is the pristine heading plus agent lines, {{removed_section}} the pristine "no longer available" list, each empty when that half of the delta is. ' +
+    '{{heading}} is pristine\'s heading alone ("Available agent types for the Agent tool:" on the initial listing, "New agent types are now available for the Agent tool:" after), empty when nothing was added; ' +
+    '{{listing}} / {{removed}} are the bare guarded lists. {{concurrency_note}} is the launch-in-parallel note (initial listing only, when CC asks for it); {{ambient_note}} is the suffix pristine adds with a removal. ' +
+    'A line holding only such placeholders (plus your own text) disappears when they are all empty, with one adjacent blank line.',
   placeholders: {
+    added_section: '${H.addedSection}',
+    removed_section: '${H.removedSection}',
+    heading: '${H.heading}',
     listing: '${H.addedLines.join(`\\n`)}',
     removed: '${H.removedTypes.map((K)=>`- ${K}`).join(`\\n`)}',
+    concurrency_note: '${H.concurrencyNote}',
+    ambient_note: '${H.ambientNote}',
   },
-  defaultBody: `Available agent types for the Agent tool:
-{{listing}}`,
+  defaultBody:
+    '{{added_section}}\n\n{{removed_section}}\n\n{{ambient_note}}\n\n{{concurrency_note}}',
   apply(content, body, isSuppressed) {
     const found = findCaseBody(
       content,
@@ -177,25 +188,83 @@ const AGENT_LISTING_INJECTION: ReminderInjection = {
       'Available agent types for the Agent tool:'
     );
     if (!found) {
+      if (isSuppressed && isSuppressedCase(content, 'agent_listing_delta'))
+        return content;
       console.error('patch: reminder agent-listing: failed to find case body');
       return null;
     }
-    const { bodyStart, bodyEnd } = found;
-    const caseBody = content.slice(bodyStart, bodyEnd);
-    const { arrayWrap, msgCtor } = discoverWrappers(caseBody);
-    const p = discoverDeltaParam(caseBody, 'addedLines');
-    const bodyForBuild = body.replace(/\$\{H\./g, `\${${p}.`);
-    const newBody = isSuppressed
-      ? 'return [];'
-      : `if(${p}.addedLines.length===0&&${p}.removedTypes.length===0)return [];return ${arrayWrap}([${msgCtor}({content:\`${bodyForBuild}\`,isMeta:!0})])`;
-    const newContent =
-      content.slice(0, bodyStart) + newBody + content.slice(bodyEnd);
-    showDiff(content, newContent, newBody, bodyStart, bodyEnd);
-    return newContent;
+    return applyBuilderCase(
+      content,
+      'agent-listing',
+      found,
+      body,
+      isSuppressed,
+      'addedLines',
+      (b, p) => {
+        const addedLocal = localFor(b, p, 'addedLines');
+        const removedLocal = localFor(b, p, 'removedTypes');
+        const added = segmentFor(b, addedLocal);
+        const removed = segmentFor(b, removedLocal);
+        const note = b.ifs.find(s =>
+          s.cond.includes(`${p}.showConcurrencyNote`)
+        );
+        let heading: string | null = null;
+        if (added) {
+          const names = new Map(
+            added.decls.map(d => {
+              const eq = d.indexOf('=');
+              return [d.slice(0, eq).trim(), d.slice(eq + 1)] as const;
+            })
+          );
+          const v = added.values[0];
+          const ref = v.startsWith('`')
+            ? interpolations(v.slice(1, -1)).find(x => names.has(x))
+            : undefined;
+          if (ref !== undefined)
+            heading = `(${added.cond})?(${names.get(ref)}):""`;
+        }
+        return [
+          {
+            token: '${H.addedSection}',
+            expr: added && guardedValue(added, 0),
+            optional: true,
+          },
+          {
+            token: '${H.removedSection}',
+            expr: removed && guardedValue(removed, 0),
+            optional: true,
+          },
+          { token: '${H.heading}', expr: heading, optional: true },
+          {
+            token: '${H.addedLines.join(`\\n`)}',
+            expr: guardedData(added, addedLocal),
+            optional: true,
+          },
+          {
+            token: '${H.removedTypes.map((K)=>`- ${K}`).join(`\\n`)}',
+            expr: guardedData(removed, removedLocal),
+            optional: true,
+          },
+          {
+            token: '${H.concurrencyNote}',
+            expr: note ? guardedValue(note, 0) : null,
+            optional: true,
+          },
+          {
+            token: '${H.ambientNote}',
+            expr:
+              removed && removed.values.length > 1
+                ? guardedValue(removed, 1)
+                : null,
+            optional: true,
+          },
+        ];
+      }
+    );
   },
 };
 
-const OUTPUT_STYLE_INJECTION: ReminderInjection = {
+export const OUTPUT_STYLE_INJECTION: ReminderInjection = {
   id: 'output-style-banner',
   name: 'Output style banner',
   description:
@@ -282,184 +351,4 @@ const OUTPUT_STYLE_INJECTION: ReminderInjection = {
     );
     return newContent;
   },
-};
-
-const THINKING_REMINDER_INJECTION: ReminderInjection = {
-  id: 'thinking-reminder',
-  name: 'Thinking reminder (anti-thinking nudge / F97)',
-  description:
-    "Per-turn 'Respond with just the action or changes and without a thinking block...' nudge that fires when CC decides you shouldn't be thinking. Conditional (only most turns). Empty .md body = suppress entirely.",
-  placeholders: {},
-  defaultBody:
-    'Respond with just the action or changes and without a thinking block, unless this is a redesign or requires fresh reasoning.',
-  apply(content, body, isSuppressed) {
-    if (!/thinking_reminder:\(/.test(content)) {
-      return content;
-    }
-    return findAndReplace(
-      content,
-      /thinking_reminder:\(\)=>\[([$\w]+)\(\{content:([$\w]+)\(([$\w]+)\),isMeta:!0\}\)\]/,
-      m => {
-        const [, j6Name, lwName] = m;
-        if (isSuppressed) return 'thinking_reminder:()=>[]';
-        return `thinking_reminder:()=>[${j6Name}({content:${lwName}(\`${body}\`),isMeta:!0})]`;
-      },
-      'thinking-reminder',
-      c => /thinking_reminder:\(\)=>\[\]/.test(c)
-    );
-  },
-};
-
-const ULTRATHINK_INJECTION: ReminderInjection = {
-  id: 'ultrathink-effort',
-  name: 'Ultrathink keyword booster',
-  description:
-    'Fires when user input matches /\\bultrathink\\b/i. Empty .md body = the keyword triggers nothing.',
-  placeholders: {},
-  defaultBody:
-    'The user included the keyword "ultrathink", requesting deeper reasoning on this turn. Reason as thoroughly as the task warrants.',
-  apply(content, body, isSuppressed) {
-    return findAndReplace(
-      content,
-      /ultrathink_effort:\(\)=>([$\w]+)\(\[([$\w]+)\(\{content:'[^']*',isMeta:!0\}\)\]\)/,
-      m => {
-        const [, o5Name, j6Name] = m;
-        if (isSuppressed) return 'ultrathink_effort:()=>[]';
-        return `ultrathink_effort:()=>${o5Name}([${j6Name}({content:\`${body}\`,isMeta:!0})])`;
-      },
-      'ultrathink-effort',
-      c => /ultrathink_effort:\(\)=>\[\]/.test(c)
-    );
-  },
-};
-
-const DATE_CHANGE_INJECTION: ReminderInjection = {
-  id: 'date-change',
-  name: 'Date change reminder',
-  description:
-    'Fires when the system date rolls over mid-session. Conditional. Empty .md body = silent date rollover.',
-  placeholders: {
-    new_date: '${H.newDate}',
-  },
-  defaultBody:
-    "The date has changed. Today's date is now {{new_date}}. No need to announce the new date \u2014 the user's own clock shows it.",
-  apply(content, body, isSuppressed) {
-    return applySimpleEntry(
-      content,
-      'date_change',
-      [propSlot('${H.newDate}', 'newDate')],
-      body,
-      isSuppressed
-    );
-  },
-};
-
-const HOOK_ADDITIONAL_CONTEXT_INJECTION: ReminderInjection = {
-  id: 'hook-additional-context',
-  name: 'Hook additional-context wrapper',
-  description:
-    'Wraps content returned by user-defined hooks into the model context. Conditional. Empty .md body = hook content suppressed.',
-  placeholders: {
-    hook_name: '${H.hookName}',
-    hook_content: '${H.content.join(`\n`)}',
-  },
-  defaultBody: '{{hook_name}} hook additional context: {{hook_content}}',
-  apply(content, body, isSuppressed) {
-    return findAndReplace(
-      content,
-      /hook_additional_context:\(([$\w]+)\)=>\{if\(\1\.content\.length===0\)return\[\];return\[([$\w]+)\(\{content:([$\w]+)\(`\$\{\1\.hookName\} hook additional context: \$\{\1\.content\.join\(`\n`\)\}`\),isMeta:!0\}\)\]\}/,
-      m => {
-        const [, hParam, j6Name, lwName] = m;
-        if (isSuppressed) return `hook_additional_context:(${hParam})=>[]`;
-        const bodyForBuild = body
-          .replace(/\$\{H\.hookName\}/g, `\${${hParam}.hookName}`)
-          .replace(
-            /\$\{H\.content\.join\(`\n`\)\}/g,
-            `\${${hParam}.content.join(\`\n\`)}`
-          );
-        return `hook_additional_context:(${hParam})=>{if(${hParam}.content.length===0)return[];return[${j6Name}({content:${lwName}(\`${bodyForBuild}\`),isMeta:!0})]}`;
-      },
-      'hook-additional-context',
-      c => /hook_additional_context:\([$\w]+\)=>\[\]/.test(c)
-    );
-  },
-};
-
-const HOOK_BLOCKING_ERROR_INJECTION: ReminderInjection = {
-  id: 'hook-blocking-error',
-  name: 'Hook blocking-error wrapper',
-  description:
-    'Surfaces hook command failures that block CC continuing. Conditional. Empty .md body = errors silenced (DANGEROUS — model will not see why hook blocked).',
-  placeholders: {
-    hook_name: '${H.hookName}',
-    command: '${H.blockingError.command}',
-    error: '${H.blockingError.blockingError}',
-  },
-  defaultBody:
-    '{{hook_name}} hook blocking error from command: "{{command}}": {{error}}',
-  apply(content, body, isSuppressed) {
-    return findAndReplace(
-      content,
-      /hook_blocking_error:\(([$\w]+)\)=>\[([$\w]+)\(\{content:([$\w]+)\(`\$\{\1\.hookName\} hook blocking error from command: "\$\{\1\.blockingError\.command\}": \$\{\1\.blockingError\.blockingError\}`\),isMeta:!0\}\)\]/,
-      m => {
-        const [, hParam, j6Name, lwName] = m;
-        if (isSuppressed) return `hook_blocking_error:(${hParam})=>[]`;
-        const bodyForBuild = body
-          .replace(/\$\{H\.hookName\}/g, `\${${hParam}.hookName}`)
-          .replace(
-            /\$\{H\.blockingError\.command\}/g,
-            `\${${hParam}.blockingError.command}`
-          )
-          .replace(
-            /\$\{H\.blockingError\.blockingError\}/g,
-            `\${${hParam}.blockingError.blockingError}`
-          );
-        return `hook_blocking_error:(${hParam})=>[${j6Name}({content:${lwName}(\`${bodyForBuild}\`),isMeta:!0})]`;
-      },
-      'hook-blocking-error',
-      c => /hook_blocking_error:\([$\w]+\)=>\[\]/.test(c)
-    );
-  },
-};
-
-const HOOK_STOPPED_INJECTION: ReminderInjection = {
-  id: 'hook-stopped-continuation',
-  name: 'Hook stopped-continuation wrapper',
-  description:
-    'Fires when a hook returned a stop signal. Conditional. Empty .md body = stop reason hidden from model.',
-  placeholders: {
-    hook_name: '${H.hookName}',
-    message: '${H.message}',
-  },
-  defaultBody: '{{hook_name}} hook stopped continuation: {{message}}',
-  apply(content, body, isSuppressed) {
-    return findAndReplace(
-      content,
-      /hook_stopped_continuation:\(([$\w]+)\)=>\[([$\w]+)\(\{content:([$\w]+)\(`\$\{\1\.hookName\} hook stopped continuation: \$\{\1\.message\}`\),isMeta:!0\}\)\]/,
-      m => {
-        const [, hParam, j6Name, lwName] = m;
-        if (isSuppressed) return `hook_stopped_continuation:(${hParam})=>[]`;
-        const bodyForBuild = body
-          .replace(/\$\{H\.hookName\}/g, `\${${hParam}.hookName}`)
-          .replace(/\$\{H\.message\}/g, `\${${hParam}.message}`);
-        return `hook_stopped_continuation:(${hParam})=>[${j6Name}({content:${lwName}(\`${bodyForBuild}\`),isMeta:!0})]`;
-      },
-      'hook-stopped-continuation',
-      c => /hook_stopped_continuation:\([$\w]+\)=>\[\]/.test(c)
-    );
-  },
-};
-
-export {
-  CLAUDEMD_INJECTION,
-  SKILLS_INJECTION,
-  MCP_INSTRUCTIONS_INJECTION,
-  AGENT_LISTING_INJECTION,
-  OUTPUT_STYLE_INJECTION,
-  THINKING_REMINDER_INJECTION,
-  ULTRATHINK_INJECTION,
-  DATE_CHANGE_INJECTION,
-  HOOK_ADDITIONAL_CONTEXT_INJECTION,
-  HOOK_BLOCKING_ERROR_INJECTION,
-  HOOK_STOPPED_INJECTION,
 };

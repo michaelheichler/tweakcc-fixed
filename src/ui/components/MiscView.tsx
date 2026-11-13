@@ -1,8 +1,15 @@
+import {
+  FFF_BASH_READ_DESCRIPTION,
+  FFF_BASH_READ_TITLE,
+  FFF_FEATURE_DESCRIPTION,
+  FFF_FEATURE_TITLE,
+} from '../../fffDescription';
 import { Box, Text, useInput } from 'ink';
 import { useContext, useState, useMemo } from 'react';
 import { SettingsContext } from '../App';
+import { DEFAULT_SETTINGS } from '../../defaultSettings';
 import Header from './Header';
-import { TableFormat, AutoModeClassifierModel } from '../../types';
+import { TableFormat, AutoModeClassifierModel, Settings } from '../../types';
 
 interface MiscViewProps {
   onSubmit: () => void;
@@ -48,6 +55,15 @@ const STATUSLINE_THROTTLE_MAX = 1000;
 const STATUSLINE_THROTTLE_DEFAULT = 300;
 const STATUSLINE_THROTTLE_STEP = 50;
 
+// Shimmer constraints (null = CC default)
+const SHIMMER_STEP_MIN = 10;
+const SHIMMER_STEP_MAX = 1000;
+const SHIMMER_STEP_DEFAULT = 200;
+const SHIMMER_STEP_STEP = 25;
+const SHIMMER_WIDTH_MIN = 1;
+const SHIMMER_WIDTH_MAX = 30;
+const SHIMMER_WIDTH_DEFAULT = 3;
+
 export function MiscView({ onSubmit }: MiscViewProps) {
   const { settings, updateSettings } = useContext(SettingsContext);
 
@@ -62,6 +78,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     hideStartupBanner: false,
     hideCtrlGToEdit: false,
     hideStartupClawd: false,
+    disableAgentSummaries: false,
     increaseFileReadLimit: false,
     suppressLineNumbers: false,
     suppressRateLimitOptions: false,
@@ -76,23 +93,27 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     enableDreamMode: true,
     enableLeanMemoryTypes: false,
     fixSummarizeFromHere: true,
-    fixRewindSummaryHeader: true,
     enableRememberSkill: false,
     tokenCountRounding: null as number | null,
     autoAcceptPlanMode: false,
     allowBypassPermissionsInSudo: false,
     suppressNativeInstallerWarning: false,
+    modelAtEffort: true,
     filterScrollEscapeSequences: false,
     enableWorktreeMode: true,
     unlockResponsiveMode: false,
     swapRipgrepForFff: false,
+    fffLearnFromBashReads: true,
     allowCustomAgentModels: false,
     enableContextLimitOverride: false,
     enableModelCustomizations: true,
     enableVoiceMode: false,
     enableVoiceConciseOutput: true,
     enableChannelsMode: false,
+    attachedBackgroundInteractive: false,
+    enableProposeGoal: false,
     maxEffortDefault: false,
+    compactionHighEffort: false,
     autonomousOperationAllModels: false,
     refusalFallbackModel: false,
     refusalFallbackRoutes: {},
@@ -101,12 +122,24 @@ export function MiscView({ onSubmit }: MiscViewProps) {
     autoModeClassifierModel: 'default' as AutoModeClassifierModel,
     suppressDeferredTools: false,
     claudemdContextOncePerConversation: true,
+    keybindingCustomization: false,
+    tmuxGraphicsPassthrough: false,
+    disableCtrlZSuspend: false,
+    skipSkillShellValidation: false,
+    shimmer: { ...DEFAULT_SETTINGS.misc.shimmer },
+    webFetchUserAgent: null as string | null,
   };
 
   const ensureMisc = () => {
     if (!settings.misc) {
       settings.misc = { ...defaultMisc };
     }
+  };
+
+  const ensureShimmer = (settings: Settings) => {
+    settings.misc ??= { ...defaultMisc };
+    settings.misc.shimmer ??= { ...DEFAULT_SETTINGS.misc.shimmer };
+    return settings.misc.shimmer;
   };
 
   const cycleAutoModeClassifierModel = (
@@ -208,6 +241,7 @@ export function MiscView({ onSubmit }: MiscViewProps) {
               settings.inputBox = {
                 removeBorder: false,
                 chevronIdleThemeColor: null,
+                cursorColor: null,
               };
             }
             settings.inputBox.removeBorder = !settings.inputBox.removeBorder;
@@ -320,6 +354,20 @@ export function MiscView({ onSubmit }: MiscViewProps) {
           updateSettings(settings => {
             ensureMisc();
             settings.misc!.hideStartupClawd = !settings.misc!.hideStartupClawd;
+          });
+        },
+      },
+      {
+        id: 'disableAgentSummaries',
+        title: 'Disable agent progress summaries',
+        description:
+          "Stops the ~30 s Opus request that re-reads each background agent's transcript to label its row.",
+        getValue: () => settings.misc?.disableAgentSummaries ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.disableAgentSummaries =
+              !settings.misc!.disableAgentSummaries;
           });
         },
       },
@@ -491,15 +539,28 @@ export function MiscView({ onSubmit }: MiscViewProps) {
       },
       {
         id: 'swapRipgrepForFff',
-        title: '[EXPERIMENTAL] fff for Bash search (grep/find/rg -> fff)',
-        description:
-          "Route Claude Code's Bash search through fff. CC shadows the shell grep->embedded ugrep and find->embedded bfs (and offers rg); the agent uses grep far more than rg. This repoints all three at a per-platform fff wrapper that serves (relevance-ranked, warm-index daemon): literal, regex (RE2, the dialect the model writes), -i, multi-word phrases, context (-A/-B/-C), extension globs (-g/--include '*.ts'), and multi-path (app lib scripts). Anything fff can't serve faithfully (PCRE, multiline/newline/empty regex, -o, single-file, non-recursive grep, --no-ignore, find, non-ASCII, lines over 512 bytes, piped stdin) -> re-exec the real embedded ugrep/bfs/ripgrep. Every engine still ships; any uncertainty falls back, so results never diverge from intent. Transparent (no prompt-compliance reliance), CC-scoped (your own terminal grep/find/rg are untouched). Installs the wrapper into ~/.tweakcc/fff.",
+        title: FFF_FEATURE_TITLE,
+        description: FFF_FEATURE_DESCRIPTION,
         getValue: () => settings.misc?.swapRipgrepForFff ?? false,
         toggle: () => {
           updateSettings(settings => {
             ensureMisc();
             settings.misc!.swapRipgrepForFff =
               !settings.misc!.swapRipgrepForFff;
+          });
+        },
+      },
+      {
+        id: 'fffLearnFromBashReads',
+        title: FFF_BASH_READ_TITLE,
+        description: FFF_BASH_READ_DESCRIPTION,
+        getValue: () => settings.misc?.fffLearnFromBashReads ?? true,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.fffLearnFromBashReads = !(
+              settings.misc!.fffLearnFromBashReads ?? true
+            );
           });
         },
       },
@@ -541,6 +602,34 @@ export function MiscView({ onSubmit }: MiscViewProps) {
             ensureMisc();
             settings.misc!.enableChannelsMode =
               !settings.misc!.enableChannelsMode;
+          });
+        },
+      },
+      {
+        id: 'attachedBackgroundInteractive',
+        title: 'Treat attached background sessions as interactive',
+        description:
+          'While a client is attached, a background session offers ProposeGoal, usage-limit auto-resume and the auto mode and workflow prompts. Unattended background sessions are unchanged.',
+        getValue: () => settings.misc?.attachedBackgroundInteractive ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.attachedBackgroundInteractive =
+              !settings.misc!.attachedBackgroundInteractive;
+          });
+        },
+      },
+      {
+        id: 'enableProposeGoal',
+        title: 'Enable ProposeGoal',
+        description:
+          'Force the tengu_propose_goal flag on, so the model can propose session goals. Its "Claude-proposed goals" entry in /config sets whether each proposal asks first.',
+        getValue: () => settings.misc?.enableProposeGoal ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.enableProposeGoal =
+              !settings.misc!.enableProposeGoal;
           });
         },
       },
@@ -645,30 +734,15 @@ export function MiscView({ onSubmit }: MiscViewProps) {
       },
       {
         id: 'fixSummarizeFromHere',
-        title: 'Fix "Summarize from here"',
+        title: 'Rewind fixes',
         description:
-          'Make "Summarize from here" summarize only the messages after the rewind point instead of the whole conversation.',
+          'Make "Summarize from here" summarize only the messages after the rewind point instead of the whole conversation, and label that summary as a deliberate rewind instead of the misleading "ran out of context" header.',
         getValue: () => settings.misc?.fixSummarizeFromHere ?? true,
         toggle: () => {
           updateSettings(settings => {
             ensureMisc();
             settings.misc!.fixSummarizeFromHere = !(
               settings.misc!.fixSummarizeFromHere ?? true
-            );
-          });
-        },
-      },
-      {
-        id: 'fixRewindSummaryHeader',
-        title: 'Honest rewind summary header',
-        description:
-          'Label a rewind summary as a deliberate rewind (you continued forward, then rewound and chose to carry the summary forward) instead of the misleading "ran out of context" header.',
-        getValue: () => settings.misc?.fixRewindSummaryHeader ?? true,
-        toggle: () => {
-          updateSettings(settings => {
-            ensureMisc();
-            settings.misc!.fixRewindSummaryHeader = !(
-              settings.misc!.fixRewindSummaryHeader ?? true
             );
           });
         },
@@ -783,6 +857,19 @@ export function MiscView({ onSubmit }: MiscViewProps) {
         },
       },
       {
+        id: 'modelAtEffort',
+        title: 'Allow /model name@effort',
+        description:
+          'Lets /model opus@high set the model and the effort level in one command.',
+        getValue: () => settings.misc?.modelAtEffort ?? true,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.modelAtEffort = !settings.misc!.modelAtEffort;
+          });
+        },
+      },
+      {
         id: 'filterScrollEscapeSequences',
         title: 'Filter scroll escape sequences',
         description:
@@ -820,6 +907,20 @@ export function MiscView({ onSubmit }: MiscViewProps) {
           updateSettings(settings => {
             ensureMisc();
             settings.misc!.maxEffortDefault = !settings.misc!.maxEffortDefault;
+          });
+        },
+      },
+      {
+        id: 'compactionHighEffort',
+        title: 'Compact at high effort',
+        description:
+          'Writes the compaction summary at "high" reasoning effort whatever effort the session uses. At medium effort summaries drop branch tips, rules and traps the next context window needs.',
+        getValue: () => settings.misc?.compactionHighEffort ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.compactionHighEffort =
+              !settings.misc!.compactionHighEffort;
           });
         },
       },
@@ -882,6 +983,158 @@ export function MiscView({ onSubmit }: MiscViewProps) {
               cycleAutoModeClassifierModel(
                 settings.misc!.autoModeClassifierModel ?? 'default'
               );
+          });
+        },
+      },
+      {
+        id: 'disableCtrlZSuspend',
+        title: 'Disable Ctrl-Z suspend',
+        description:
+          'Ctrl-Z no longer suspends Claude Code to the background; it reaches keybindings like any other key.',
+        getValue: () => settings.misc?.disableCtrlZSuspend ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.disableCtrlZSuspend =
+              !settings.misc!.disableCtrlZSuspend;
+          });
+        },
+      },
+      {
+        id: 'keybindingCustomization',
+        title: 'Keybinding customization with nonessential traffic off',
+        description:
+          'Keeps ~/.claude/keybindings.json working when CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 turns off the feature gate.',
+        getValue: () => settings.misc?.keybindingCustomization ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.keybindingCustomization =
+              !settings.misc!.keybindingCustomization;
+          });
+        },
+      },
+      {
+        id: 'tmuxGraphicsPassthrough',
+        title: 'tmux graphics passthrough',
+        description:
+          'Show images inside tmux by wrapping kitty graphics in tmux passthrough. Needs `set -g allow-passthrough on` in tmux and CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1.',
+        getValue: () => settings.misc?.tmuxGraphicsPassthrough ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.tmuxGraphicsPassthrough =
+              !settings.misc!.tmuxGraphicsPassthrough;
+          });
+        },
+      },
+      {
+        id: 'skipSkillShellValidation',
+        title: 'Skip shell permission check in your skills/commands',
+        description:
+          'SECURITY: !`...` commands in your user and project skills/commands run without a permission prompt, including those of any project you open. Explicit deny rules still apply.',
+        getValue: () => settings.misc?.skipSkillShellValidation ?? false,
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.skipSkillShellValidation =
+              !settings.misc!.skipSkillShellValidation;
+          });
+        },
+      },
+      {
+        id: 'shimmerEnabled',
+        title: 'Spinner shimmer',
+        description:
+          'Sweep a highlight across the spinner message while Claude works. Off = static color.',
+        getValue: () => settings.misc?.shimmer?.enabled ?? true,
+        toggle: () => {
+          updateSettings(settings => {
+            const shimmer = ensureShimmer(settings);
+            shimmer.enabled = !shimmer.enabled;
+          });
+        },
+      },
+      {
+        id: 'shimmerStepMs',
+        title: 'Shimmer speed',
+        description: `Milliseconds per shimmer step (${SHIMMER_STEP_MIN}-${SHIMMER_STEP_MAX}). Use ←/→ to adjust. Space resets to default (50ms requesting, 200ms otherwise).`,
+        getValue: () => settings.misc?.shimmer?.stepMs ?? null,
+        getDisplayValue: () => {
+          const stepMs = settings.misc?.shimmer?.stepMs ?? null;
+          return stepMs === null ? 'Default' : `${stepMs}ms`;
+        },
+        toggle: () => {
+          updateSettings(settings => {
+            ensureShimmer(settings).stepMs = null;
+          });
+        },
+        increment: () => {
+          updateSettings(settings => {
+            const shimmer = ensureShimmer(settings);
+            shimmer.stepMs = Math.min(
+              SHIMMER_STEP_MAX,
+              (shimmer.stepMs ?? SHIMMER_STEP_DEFAULT) + SHIMMER_STEP_STEP
+            );
+          });
+        },
+        decrement: () => {
+          updateSettings(settings => {
+            const shimmer = ensureShimmer(settings);
+            shimmer.stepMs = Math.max(
+              SHIMMER_STEP_MIN,
+              (shimmer.stepMs ?? SHIMMER_STEP_DEFAULT) - SHIMMER_STEP_STEP
+            );
+          });
+        },
+      },
+      {
+        id: 'shimmerWidth',
+        title: 'Shimmer width',
+        description: `Highlighted cells (${SHIMMER_WIDTH_MIN}-${SHIMMER_WIDTH_MAX}). Use ←/→ to adjust. Space resets to default (${SHIMMER_WIDTH_DEFAULT}).`,
+        getValue: () => settings.misc?.shimmer?.width ?? null,
+        getDisplayValue: () => {
+          const width = settings.misc?.shimmer?.width ?? null;
+          return width === null
+            ? `Default (${SHIMMER_WIDTH_DEFAULT})`
+            : `${width}`;
+        },
+        toggle: () => {
+          updateSettings(settings => {
+            ensureShimmer(settings).width = null;
+          });
+        },
+        increment: () => {
+          updateSettings(settings => {
+            const shimmer = ensureShimmer(settings);
+            shimmer.width = Math.min(
+              SHIMMER_WIDTH_MAX,
+              (shimmer.width ?? SHIMMER_WIDTH_DEFAULT) + 1
+            );
+          });
+        },
+        decrement: () => {
+          updateSettings(settings => {
+            const shimmer = ensureShimmer(settings);
+            shimmer.width = Math.max(
+              SHIMMER_WIDTH_MIN,
+              (shimmer.width ?? SHIMMER_WIDTH_DEFAULT) - 1
+            );
+          });
+        },
+      },
+      {
+        id: 'webFetchUserAgent',
+        title: 'WebFetch User-Agent',
+        description:
+          'Set misc.webFetchUserAgent in config.json to replace the "Claude-User (...)" User-Agent WebFetch sends. Space resets to default.',
+        getValue: () => settings.misc?.webFetchUserAgent ?? null,
+        getDisplayValue: () =>
+          settings.misc?.webFetchUserAgent ?? 'Default (Claude-User)',
+        toggle: () => {
+          updateSettings(settings => {
+            ensureMisc();
+            settings.misc!.webFetchUserAgent = null;
           });
         },
       },

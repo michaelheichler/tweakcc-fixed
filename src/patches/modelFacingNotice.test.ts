@@ -21,7 +21,11 @@ const MODEL_FACING_IDS = [
   'lean-memory-types',
   'suppress-deferred-tools',
   'claudemd-context-once-per-conversation',
+  'compaction-high-effort',
   'unlock-responsive-mode',
+  'attached-background-interactive',
+  'enable-propose-goal',
+  'swap-ripgrep-for-fff',
 ];
 
 describe('model-facing patch metadata', () => {
@@ -44,7 +48,7 @@ describe('model-facing patch metadata', () => {
       'thinking-block-styling',
       'statusline-update-throttle',
       'read-default-lines',
-      'swap-ripgrep-for-fff',
+      'fff-instruction-hygiene',
     ] as const) {
       expect(byId.get(id)?.modelFacing).toBeFalsy();
     }

@@ -16,14 +16,24 @@
 // faithful trim read as "grew"). This is that builder, kept.
 //
 //   node tools/realignPackets.mjs <prev.json> <cur.json> \
-//        --ids=a,b,c            (or --ids=@<file with one id per line>)
-//        --sets=<abs dir>[,<abs dir>…] --out=<dir>
+//        --ids=a,b,c            (or --ids=@<file with one id per line>, or
+//                                --ids=changed: every id whose pristine changed
+//                                and that some set overrides with other text)
+//        --sets=<abs dir>[,<abs dir>…] --out=<dir> [--allow-moved=<id,…>]
 //
 // Writes <out>/<id>.md per id and <out>/tasks.json — the `tasks` array the
 // workflow takes verbatim.
+//
+// Refuses (writes nothing, exit 1) when any requested id's content moved
+// (tools/lib/contentSwap.mjs): its old pristine now lives at another id, or it
+// now holds another id's old pristine. A realign keyed by id then grafts the
+// new occupant's pristine over a trim of something else — CC 2.1.291 lost the
+// system-prompt-resume-continue-prompt-3 trim that way. Re-map those overrides
+// by content first, then pass their ids in --allow-moved.
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
+import { contentSwapSweep, realignHazard } from './lib/contentSwap.mjs';
 
 const require = createRequire(import.meta.url);
 const {
@@ -50,21 +60,42 @@ if (ids.startsWith('@')) {
     .filter(Boolean)
     .join(',');
 }
-const idList = ids.split(',').filter(Boolean);
+const deriveIds = ids === 'changed';
+let idList = deriveIds ? [] : ids.split(',').filter(Boolean);
+const allowMoved = new Set(opt('allow-moved').split(',').filter(Boolean));
 
-if (!prevPath || !curPath || !idList.length || !parsed.specified || !outDir) {
+if (
+  !prevPath ||
+  !curPath ||
+  !(deriveIds || idList.length) ||
+  !parsed.specified ||
+  !outDir
+) {
   console.error(
     'usage: realignPackets.mjs <prev.json> <cur.json> --ids=<a,b|@file> --sets=<dir,…> --out=<dir>'
   );
   process.exit(2);
 }
 const resolved = resolveOverrideSets(parsed, { fallback: 'none' });
+// Reviewed reasons for slots an override deliberately drops. Without them a
+// realign agent sees a slot pristine has and the override lacks, and puts it
+// back (2.1.318 regrew the compaction prompt's analysis walkthrough this way).
+const trimSlotAllowPath = new URL(
+  '../data/trim-slot-allowlist.json',
+  import.meta.url
+);
+const trimSlotAllow = fs.existsSync(trimSlotAllowPath)
+  ? JSON.parse(fs.readFileSync(trimSlotAllowPath, 'utf8'))
+  : {};
 printAuditedSets(resolved);
 const setDirs = resolved.map(s => s.dir);
 
+const promptsOf = new Map();
 const load = p => {
   const byId = new Map();
-  for (const entry of JSON.parse(fs.readFileSync(p, 'utf8')).prompts) {
+  const prompts = JSON.parse(fs.readFileSync(p, 'utf8')).prompts;
+  promptsOf.set(p, prompts);
+  for (const entry of prompts) {
     if (!entry.id) continue;
     if (!byId.has(entry.id)) byId.set(entry.id, []);
     byId.get(entry.id).push(entry);
@@ -98,6 +129,57 @@ const stripFrontMatter = text => {
 
 const prev = load(prevPath);
 const cur = load(curPath);
+
+// An override needs realigning when the text it was cut from changed. One that
+// equals the new pristine, or that no set carries, follows pristine already.
+if (deriveIds) {
+  for (const [id, curEntries] of cur) {
+    const prevEntries = prev.get(id);
+    if (!prevEntries) continue;
+    const newBody = reconstruct(curEntries[0]);
+    if (reconstruct(prevEntries[0]) === newBody) continue;
+    const overridden = setDirs.some(dir => {
+      const file = path.join(dir, `${id}.md`);
+      return (
+        fs.existsSync(file) &&
+        stripFrontMatter(fs.readFileSync(file, 'utf8')).trim() !==
+          newBody.trim()
+      );
+    });
+    if (overridden) idList.push(id);
+  }
+  idList.sort();
+  console.log(
+    `changed: ${idList.length} overridden id(s) whose pristine changed`
+  );
+  if (!idList.length) {
+    // A tasks.json left by an earlier run must not survive to be launched.
+    fs.rmSync(path.join(outDir, 'tasks.json'), { force: true });
+    process.exit(0);
+  }
+}
+
+const sweep = contentSwapSweep(promptsOf.get(prevPath), promptsOf.get(curPath));
+const refused = idList
+  .map(id => [id, realignHazard(sweep, id)])
+  .filter(([id, why]) => why && !allowMoved.has(id));
+if (refused.length) {
+  for (const [id, why] of refused) {
+    console.error(`REFUSED ${id}: ${why}`);
+  }
+  console.error(
+    `\n${refused.length} realign task(s) refused: the override was trimmed against content that moved to another id. ` +
+      'Re-map each by CONTENT (move the trim to the id its old pristine now lives at; tools/checkContentSwap.mjs lists them), ' +
+      'then rerun with --allow-moved=<id,…>. Nothing was written.'
+  );
+  // A tasks.json left by an earlier run must not survive to be launched.
+  fs.rmSync(path.join(outDir, 'tasks.json'), { force: true });
+  process.exit(1);
+}
+for (const id of idList) {
+  const why = realignHazard(sweep, id);
+  if (why) console.log(`allowed (content moved, re-mapped): ${id}: ${why}`);
+}
 fs.mkdirSync(outDir, { recursive: true });
 
 const tasks = [];
@@ -115,12 +197,30 @@ for (const id of idList) {
   const lines = [];
   lines.push(`# Realignment packet — \`${id}\``);
   lines.push('');
-  lines.push(`- target \`ccVersion:\` **${version}** (the prompt's own catalogue version,`);
-  lines.push('  NOT the CC release; a ccVersion above it is reported as a conflict and the');
+  lines.push(
+    `- target \`ccVersion:\` **${version}** (the prompt's own catalogue version,`
+  );
+  lines.push(
+    '  NOT the CC release; a ccVersion above it is reported as a conflict and the'
+  );
   lines.push('  site is left pristine)');
   lines.push(`- sites in the new catalogue: ${curEntries.length}`);
   lines.push(`- pristine ${oldBody.length} -> ${newBody.length} chars`);
   lines.push('');
+  const cuts = Object.entries(trimSlotAllow[id]?.tokens || {});
+  if (cuts.length) {
+    lines.push('## Deliberate cuts (reviewed; keep them cut)');
+    lines.push('');
+    lines.push(
+      'The override drops these slots on purpose. Keep each one out, even where the NEW'
+    );
+    lines.push(
+      'pristine still has it, unless the change below makes the reason false.'
+    );
+    lines.push('');
+    for (const [token, why] of cuts) lines.push(`- \`${token}\`: ${why}`);
+    lines.push('');
+  }
   lines.push('## OLD pristine (what each override was trimmed against)');
   lines.push('');
   lines.push('```');
@@ -141,7 +241,9 @@ for (const id of idList) {
     lines.push(`## Current deployed body — ${setName}`);
     lines.push('');
     if (!fs.existsSync(file)) {
-      lines.push('_No file: this set applies PRISTINE for this id. Nothing to write._');
+      lines.push(
+        '_No file: this set applies PRISTINE for this id. Nothing to write._'
+      );
       lines.push('');
       continue;
     }
@@ -166,8 +268,15 @@ for (const id of idList) {
 
   const packet = path.join(outDir, `${id}.md`);
   fs.writeFileSync(packet, `${lines.join('\n')}\n`);
-  tasks.push({ id, packet, version: version === null ? undefined : String(version), paths });
-  console.log(`${id}  ->  ${packet}  (${paths.length} path(s), ccVersion ${version})`);
+  tasks.push({
+    id,
+    packet,
+    version: version === null ? undefined : String(version),
+    paths,
+  });
+  console.log(
+    `${id}  ->  ${packet}  (${paths.length} path(s), ccVersion ${version})`
+  );
 }
 
 const tasksPath = path.join(outDir, 'tasks.json');

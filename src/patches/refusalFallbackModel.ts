@@ -409,7 +409,7 @@ const patchPublishReturn = (
     return file;
   }
   const restore = file.match(
-    /function ([$\w]+)\(\)\{let ([$\w]+)=([$\w]+)\(\),([$\w]+)=\2\.modelSelection\.refusalFallbackModelLatch\(\);if\(\2\.modelSelection\.unlatchRefusalFallbackModel\(\),!\4\|\|\2\.modelSelection\.mainLoopModelOverride\(\)!==\4\.fallbackModel\)return;return \2\.modelSelection\.overrideMainLoopModel\(\4\.previousOverride\)/
+    /function ([$\w]+)\(\)\{let ([$\w]+)=([$\w]+)\(\),([$\w]+)=\2\.modelSelection\.refusalFallbackModelLatch\(\);if\(\2\.modelSelection\.unlatchRefusalFallbackModel\((?:"[^"]*")?\),!\4\|\|\2\.modelSelection\.mainLoopModelOverride\(\)!==\4\.fallbackModel\)return;return \2\.modelSelection\.overrideMainLoopModel\(\4\.previousOverride\)/
   );
   if (!restore || restore.index === undefined) {
     console.error(
@@ -563,7 +563,7 @@ const patchPublishMessage = (file: string): string | null => {
     return file;
   }
   const message = file.match(
-    /function ([$\w]+)\(([$\w]+),([$\w]+)\)\{return\{type:"system",subtype:"informational",content:\2,isMeta:!1,timestamp:new Date\(\)\.toISOString\(\),uuid:[$\w]+\(\),level:\3\}\}/
+    /function ([$\w]+)\(([$\w]+),([$\w]+)(?:,([$\w]+))?\)\{return\{type:"system",subtype:"informational",content:\2,isMeta:!1,timestamp:new Date\(\)\.toISOString\(\),uuid:[$\w]+\(\),level:\3(?:,\.\.\.\4&&\{[$\w]+:\4\})?\}\}/
   );
   if (!message || message.index === undefined) {
     console.error(
@@ -620,9 +620,13 @@ const patchReturnOnReplTurnEnd = (file: string): string | null => {
     );
     return file;
   }
-  const turn = file.match(
-    /([$\w.]+)=await this\._runImpl\([$\w]+,[^)]*\)\}finally\{/
-  );
+  const turn =
+    // Method 1: a catch that records the throw sits between the call and the finally
+    file.match(
+      /([$\w.]+)=await this\._runImpl\([$\w]+,[^)]*\)\}catch\([$\w]+\)\{[^{}]*\}finally\{/
+    ) ??
+    // Method 2: the call is followed directly by the finally
+    file.match(/([$\w.]+)=await this\._runImpl\([$\w]+,[^)]*\)\}finally\{/);
   if (!turn || turn.index === undefined) {
     console.error(
       "patch: refusalFallbackModel: failed to find the REPL's turn-end finally"
@@ -659,9 +663,16 @@ const patchReturnOnReplTurnEnd = (file: string): string | null => {
  * the model.
  */
 const patchReturnOnHeadlessTurnEnd = (file: string): string | null => {
-  const turn = file.match(
-    /noteTurnEnded\(([$\w]+),([$\w]+),([$\w]+)\)\{if\(this\.selector\.noteTurnEnded\(\1\),\1\|\|\3\.num_turns>0\)\{/
-  );
+  const turn =
+    // Method 1 (2.1.322+): the delegation is its own statement, and the body
+    // goes on to read the result message's `num_turns` in a later branch
+    file.match(
+      /noteTurnEnded\(([$\w]+),([$\w]+),([$\w]+)\)\{this\.selector\.noteTurnEnded\(\1\);(?=[^{}]*else if\(\3\.num_turns>0\)\{)/
+    ) ??
+    // Method 2: the delegation and the `num_turns` test share one condition
+    file.match(
+      /noteTurnEnded\(([$\w]+),([$\w]+),([$\w]+)\)\{if\(this\.selector\.noteTurnEnded\(\1\),\1\|\|\3\.num_turns>0\)\{/
+    );
   if (!turn || turn.index === undefined) {
     if (
       /noteTurnEnded\([$\w]+,[$\w]+,[$\w]+\)\{try\{let __tweakccN=/.test(file)

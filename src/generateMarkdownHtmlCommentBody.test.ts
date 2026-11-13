@@ -20,10 +20,6 @@ const promptWith = (pieces: string[]): StringsPrompt =>
   }) as unknown as StringsPrompt;
 
 describe('generateMarkdownFromPrompt with an HTML-comment body', () => {
-  // CC 2.1.206 shipped artifact `template.html` fragments whose first line is
-  // `<!-- Artifact-tool body fragment ... -->`. gray-matter's stringify parsed
-  // that as the file's front-matter and threw `engine "..." is not registered`,
-  // which aborted the whole sync loop.
   const body =
     '<!-- Artifact-tool body fragment — no <!DOCTYPE> wrapper. -->\n' +
     '<title>Report</title>\n' +
@@ -41,24 +37,19 @@ describe('generateMarkdownFromPrompt with an HTML-comment body', () => {
     expect(parsed.content.trim()).toBe(body.trim());
   });
 
-  it('emits byte-identical output for an ordinary body', () => {
+  it('preserves parsed metadata and body for an ordinary body', () => {
     const plain = 'Just a normal prompt body.';
-    const md = generateMarkdownFromPrompt(promptWith([plain]));
-    const viaMatter = matter.stringify(
-      plain,
-      {
-        name: 'Skill: Artifact report HTML template',
-        description:
-          'Model-facing template.html scaffold for the report artifact.',
-        ccVersion: '2.1.206',
-      },
-      OPTS
-    );
-    expect(md).toBe(viaMatter);
+    const prompt = promptWith([plain]);
+    const parsed = matter(generateMarkdownFromPrompt(prompt), OPTS);
+
+    expect(parsed.data).toEqual({
+      name: prompt.name,
+      description: prompt.description,
+      ccVersion: prompt.version,
+    });
+    expect(parsed.content.trim()).toBe(plain);
   });
 
-  // The update path (updateVariables) re-stringifies the PARSED content of an
-  // existing file, which is where the second wave of failures came from.
   it('re-stringifies an already-written HTML-comment body without throwing', () => {
     const md = generateMarkdownFromPrompt(promptWith([body]));
     const parsed = matter(md, OPTS);
@@ -79,12 +70,16 @@ describe('generateMarkdownFromPrompt with an HTML-comment body', () => {
     expect(round.content.trim()).toBe(body.trim());
   });
 
-  it('matches gray-matter trailing-newline handling (idempotent rewrites)', () => {
+  it.each([
+    { body: 'BODY', expectedBody: 'BODY\n' },
+    { body: 'BODY\n', expectedBody: 'BODY\n' },
+    { body: 'BODY\n\n', expectedBody: 'BODY\n\n' },
+    { body: '\nBODY', expectedBody: '\nBODY\n' },
+    { body: '', expectedBody: '\n' },
+  ])('preserves parsed body newlines for $body', ({ body, expectedBody }) => {
     const data = { name: 'N', description: 'D', ccVersion: '1.0.0' };
-    for (const b of ['BODY', 'BODY\n', 'BODY\n\n', '\nBODY', '']) {
-      expect(stringifyPromptMarkdown(b, data)).toBe(
-        matter.stringify(b, data, OPTS)
-      );
-    }
+    const parsed = matter(stringifyPromptMarkdown(body, data), OPTS);
+
+    expect(parsed.content).toBe(expectedBody);
   });
 });

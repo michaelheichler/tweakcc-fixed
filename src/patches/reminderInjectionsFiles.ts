@@ -1,16 +1,16 @@
-import { showDiff } from './index';
 import {
   ReminderInjection,
   simpleEntryPattern,
   applySimpleEntry,
   propSlot,
   findAndReplace,
+  slotExpr,
   findCaseBody,
   discoverWrappers,
-  discoverDeltaParam,
 } from './reminderShared';
+import { showDiff } from './index';
 
-const SELECTED_LINES_INJECTION: ReminderInjection = {
+export const SELECTED_LINES_INJECTION: ReminderInjection = {
   id: 'selected-lines-in-ide',
   name: 'IDE selected-lines reminder',
   description:
@@ -57,7 +57,7 @@ const SELECTED_LINES_INJECTION: ReminderInjection = {
   },
 };
 
-const OPENED_FILE_INJECTION: ReminderInjection = {
+export const OPENED_FILE_INJECTION: ReminderInjection = {
   id: 'opened-file-in-ide',
   name: 'IDE opened-file reminder',
   description:
@@ -78,7 +78,7 @@ const OPENED_FILE_INJECTION: ReminderInjection = {
   },
 };
 
-const PLAN_FILE_REF_INJECTION: ReminderInjection = {
+export const PLAN_FILE_REF_INJECTION: ReminderInjection = {
   id: 'plan-file-reference',
   name: 'Plan-file reference',
   description:
@@ -90,24 +90,45 @@ const PLAN_FILE_REF_INJECTION: ReminderInjection = {
   defaultBody:
     'A plan file exists from plan mode at: {{plan_file_path}}\n\nPlan contents:\n\n{{plan_content}}\n\nIf this plan is relevant to the current work and not already complete, continue working on it.',
   apply(content, body, isSuppressed) {
-    return findAndReplace(
+    const flat =
+      /plan_file_reference:\(([$\w]+)\)=>([$\w]+)\(\[([$\w]+)\(\{content:`A plan file exists from plan mode at: \$\{\1\.planFilePath\}\n\nPlan contents:\n\n\$\{\1\.planContent\}\n\nIf this plan is relevant to the current work and not already complete, continue working on it\.`,isMeta:!0\}\)\]\)/;
+    if (flat.test(content)) {
+      return findAndReplace(
+        content,
+        flat,
+        m => {
+          const [, hParam, o5Name, j6Name] = m;
+          if (isSuppressed) return `plan_file_reference:(${hParam})=>[]`;
+          const bodyForBuild = body
+            .replace(/\$\{H\.planFilePath\}/g, `\${${hParam}.planFilePath}`)
+            .replace(/\$\{H\.planContent\}/g, `\${${hParam}.planContent}`);
+          return `plan_file_reference:(${hParam})=>${o5Name}([${j6Name}({content:\`${bodyForBuild}\`,isMeta:!0})])`;
+        },
+        'plan-file-reference'
+      );
+    }
+    return applySimpleEntry(
       content,
-      /plan_file_reference:\(([$\w]+)\)=>([$\w]+)\(\[([$\w]+)\(\{content:`A plan file exists from plan mode at: \$\{\1\.planFilePath\}\n\nPlan contents:\n\n\$\{\1\.planContent\}\n\nIf this plan is relevant to the current work and not already complete, continue working on it\.`,isMeta:!0\}\)\]\)/,
-      m => {
-        const [, hParam, o5Name, j6Name] = m;
-        if (isSuppressed) return `plan_file_reference:(${hParam})=>[]`;
-        const bodyForBuild = body
-          .replace(/\$\{H\.planFilePath\}/g, `\${${hParam}.planFilePath}`)
-          .replace(/\$\{H\.planContent\}/g, `\${${hParam}.planContent}`);
-        return `plan_file_reference:(${hParam})=>${o5Name}([${j6Name}({content:\`${bodyForBuild}\`,isMeta:!0})])`;
-      },
-      'plan-file-reference',
-      c => /plan_file_reference:\([$\w]+\)=>\[\]/.test(c)
+      'plan_file_reference',
+      [
+        {
+          placeholder: '${H.planFilePath}',
+          optional: true,
+          resolve: (template, param) => {
+            const expr = slotExpr(template, param, 'planFilePath');
+            if (!expr) return null;
+            return expr.endsWith('??""') ? expr : `${expr}??""`;
+          },
+        },
+        propSlot('${H.planContent}', 'planContent'),
+      ],
+      body,
+      isSuppressed
     );
   },
 };
 
-const PLAN_MODE_EXIT_INJECTION: ReminderInjection = {
+export const PLAN_MODE_EXIT_INJECTION: ReminderInjection = {
   id: 'plan-mode-exit',
   name: 'Plan-mode exit reminder',
   description:
@@ -133,7 +154,7 @@ const PLAN_MODE_EXIT_INJECTION: ReminderInjection = {
   },
 };
 
-const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
+export const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
   id: 'auto-mode-exit',
   name: 'Auto-mode exit reminder',
   description:
@@ -142,6 +163,25 @@ const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
   defaultBody:
     '## Exited Auto Mode\n\nYou have exited auto mode. The user may now want to interact more directly. You should ask clarifying questions when the approach is ambiguous rather than making assumptions.',
   apply(content, body, isSuppressed) {
+    const multiSuffixShape =
+      /auto_mode_exit:\(([$\w]+)\)=>\{let ((?:[$\w]+=\1\.[$\w]+\?"[^"]*":"",)+)([$\w]+)=\1\.steerOnly\?(`[^`]*`):`## Exited Auto Mode\n\nYou have exited auto mode\. The user may now want to interact more directly\. You should ask clarifying questions when the approach is ambiguous rather than making assumptions\.((?:\$\{[$\w]+\})+)`;return ([$\w]+)\(\[([$\w]+)\(\{content:\3,isMeta:!0\}\)\]\)\}/;
+    if (multiSuffixShape.test(content)) {
+      return findAndReplace(
+        content,
+        multiSuffixShape,
+        m => {
+          const [, eParam, lets, sVar, steerArm, suffixes, o5Name, j6Name] = m;
+          if (isSuppressed) return `auto_mode_exit:(${eParam})=>[]`;
+          return (
+            `auto_mode_exit:(${eParam})=>{let ${lets}` +
+            `${sVar}=${eParam}.steerOnly?${steerArm}:\`${body}${suffixes}\`;` +
+            `return ${o5Name}([${j6Name}({content:${sVar},isMeta:!0})])}`
+          );
+        },
+        'auto-mode-exit',
+        c => /auto_mode_exit:\([$\w]+\)=>\[\]/.test(c)
+      );
+    }
     const newShape =
       /auto_mode_exit:\(([$\w]+)\)=>\{let ([$\w]+)=\1\.bashFirst\?(" [^"]*"):"",([$\w]+)=\1\.steerOnly\?(`[^`]*`):`## Exited Auto Mode\n\nYou have exited auto mode\. The user may now want to interact more directly\. You should ask clarifying questions when the approach is ambiguous rather than making assumptions\.\$\{\2\}`;return ([$\w]+)\(\[([$\w]+)\(\{content:\4,isMeta:!0\}\)\]\)\}/;
     if (newShape.test(content)) {
@@ -175,7 +215,7 @@ const AUTO_MODE_EXIT_INJECTION: ReminderInjection = {
   },
 };
 
-const NESTED_MEMORY_INJECTION: ReminderInjection = {
+export const NESTED_MEMORY_INJECTION: ReminderInjection = {
   id: 'nested-memory',
   name: 'Nested memory reference',
   description:
@@ -188,9 +228,9 @@ const NESTED_MEMORY_INJECTION: ReminderInjection = {
   apply(content, body, isSuppressed) {
     return findAndReplace(
       content,
-      /nested_memory:\(([$\w]+)\)=>([$\w]+)\(\[([$\w]+)\(\{content:`Contents of \$\{\1\.content\.path\}:\n\n\$\{\1\.content\.content\}`,isMeta:!0\}\)\]\)/,
+      /nested_memory:\(([$\w]+)\)=>([$\w]+)\(\[([$\w]+)\(\{content:(?:([$\w]+)\(`(?:[^`\\]|\\.)*`\)|`(?:[^`\\]|\\.)*`),isMeta:!0(,\.\.\.\1\.content\.unverified&&\{content:[$\w]+\(\[\1\.content\]\)\})?\}\)\]\)/,
       m => {
-        const [, hParam, o5Name, j6Name] = m;
+        const [, hParam, o5Name, j6Name, wrapper, unverifiedSpread = ''] = m;
         if (isSuppressed) return `nested_memory:(${hParam})=>[]`;
         const bodyForBuild = body
           .replace(/\$\{H\.content\.path\}/g, `\${${hParam}.content.path}`)
@@ -198,7 +238,9 @@ const NESTED_MEMORY_INJECTION: ReminderInjection = {
             /\$\{H\.content\.content\}/g,
             `\${${hParam}.content.content}`
           );
-        return `nested_memory:(${hParam})=>${o5Name}([${j6Name}({content:\`${bodyForBuild}\`,isMeta:!0})])`;
+        const literal = `\`${bodyForBuild}\``;
+        const contentExpr = wrapper ? `${wrapper}(${literal})` : literal;
+        return `nested_memory:(${hParam})=>${o5Name}([${j6Name}({content:${contentExpr},isMeta:!0${unverifiedSpread}})])`;
       },
       'nested-memory',
       c => /nested_memory:\([$\w]+\)=>\[\]/.test(c)
@@ -206,7 +248,7 @@ const NESTED_MEMORY_INJECTION: ReminderInjection = {
   },
 };
 
-const AGENT_MENTION_INJECTION: ReminderInjection = {
+export const AGENT_MENTION_INJECTION: ReminderInjection = {
   id: 'agent-mention',
   name: 'Agent-mention nudge',
   description:
@@ -235,49 +277,7 @@ const AGENT_MENTION_INJECTION: ReminderInjection = {
   },
 };
 
-const MEMORY_UPDATE_INJECTION: ReminderInjection = {
-  id: 'memory-update',
-  name: 'Memory-update reminder',
-  description:
-    'Fires after dream / consolidation writes new memory files. Conditional. Empty .md body = silent updates.',
-  shadows: ['system-reminder-memory-update-loaded-copy-stale'],
-  placeholders: {
-    source: '${YT3[H.source]}',
-    summary: '${H.summary}',
-    paths: '${H.paths.join(", ")}',
-    in_context_paths: '${H.inContextPaths.join(", ")}',
-  },
-  defaultBody:
-    '{{source}} updated your memory directory: {{summary}}\nFiles changed: {{paths}}\nYour loaded copy of {{in_context_paths}} is now stale relative to disk — Read it again if you need current contents.\nThis is ambient context — do not narrate it to the user unless they ask or it is directly relevant to their request.',
-  apply(content, body, isSuppressed) {
-    const found = findCaseBody(
-      content,
-      'memory_update',
-      'updated your memory directory'
-    );
-    if (!found) {
-      console.error('patch: reminder memory-update: failed to find case body');
-      return null;
-    }
-    const { bodyStart, bodyEnd } = found;
-    const caseBody = content.slice(bodyStart, bodyEnd);
-    const { arrayWrap, msgCtor } = discoverWrappers(caseBody);
-    const p = discoverDeltaParam(caseBody, 'summary');
-    const sourceMap = caseBody.match(/\$\{([$\w]+)\[/)?.[1] ?? 'YT3';
-    const bodyForBuild = body
-      .replace(/\$\{YT3\[H\.source\]\}/g, `\${${sourceMap}[${p}.source]}`)
-      .replace(/\$\{H\./g, `\${${p}.`);
-    const newBody = isSuppressed
-      ? 'return [];'
-      : `return ${arrayWrap}([${msgCtor}({content:\`${bodyForBuild}\`,isMeta:!0})])`;
-    const newContent =
-      content.slice(0, bodyStart) + newBody + content.slice(bodyEnd);
-    showDiff(content, newContent, newBody, bodyStart, bodyEnd);
-    return newContent;
-  },
-};
-
-const VERIFY_PLAN_INJECTION: ReminderInjection = {
+export const VERIFY_PLAN_INJECTION: ReminderInjection = {
   id: 'verify-plan-reminder',
   name: 'Verify-plan reminder',
   description:
@@ -304,28 +304,26 @@ const VERIFY_PLAN_INJECTION: ReminderInjection = {
     }
     const { bodyStart, bodyEnd } = found;
     const caseBody = content.slice(bodyStart, bodyEnd);
-    const { arrayWrap, msgCtor } = discoverWrappers(caseBody);
-    const verifierTool =
-      caseBody.match(/\(NOT the \$\{([$\w]+)\} tool/)?.[1] ?? 'J7';
-    const bodyForBuild = body.replace(/\$\{J7\}/g, `\${${verifierTool}}`);
-    const newBody = isSuppressed
-      ? 'return [];'
-      : `let K=\`${bodyForBuild}\`;return ${arrayWrap}([${msgCtor}({content:K,isMeta:!0})])`;
+    let newBody = 'return [];';
+    if (!isSuppressed) {
+      const wrappers = discoverWrappers(caseBody);
+      const verifierTool =
+        caseBody.match(/\(NOT the \$\{([$\w]+)\} tool/)?.[1] ?? null;
+      if (
+        wrappers === null ||
+        (body.includes('${J7}') && verifierTool === null)
+      ) {
+        console.error(
+          'patch: reminder verify-plan-reminder: no pristine wrapper or verifier-tool expression'
+        );
+        return null;
+      }
+      const bodyForBuild = body.split('${J7}').join(`\${${verifierTool}}`);
+      newBody = `let K=\`${bodyForBuild}\`;return ${wrappers.arrayWrap}([${wrappers.msgCtor}({content:K,isMeta:!0})])`;
+    }
     const newContent =
       content.slice(0, bodyStart) + newBody + content.slice(bodyEnd);
     showDiff(content, newContent, newBody, bodyStart, bodyEnd);
     return newContent;
   },
-};
-
-export {
-  SELECTED_LINES_INJECTION,
-  OPENED_FILE_INJECTION,
-  PLAN_FILE_REF_INJECTION,
-  PLAN_MODE_EXIT_INJECTION,
-  AUTO_MODE_EXIT_INJECTION,
-  NESTED_MEMORY_INJECTION,
-  AGENT_MENTION_INJECTION,
-  MEMORY_UPDATE_INJECTION,
-  VERIFY_PLAN_INJECTION,
 };

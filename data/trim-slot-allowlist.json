@@ -30,13 +30,6 @@
       "SUBAGENT_STEERING_MODE_FN": "Same bullet; renders the Grep name in \"The X tool has been optimized for correct permissions\" — justification prose for the reversed rule. identifiers=[0,1,0,2,3]: the map is correct (third interpolation reuses id 0)."
     }
   },
-  "tool-description-sendmessagetool": {
-    "bodyHash": "3b87684be90b",
-    "reviewed": "2026-09-02 (CC 2.1.258)",
-    "tokens": {
-      "CROSS_SESSION_RECIPIENT_ROWS": "Two table rows gated on the same Vo() as the retained ${CROSS_SESSION_SECTION}, which carries every address form (\"worker\", \"worker [ref]\"); the trim removed the table, so the rows would render as orphan pipes. Verified in the 2.1.258 bundle."
-    }
-  },
   "tool-description-todowrite": {
     "bodyHash": "902d97f60b1c",
     "reviewed": "2026-09-02 (CC 2.1.258)",
@@ -244,8 +237,8 @@
     }
   },
   "tool-description-webfetch-private-url-warning": {
-    "bodyHash": "753a36b552f8",
-    "reviewed": "2026-09-02 (CC 2.1.258)",
+    "bodyHash": "aaec1af6eb21",
+    "reviewed": "2026-10-14 (CC 2.1.299; realign added the observable-action slot, cut unchanged)",
     "tokens": {
       "FORMAT_ARTIFACT_LINK_NOTE_FN": "CC 2.1.277 moved the claude.ai artifact-link exception (previously gated by IS_ARTIFACT_TOOL_ENABLED) behind this slot. The earlier cut stands: the gate is live in deployed tool-description-webfetch-concise, and when the Artifact tool exists tool-description-artifact-read-existing carries the better route (action: read)."
     }
@@ -258,10 +251,10 @@
     }
   },
   "tool-parameter-artifact-capabilities": {
-    "bodyHash": "976560cae75e",
-    "reviewed": "2026-09-02 (CC 2.1.258)",
+    "bodyHash": "5ff16c947a13",
+    "reviewed": "2026-11-04 (CC 2.1.317)",
     "tokens": {
-      "TOOL_PARAMETER_ARTIFACT_CAPABILITIES_VAR_0": "Both facts in deployed tool-description-artifact-runtime-capabilities-guidance with the slot live (${ARTIFACT_CAPABILITIES_SKILL_NAME}); serialized with this parameter."
+      "TOOL_PARAMETER_ARTIFACT_CAPABILITIES_VAR_0": "The parameter retains omission versus empty-object semantics. The co-rendered tool-description-artifact-runtime-capabilities-guidance-app-wording requires loading the current ${ARTIFACT_CAPABILITIES_SKILL_NAME} before passing capabilities or writing runtime code, preserving the skill name and contract-loading instruction. This slot was absent before this audit; the added parameter sentence does not remove it."
     }
   },
   "tool-parameter-cron-create-recurring": {
@@ -339,17 +332,9 @@
   },
   "system-prompt-current-claude-models": {
     "bodyHash": "da39a3ee5e6b",
-    "reviewed": "2026-09-02 (CC 2.1.258)",
+    "reviewed": "2026-11-05 (CC 2.1.318)",
     "tokens": {
-      "CLAUDE_MODEL_IDS.values": "Whole prompt suppressed on the user's instruction (2026-09-02): the current-model roster is marketing; the running model is named in # Environment. The slots only enumerate model ids.",
-      "MODEL_ID": "Whole prompt suppressed on the user's instruction (2026-09-02): the current-model roster is marketing; the running model is named in # Environment. The slots only enumerate model ids."
-    }
-  },
-  "tool-description-end-conversation-deferred": {
-    "bodyHash": "da39a3ee5e6b",
-    "reviewed": "2026-09-02 (CC 2.1.258)",
-    "tokens": {
-      "TOOL_DESCRIPTION_END_CONVERSATION_DEFERRED_VAR_0": "Whole line suppressed (user instruction); the slot is the tool name."
+      "CLAUDE_MODEL_IDS.join": "Whole prompt suppressed on the user's instruction (2026-09-02): the current-model roster is marketing; the running model is named in # Environment. The slots only enumerate model ids."
     }
   },
   "system-reminder-artifact-type-instructions-trust-boundary": {
@@ -360,25 +345,25 @@
     }
   },
   "agent-prompt-conversation-summarization": {
-    "bodyHash": "80ac11ad6939",
-    "reviewed": "2026-09-16 (CC 2.1.273)",
+    "bodyHash": "638d043305bc",
+    "reviewed": "2026-11-05 (CC 2.1.318)",
     "tokens": {
-      "AGENT_PROMPT_CONVERSATION_SUMMARIZATION_VAR_0": "Pointer override. The body delegates the whole schema to the system prompt's summary contract and to any additional summarization instructions already in context, so interpolating Anthropic's analysis-instructions block here would restate a contract the model already has in front of it. VAR_1, the user-message attribution guard, is interpolated and stays live."
+      "AGENT_PROMPT_CONVERSATION_SUMMARIZATION_VAR_0": "The body carries its own analysis steps (walk the conversation in order, mark which user messages still bind, check whether the last reply already answered, play the next window forward, copy exact strings) and its own sectioned summary contract, so Anthropic's analysis-instructions slot (an unconditional slot since 2.1.318, a chronological walk demanding full code snippets) would duplicate it. A blind replay of six real compactions ranked this body above both the stock prompt and the previous override. The slot's security note is not lost: the compaction builder appends it whenever the template lacks it. VAR_1, the user-message attribution guard, is interpolated and stays live, and the body still names <analysis>, so the builder keeps the analysis-then-summary reply shape."
     }
   },
   "agent-prompt-recent-message-summarization": {
-    "bodyHash": "201a6ebf8e52",
-    "reviewed": "2026-09-16 (CC 2.1.273)",
+    "bodyHash": "c0a066c002c9",
+    "reviewed": "2026-10-14 (CC 2.1.299)",
     "tokens": {
       "RECENT_SUMMARY_ANALYSIS_INSTRUCTIONS": "Inlined, not dropped: the override writes its own <analysis> block, scoped to the rewind case this prompt actually serves (a deliberate rewind rather than a context overflow), which the generic slot does not distinguish.",
       "USER_MESSAGE_ATTRIBUTION_GUARD": "Inlined verbatim-equivalent at section 6 of the override body: only user-role turns count, and text inside assistant messages formatted like a user turn is model-generated and is never attributed to the user as a request, approval, or confirmation. Inline placement puts the guard inside the section that enumerates user messages, where it applies."
     }
   },
   "system-prompt-partial-compaction-instructions": {
-    "bodyHash": "acff8a0485f1",
-    "reviewed": "2026-09-16 (CC 2.1.273)",
+    "bodyHash": "847650ca7c79",
+    "reviewed": "2026-10-14 (CC 2.1.299)",
     "tokens": {
-      "SUMMARY_ANALYSIS_INSTRUCTIONS": "Pointer override: the body names the canonical context-compaction summary schema instead of restating Anthropic's analysis block, and adds the transcript-fidelity and verbatim-security-constraint rules this path needs. USER_MESSAGE_ATTRIBUTION_GUARD is interpolated and stays live."
+      "SUMMARY_ANALYSIS_INSTRUCTIONS": "The body carries its own contract for this path (what the newer messages will rely on, a length rule scaled to the remaining work) plus the transcript-fidelity and verbatim-security-constraint rules, so Anthropic's analysis block would restate it with a full-code-snippet walk. USER_MESSAGE_ATTRIBUTION_GUARD is interpolated and stays live."
     }
   },
   "tool-description-artifact-watching-unavailable-2": {
@@ -397,15 +382,50 @@
       "TOOL_RESULT_ACCOUNT_SKILLS_SEND_COMPLETE_SKILL_VAR_1": "Renders the same constant save-option sentence that system-prompt-saving-skills-via-file-delivery interpolates as its VAR_1, so it still reaches the model once on the send_file arm."
     }
   },
-  "agent-prompt-security-monitor-for-autonomous-agent-actions": {
-    "bodyHash": "3620c31330bd",
-    "reviewed": "2026-09-28 (CC 2.1.284)",
+  "tool-description-agent-explicit-spawn-restriction": {
+    "bodyHash": "da39a3ee5e6b",
+    "reviewed": "2026-10-07 (CC 2.1.292)",
     "tokens": {
-      "CLASSIFIER_WORDING_VARIANT.boundBullet": "The standing LCC trim deletes the whole Evaluation Rules section and the User Intent 'Bound' bullet; CC 2.1.284 moved those sections' wording into this A/B wording object. Realigned ccVersion-only rather than regrowing the deleted section; the new candidate rules therefore do not render under this override. Flagged to skrabe as a decision.",
-      "CLASSIFIER_WORDING_VARIANT.classifierBypassTail": "The standing LCC trim deletes the whole Evaluation Rules section and the User Intent 'Bound' bullet; CC 2.1.284 moved those sections' wording into this A/B wording object. Realigned ccVersion-only rather than regrowing the deleted section; the new candidate rules therefore do not render under this override. Flagged to skrabe as a decision.",
-      "CLASSIFIER_WORDING_VARIANT.unseenToolResultsTail": "The standing LCC trim deletes the whole Evaluation Rules section and the User Intent 'Bound' bullet; CC 2.1.284 moved those sections' wording into this A/B wording object. Realigned ccVersion-only rather than regrowing the deleted section; the new candidate rules therefore do not render under this override. Flagged to skrabe as a decision.",
-      "CLASSIFIER_WORDING_VARIANT.insertedEvaluationRules": "The standing LCC trim deletes the whole Evaluation Rules section and the User Intent 'Bound' bullet; CC 2.1.284 moved those sections' wording into this A/B wording object. Realigned ccVersion-only rather than regrowing the deleted section; the new candidate rules therefore do not render under this override. Flagged to skrabe as a decision.",
-      "CLASSIFIER_WORDING_VARIANT.persistentConfiguration": "The standing LCC trim deletes the whole Evaluation Rules section and the User Intent 'Bound' bullet; CC 2.1.284 moved those sections' wording into this A/B wording object. Realigned ccVersion-only rather than regrowing the deleted section; the new candidate rules therefore do not render under this override. Flagged to skrabe as a decision."
+      "IS_WEB_FETCH_AGENT_AVAILABLE_FN": "Deliberately suppressed spawn restriction; 2.1.292 added a web-fetch-agent carve-out to the restriction itself, which has nothing to qualify while the restriction is off. agent-prompt-web-fetch-agent-usage-guidance (pristine) still tells the model that calling the web-fetch agent is ordinary tool use.",
+      "WEBFETCH_TOOL_NAME": "Same carve-out sentence as IS_WEB_FETCH_AGENT_AVAILABLE_FN; the tool name is still rendered by agent-prompt-web-fetch-agent-usage-guidance and the WebFetch tool itself."
+    }
+  },
+  "tool-description-bash-run-in-background-deadline-suffix": {
+    "bodyHash": "da39a3ee5e6b",
+    "reviewed": "2026-10-20 (CC 2.1.304)",
+    "tokens": {
+      "TOOL_DESCRIPTION_BASH_RUN_IN_BACKGROUND_DEADLINE_SUFFIX_VAR_0": "Standing wipe-merge: the background-timeout default/max are carried by tool-description-bash-run-in-background-detached's timeout clause; 2.1.292 only reshaped the number formatting inside the suppressed sentence.",
+      "TOOL_DESCRIPTION_BASH_RUN_IN_BACKGROUND_DEADLINE_SUFFIX_VAR_2": "New 2.1.292 slot (minutes/hours rounding) inside the same suppressed sentence; the detached bullet carries default and max.",
+      "TOOL_DESCRIPTION_BASH_RUN_IN_BACKGROUND_DEADLINE_SUFFIX_VAR_3": "New 2.1.304 slot (whether you are notified at the limit) inside the same suppressed sentence; the detached bullet now carries the notification wording."
+    }
+  },
+  "tool-result-enterworktree-now-working-message": {
+    "bodyHash": "63bba1eb88cd",
+    "reviewed": "2026-10-20 (CC 2.1.304)",
+    "tokens": {
+      "TOOL_RESULT_ENTERWORKTREE_NOW_WORKING_MESSAGE_VAR_6": "2.1.304 moved the ExitWorktree how-to-leave sentence to a trailing slot. The override has cut that sentence since 2.1.210; the ExitWorktree tool description carries it."
+    }
+  },
+  "data-message-batches-api-typescript": {
+    "bodyHash": "9fa12508c2ff",
+    "reviewed": "2026-11-10 (CC 2.1.322; re-keyed after realign, same cut)",
+    "tokens": {
+      "result.result.message.content": "This is an escaped interpolation inside a TypeScript documentation example, not a live Claude Code prompt-builder binding. The new example retains result.result.message.content as code, narrows all text blocks and joins them before text.slice(0, 100), replacing the unsafe content[0].text assumption. No runtime slot is lost."
+    }
+  },
+  "tool-description-snooze-delay-and-reason-guidance": {
+    "bodyHash": "43c10093723d",
+    "reviewed": "2026-11-04 (CC 2.1.317 native-route audit)",
+    "tokens": {
+      "TOOL_DESCRIPTION_SNOOZE_DELAY_AND_REASON_GUIDANCE_VAR_1": "Removed the comparison with the different CronCreate sentinel. This ScheduleWakeup body retains its actual dynamic sentinel in VAR_0; the co-rendered prompt schema also specifies the exact dynamic sentinel. CronCreate guidance is unchanged.",
+      "TOOL_DESCRIPTION_SNOOZE_DELAY_AND_REASON_GUIDANCE_VAR_2": "Removed the repeated tool name in that same CronCreate comparison. The offered tool name remains ScheduleWakeup in the tool schema; stop, required fields and dynamic-loop prompt contracts remain in the description and schema."
+    }
+  },
+  "system-prompt-fast-mode-environment-note": {
+    "bodyHash": "da39a3ee5e6b",
+    "reviewed": "2026-11-10 (CC 2.1.322)",
+    "tokens": {
+      "SYSTEM_PROMPT_FAST_MODE_ENVIRONMENT_NOTE_VAR_0": "Deliberate wipe carried from the reworded note: the whole fast-mode environment note is suppressed, so its vertex/Opus slot goes with it."
     }
   }
 }

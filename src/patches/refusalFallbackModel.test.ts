@@ -58,6 +58,11 @@ const MESSAGE =
 const REPL =
   'Yo=await this._runImpl(dt,jo,h,k,D,V,ee,Ce,Pe,De,Le,zo,We,Co??void 0,Je,$e)}finally{eo.clearPending(),this.stream.deferredSlashEchoUuid=null;try{ut.flush()}catch(Zo){u(Zo)}if(this._frameNotifier.flush(),this.stream.pendingPreservedInsert!==null)i("tengu_compact_preserved_unanchored",{preservedCount:this.stream.pendingPreservedInsert.preserved.length}),ko({type:"append",messages:this.stream.pendingPreservedInsert.preserved}),this.stream.pendingPreservedInsert=null;';
 
+const REPL_CATCH = REPL.replace(
+  ')}finally{',
+  ')}catch(Zo){throw Wo=!0,Zo}finally{'
+);
+
 const HEADLESS =
   'noteTurnEnded(e,r,n){if(this.selector.noteTurnEnded(e),e||n.num_turns>0){if(!e&&this.heldCompletionChars>0)y("print_task_notification_coalesce");this.heldCompletionChars=0,this.heldCompletionWorkload=void 0}else if(r.queryHeldForNextTurn===!0&&typeof r.value==="string"&&n.result==="")this.heldCompletionChars+=r.value.length,this.heldCompletionWorkload=r.workload}';
 
@@ -73,7 +78,11 @@ const ROUTING = module(
   WALKER
 );
 
-const bundle = (sessionState = SESSION_STATE, routing = ROUTING): string =>
+const bundle = (
+  sessionState = SESSION_STATE,
+  routing = ROUTING,
+  repl = REPL
+): string =>
   [
     sessionState,
     module(128, 'chunk-zfg8t6ef.js', QUEUE),
@@ -87,7 +96,7 @@ const bundle = (sessionState = SESSION_STATE, routing = ROUTING): string =>
       WRITER
     ),
     module(1223, 'chunk-skp01brc.js', HEADLESS),
-    module(1405, 'chunk-cz85x099.js', REPL),
+    module(1405, 'chunk-cz85x099.js', repl),
   ].join('');
 
 const BUNDLE = bundle();
@@ -471,10 +480,60 @@ describe('writeRefusalFallbackModel: the return', () => {
     expect(repl).toContain('}}catch{}eo.clearPending()');
   });
 
+  it('returns at the end of an interactive turn whose call is followed by a catch that records the throw', () => {
+    expect(REPL_CATCH).not.toBe(REPL);
+    const out = writeRefusalFallbackModel(
+      bundle(SESSION_STATE, ROUTING, REPL_CATCH),
+      ROUTES
+    );
+    expect(out).not.toBeNull();
+    const repl = moduleText(out as string, 1405);
+    expect(repl).toContain(
+      '}catch(Zo){throw Wo=!0,Zo}finally{try{let __tweakccN=globalThis.__tweakccRefusalFallbackReturn?.(Yo?.num_turns>0);'
+    );
+    expect(repl).toContain(
+      'ko({type:"append",messages:[__tweakccM]})}}catch{}eo.clearPending()'
+    );
+  });
+
   it('returns at the end of a headless turn and queues the line ahead of the result', () => {
     const headless = moduleText(patched(ROUTES), 1223);
     expect(headless).toMatch(
       /noteTurnEnded\(e,r,n\)\{try\{let __tweakccN=globalThis\.__tweakccRefusalFallbackReturn\?\.\(n\?\.num_turns>0\);[^]*globalThis\.__tweakccRefusalFallbackEvent\?\.\(\{type:"system",subtype:"informational",content:__tweakccL\.content,level:__tweakccL\.level\}\)\}\}catch\{\}if\(this\.selector\.noteTurnEnded\(e\)/
+    );
+  });
+
+  it('returns at the end of a headless turn in its 2.1.322 shape', () => {
+    // 2.1.322 makes the delegation its own statement and tests `num_turns` in a
+    // later else-if; copied verbatim from that bundle.
+    const headless =
+      'noteTurnEnded(e,n,r){this.selector.noteTurnEnded(e);let s=n.queryHeldForNextTurn===!0&&typeof n.value==="string"&&r.result===""?n.value.length:0;if(e)this.heldCompletionChars+=s,this.owedCall=void 0;else if(r.num_turns>0){if(this.owedCall!==void 0)g("print_task_notification_coalesce");this.heldCompletionChars=0,this.owedCall=void 0}else if(s>0){this.heldCompletionChars+=s,this.owedCall={workload:n.workload}}}';
+    const input = BUNDLE.replace(HEADLESS, headless);
+    const out = writeRefusalFallbackModel(input, ROUTES);
+    expect(out).not.toBeNull();
+    expect(moduleText(out as string, 1223)).toMatch(
+      /noteTurnEnded\(e,n,r\)\{try\{let __tweakccN=globalThis\.__tweakccRefusalFallbackReturn\?\.\(r\?\.num_turns>0\);[^]*\}\}catch\{\}this\.selector\.noteTurnEnded\(e\);let s=[^]*else if\(r\.num_turns>0\)\{/
+    );
+    expect(writeRefusalFallbackModel(out as string, ROUTES)).toBe(out);
+  });
+
+  it('finds the restore and message constructor in their 2.1.288 shapes', () => {
+    // 2.1.288 passes the unlatch a reason and gives the constructor an optional
+    // highlight; both copied verbatim from that bundle.
+    const restore =
+      'function vn(){let e=n(),t=e.modelSelection.refusalFallbackModelLatch();if(e.modelSelection.unlatchRefusalFallbackModel("session_transition"),!t||e.modelSelection.mainLoopModelOverride()!==t.fallbackModel)return;return e.modelSelection.overrideMainLoopModel(t.previousOverride),{appStateModel:t.previousAppStateModel,forSessionValue:t.previousModelForSession,overrideValue:t.previousOverride,restoredToExplicitOverride:t.previousOverride!==void 0,fallbackModel:t.fallbackModel}}';
+    const message =
+      'function dk(e,n,r){return{type:"system",subtype:"informational",content:e,isMeta:!1,timestamp:new Date().toISOString(),uuid:wCn(),level:n,...r&&{highlight:r}}}';
+    const out = writeRefusalFallbackModel(
+      BUNDLE.replace(RESTORE, restore).replace(MESSAGE, message),
+      ROUTES
+    );
+    expect(out).not.toBeNull();
+    expect(moduleText(out as string, 15)).toMatch(
+      /let __tweakccT=vn\(\);[^]*\(globalThis\.__tweakccRefusalFallbackHub\?\?=new Mt\(\(\)=>Fe\(\)\)\)\.of\(__tweakccS\)\.emit\(__tweakccT\);[^]*\};function vn\(\)/
+    );
+    expect(moduleText(out as string, 355)).toContain(
+      `globalThis.__tweakccRefusalFallbackMessage=dk;${message}`
     );
   });
 

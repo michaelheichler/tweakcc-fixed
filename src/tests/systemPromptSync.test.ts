@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as promptSync from '../systemPromptSync';
-import type { StringsPrompt, StringsFile } from '../systemPromptSync';
+import type { StringsPrompt } from '../systemPromptSync';
 
 vi.mock('node:fs/promises');
 vi.mock('../systemPromptDownload');
@@ -14,14 +14,12 @@ const createEnoent = () => {
   return error;
 };
 
-describe('promptSync.ts', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('parseMarkdownPrompt', () => {
-    it('should parse markdown with frontmatter', () => {
-      const markdown = `<!--
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+describe('parseMarkdownPrompt', () => {
+  it('should parse markdown with frontmatter', () => {
+    const markdown = `<!--
 name: Test Prompt
 description: A test prompt
 ccVersion: 1.0.0
@@ -32,22 +30,21 @@ variables:
 
 This is the content with \${SETTINGS.preferredName} and \${CONFIG.taskType}.`;
 
-      const result = promptSync.parseMarkdownPrompt(markdown);
+    const result = promptSync.parseMarkdownPrompt(markdown);
 
-      expect(result).toEqual({
-        name: 'Test Prompt',
-        description: 'A test prompt',
-        ccVersion: '1.0.0',
-        variables: ['SETTINGS', 'CONFIG'],
-        content:
-          '\nThis is the content with ${SETTINGS.preferredName} and ${CONFIG.taskType}.',
-        // Line offset as computed from original markdown
-        contentLineOffset: 8,
-      });
+    expect(result).toEqual({
+      name: 'Test Prompt',
+      description: 'A test prompt',
+      ccVersion: '1.0.0',
+      variables: ['SETTINGS', 'CONFIG'],
+      content:
+        '\nThis is the content with ${SETTINGS.preferredName} and ${CONFIG.taskType}.',
+      contentLineOffset: 8,
     });
+  });
 
-    it('should handle markdown without variables', () => {
-      const markdown = `<!--
+  it('should handle markdown without variables', () => {
+    const markdown = `<!--
 name: Simple Prompt
 description: No variables
 ccVersion: 1.0.0
@@ -55,244 +52,238 @@ ccVersion: 1.0.0
 
 Simple content.`;
 
-      const result = promptSync.parseMarkdownPrompt(markdown);
+    const result = promptSync.parseMarkdownPrompt(markdown);
 
-      expect(result).toEqual({
-        name: 'Simple Prompt',
-        description: 'No variables',
-        ccVersion: '1.0.0',
-        variables: [],
-        content: '\nSimple content.',
-        // Line offset as computed from original markdown
-        contentLineOffset: 5,
-      });
+    expect(result).toEqual({
+      name: 'Simple Prompt',
+      description: 'No variables',
+      ccVersion: '1.0.0',
+      variables: [],
+      content: '\nSimple content.',
+      contentLineOffset: 5,
     });
+  });
 
-    it('should handle missing frontmatter fields', () => {
-      const markdown = `<!--
+  it('should handle missing frontmatter fields', () => {
+    const markdown = `<!--
 -->
 
 Content only.`;
 
-      const result = promptSync.parseMarkdownPrompt(markdown);
+    const result = promptSync.parseMarkdownPrompt(markdown);
 
-      expect(result).toEqual({
-        name: '',
-        description: '',
-        ccVersion: '',
-        variables: [],
-        content: '\nContent only.',
-        // Line offset as computed from original markdown
-        contentLineOffset: 2,
-      });
+    expect(result).toEqual({
+      name: '',
+      description: '',
+      ccVersion: '',
+      variables: [],
+      content: '\nContent only.',
+      contentLineOffset: 2,
     });
   });
+});
 
-  describe('reconstructContentFromPieces', () => {
-    it('should reconstruct content with placeholders for minified variables', () => {
-      const pieces = [
-        'You will greet the user as ${',
-        '.preferredName}, running on ${',
-        '.platform}!',
-      ];
-      const identifiers = [1, 2];
-      const identifierMap = { '1': 'SETTINGS', '2': 'CONFIG' };
+describe('reconstructContentFromPieces', () => {
+  it('should reconstruct content with placeholders for minified variables', () => {
+    const pieces = [
+      'You will greet the user as ${',
+      '.preferredName}, running on ${',
+      '.platform}!',
+    ];
+    const identifiers = [1, 2];
+    const identifierMap = { '1': 'SETTINGS', '2': 'CONFIG' };
 
-      const result = promptSync.reconstructContentFromPieces(
-        pieces,
-        identifiers,
-        identifierMap
-      );
+    const result = promptSync.reconstructContentFromPieces(
+      pieces,
+      identifiers,
+      identifierMap
+    );
 
-      expect(result).toBe(
-        'You will greet the user as ${SETTINGS.preferredName}, running on ${CONFIG.platform}!'
-      );
-    });
-
-    it('should handle empty identifier map', () => {
-      const pieces = ['Just text'];
-      const identifiers: number[] = [];
-      const identifierMap = {};
-
-      const result = promptSync.reconstructContentFromPieces(
-        pieces,
-        identifiers,
-        identifierMap
-      );
-
-      expect(result).toBe('Just text');
-    });
-
-    it('should handle missing identifier mappings', () => {
-      const pieces = ['Start ', ' end'];
-      const identifiers = [999];
-      const identifierMap = {};
-
-      const result = promptSync.reconstructContentFromPieces(
-        pieces,
-        identifiers,
-        identifierMap
-      );
-
-      expect(result).toBe('Start UNKNOWN_999 end');
-    });
-
-    it('should handle numeric and string identifiers', () => {
-      const pieces = ['Use ${', '.currentMode} and ${', '.theme} together'];
-      const identifiers = [1, '2'];
-      const identifierMap = { '1': 'STATE', '2': 'CONFIG' };
-
-      const result = promptSync.reconstructContentFromPieces(
-        pieces,
-        identifiers,
-        identifierMap
-      );
-
-      expect(result).toBe(
-        'Use ${STATE.currentMode} and ${CONFIG.theme} together'
-      );
-    });
+    expect(result).toBe(
+      'You will greet the user as ${SETTINGS.preferredName}, running on ${CONFIG.platform}!'
+    );
   });
 
-  describe('generateMarkdownFromPrompt', () => {
-    it('should generate markdown with variables', () => {
-      const prompt: StringsPrompt = {
-        id: 'test-id',
-        name: 'Test Prompt',
-        description: 'Test description',
-        version: '1.0.0',
-        pieces: ['You will greet the user as ${', '.preferredName}!'],
-        identifiers: [1],
-        identifierMap: { '1': 'SETTINGS' },
-      };
+  it('should handle empty identifier map', () => {
+    const pieces = ['Just text'];
+    const identifiers: number[] = [];
+    const identifierMap = {};
 
-      const result = promptSync.generateMarkdownFromPrompt(prompt);
+    const result = promptSync.reconstructContentFromPieces(
+      pieces,
+      identifiers,
+      identifierMap
+    );
 
-      expect(result).toContain('name: Test Prompt');
-      expect(result).toContain('description: Test description');
-      expect(result).toContain('ccVersion: 1.0.0');
-      expect(result).toContain('variables:');
-      expect(result).toContain('- SETTINGS');
-      expect(result).toContain(
-        'You will greet the user as ${SETTINGS.preferredName}!'
-      );
-    });
-
-    it('should generate markdown without variables when identifierMap is empty', () => {
-      const prompt: StringsPrompt = {
-        id: 'test-id',
-        name: 'Simple Prompt',
-        description: 'No vars',
-        version: '1.0.0',
-        pieces: ['Plain text'],
-        identifiers: [],
-        identifierMap: {},
-      };
-
-      const result = promptSync.generateMarkdownFromPrompt(prompt);
-
-      expect(result).toContain('name: Simple Prompt');
-      expect(result).not.toContain('variables:');
-      expect(result).toContain('Plain text');
-    });
-
-    it('should use custom content when provided', () => {
-      const prompt: StringsPrompt = {
-        id: 'test-id',
-        name: 'Test',
-        description: 'Test',
-        version: '1.0.0',
-        pieces: ['Original'],
-        identifiers: [],
-        identifierMap: {},
-      };
-
-      const result = promptSync.generateMarkdownFromPrompt(
-        prompt,
-        'Custom content here'
-      );
-
-      expect(result).toContain('Custom content here');
-      expect(result).not.toContain('Original');
-    });
-
-    it('should deduplicate variables in frontmatter', () => {
-      const prompt: StringsPrompt = {
-        id: 'test-id',
-        name: 'Test',
-        description: 'Test',
-        version: '1.0.0',
-        pieces: [
-          'The user name is ${',
-          '.userName} and again ${',
-          '.userName}.',
-        ],
-        identifiers: [1, 1], // Same identifier used twice
-        identifierMap: { '1': 'SETTINGS' },
-      };
-
-      const result = promptSync.generateMarkdownFromPrompt(prompt);
-
-      // Count occurrences of "- SETTINGS"
-      const matches = result.match(/^ {2}- SETTINGS$/gm);
-      expect(matches?.length).toBe(1); // Should only appear once in variables list
-    });
+    expect(result).toBe('Just text');
   });
 
-  describe('compareVersions', () => {
-    it('should return -1 when v1 < v2', () => {
-      expect(promptSync.compareVersions('1.0.0', '2.0.0')).toBe(-1);
-      expect(promptSync.compareVersions('1.2.3', '1.2.4')).toBe(-1);
-      expect(promptSync.compareVersions('1.9.0', '1.10.0')).toBe(-1);
-    });
+  it('should handle missing identifier mappings', () => {
+    const pieces = ['Start ', ' end'];
+    const identifiers = [999];
+    const identifierMap = {};
 
-    it('should return 0 when versions are equal', () => {
-      expect(promptSync.compareVersions('1.0.0', '1.0.0')).toBe(0);
-      expect(promptSync.compareVersions('2.5.7', '2.5.7')).toBe(0);
-    });
+    const result = promptSync.reconstructContentFromPieces(
+      pieces,
+      identifiers,
+      identifierMap
+    );
 
-    it('should return 1 when v1 > v2', () => {
-      expect(promptSync.compareVersions('2.0.0', '1.0.0')).toBe(1);
-      expect(promptSync.compareVersions('1.2.4', '1.2.3')).toBe(1);
-      expect(promptSync.compareVersions('1.10.0', '1.9.0')).toBe(1);
-    });
-
-    it('should handle versions with different lengths', () => {
-      expect(promptSync.compareVersions('1.0', '1.0.0')).toBe(0);
-      expect(promptSync.compareVersions('1.0.1', '1.0')).toBe(1);
-      expect(promptSync.compareVersions('1.0', '1.0.1')).toBe(-1);
-    });
+    expect(result).toBe('Start UNKNOWN_999 end');
   });
 
-  describe('getPromptFilePath', () => {
-    it('should return correct file path for prompt', () => {
-      const result = promptSync.getPromptFilePath('test-prompt');
-      expect(result).toContain('test-prompt.md');
-      expect(result).toContain('system-prompts');
-    });
+  it('should handle numeric and string identifiers', () => {
+    const pieces = ['Use ${', '.currentMode} and ${', '.theme} together'];
+    const identifiers = [1, '2'];
+    const identifierMap = { '1': 'STATE', '2': 'CONFIG' };
+
+    const result = promptSync.reconstructContentFromPieces(
+      pieces,
+      identifiers,
+      identifierMap
+    );
+
+    expect(result).toBe(
+      'Use ${STATE.currentMode} and ${CONFIG.theme} together'
+    );
+  });
+});
+
+describe('generateMarkdownFromPrompt', () => {
+  it('should generate markdown with variables', () => {
+    const prompt: StringsPrompt = {
+      id: 'test-id',
+      name: 'Test Prompt',
+      description: 'Test description',
+      version: '1.0.0',
+      pieces: ['You will greet the user as ${', '.preferredName}!'],
+      identifiers: [1],
+      identifierMap: { '1': 'SETTINGS' },
+    };
+
+    const result = promptSync.generateMarkdownFromPrompt(prompt);
+    const parsed = promptSync.parseMarkdownPrompt(result);
+
+    expect(parsed.name).toBe(prompt.name);
+    expect(parsed.description).toBe(prompt.description);
+    expect(parsed.ccVersion).toBe(prompt.version);
+    expect(parsed.variables).toEqual(['SETTINGS']);
+    expect(parsed.content).toContain(
+      'You will greet the user as ${SETTINGS.preferredName}!'
+    );
   });
 
-  describe('promptFileExists', () => {
-    it('should return true if file exists', async () => {
-      vi.spyOn(fs, 'access').mockResolvedValue(undefined);
+  it('should generate markdown without variables when identifierMap is empty', () => {
+    const prompt: StringsPrompt = {
+      id: 'test-id',
+      name: 'Simple Prompt',
+      description: 'No vars',
+      version: '1.0.0',
+      pieces: ['Plain text'],
+      identifiers: [],
+      identifierMap: {},
+    };
 
-      const result = await promptSync.promptFileExists('test-prompt');
+    const result = promptSync.generateMarkdownFromPrompt(prompt);
+    const parsed = promptSync.parseMarkdownPrompt(result);
 
-      expect(result).toBe(true);
-    });
+    expect(parsed.name).toBe(prompt.name);
+    expect(parsed.variables).toEqual([]);
+    expect(parsed.content.trim()).toBe('Plain text');
+  });
+});
+describe('generateMarkdownFromPrompt', () => {
+  it('should use custom content when provided', () => {
+    const prompt: StringsPrompt = {
+      id: 'test-id',
+      name: 'Test',
+      description: 'Test',
+      version: '1.0.0',
+      pieces: ['Original'],
+      identifiers: [],
+      identifierMap: {},
+    };
 
-    it('should return false if file does not exist', async () => {
-      vi.spyOn(fs, 'access').mockRejectedValue(createEnoent());
+    const result = promptSync.generateMarkdownFromPrompt(
+      prompt,
+      'Custom content here'
+    );
 
-      const result = await promptSync.promptFileExists('test-prompt');
-
-      expect(result).toBe(false);
-    });
+    expect(result).toContain('Custom content here');
+    expect(result).not.toContain('Original');
   });
 
-  describe('readPromptFile', () => {
-    it('should read and parse prompt file', async () => {
-      const mockContent = `<!--
+  it('should deduplicate variables in frontmatter', () => {
+    const prompt: StringsPrompt = {
+      id: 'test-id',
+      name: 'Test',
+      description: 'Test',
+      version: '1.0.0',
+      pieces: ['The user name is ${', '.userName} and again ${', '.userName}.'],
+      identifiers: [1, 1], // Same identifier used twice
+      identifierMap: { '1': 'SETTINGS' },
+    };
+
+    const result = promptSync.generateMarkdownFromPrompt(prompt);
+
+    const matches = result.match(/^ {2}- SETTINGS$/gm);
+    expect(matches?.length).toBe(1); // Should only appear once in variables list
+  });
+});
+describe('compareVersions', () => {
+  it('should return -1 when v1 < v2', () => {
+    expect(promptSync.compareVersions('1.0.0', '2.0.0')).toBe(-1);
+    expect(promptSync.compareVersions('1.2.3', '1.2.4')).toBe(-1);
+    expect(promptSync.compareVersions('1.9.0', '1.10.0')).toBe(-1);
+  });
+
+  it('should return 0 when versions are equal', () => {
+    expect(promptSync.compareVersions('1.0.0', '1.0.0')).toBe(0);
+    expect(promptSync.compareVersions('2.5.7', '2.5.7')).toBe(0);
+  });
+
+  it('should return 1 when v1 > v2', () => {
+    expect(promptSync.compareVersions('2.0.0', '1.0.0')).toBe(1);
+    expect(promptSync.compareVersions('1.2.4', '1.2.3')).toBe(1);
+    expect(promptSync.compareVersions('1.10.0', '1.9.0')).toBe(1);
+  });
+
+  it('should handle versions with different lengths', () => {
+    expect(promptSync.compareVersions('1.0', '1.0.0')).toBe(0);
+    expect(promptSync.compareVersions('1.0.1', '1.0')).toBe(1);
+    expect(promptSync.compareVersions('1.0', '1.0.1')).toBe(-1);
+  });
+});
+
+describe('getPromptFilePath', () => {
+  it('should return correct file path for prompt', () => {
+    const result = promptSync.getPromptFilePath('test-prompt');
+    expect(result).toContain('test-prompt.md');
+    expect(result).toContain('system-prompts');
+  });
+});
+
+describe('promptFileExists', () => {
+  it('should return true if file exists', async () => {
+    vi.spyOn(fs, 'access').mockResolvedValue(undefined);
+
+    const result = await promptSync.promptFileExists('test-prompt');
+
+    expect(result).toBe(true);
+  });
+
+  it('should return false if file does not exist', async () => {
+    vi.spyOn(fs, 'access').mockRejectedValue(createEnoent());
+
+    const result = await promptSync.promptFileExists('test-prompt');
+
+    expect(result).toBe(false);
+  });
+});
+
+describe('readPromptFile', () => {
+  it('should read and parse prompt file', async () => {
+    const mockContent = `<!--
 name: Test Prompt
 description: Test
 ccVersion: 1.0.0
@@ -300,39 +291,37 @@ ccVersion: 1.0.0
 
 Content here`;
 
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
+    vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
 
-      const result = await promptSync.readPromptFile('test-prompt');
+    const result = await promptSync.readPromptFile('test-prompt');
 
-      expect(result).toEqual({
-        name: 'Test Prompt',
-        description: 'Test',
-        ccVersion: '1.0.0',
-        variables: [],
-        content: '\nContent here',
-        contentLineOffset: 5,
-      });
+    expect(result).toEqual({
+      name: 'Test Prompt',
+      description: 'Test',
+      ccVersion: '1.0.0',
+      variables: [],
+      content: '\nContent here',
+      contentLineOffset: 5,
     });
   });
+});
 
-  describe('writePromptFile', () => {
-    it('should write prompt file', async () => {
-      const writeFileSpy = vi
-        .spyOn(fs, 'writeFile')
-        .mockResolvedValue(undefined);
+describe('writePromptFile', () => {
+  it('should write prompt file', async () => {
+    const writeFileSpy = vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
 
-      await promptSync.writePromptFile('test-prompt', 'content');
+    await promptSync.writePromptFile('test-prompt', 'content');
 
-      expect(writeFileSpy).toHaveBeenCalled();
-      const [filePath, content] = writeFileSpy.mock.calls[0];
-      expect(filePath).toContain('test-prompt.md');
-      expect(content).toBe('content');
-    });
+    expect(writeFileSpy).toHaveBeenCalled();
+    const [filePath, content] = writeFileSpy.mock.calls[0];
+    expect(filePath).toContain('test-prompt.md');
+    expect(content).toBe('content');
   });
+});
 
-  describe('updateVariables', () => {
-    it('should update variables in frontmatter', async () => {
-      const mockContent = `<!--
+describe('updateVariables', () => {
+  it('should update variables in frontmatter', async () => {
+    const mockContent = `<!--
 name: Test
 description: Test
 ccVersion: 1.0.0
@@ -342,23 +331,21 @@ variables:
 
 Content`;
 
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
-      const writeFileSpy = vi
-        .spyOn(fs, 'writeFile')
-        .mockResolvedValue(undefined);
+    vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
+    const writeFileSpy = vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
 
-      const newIdentifierMap = { '1': 'SETTINGS', '2': 'CONFIG' };
-      await promptSync.updateVariables('test-prompt', newIdentifierMap);
+    const newIdentifierMap = { '1': 'SETTINGS', '2': 'CONFIG' };
+    await promptSync.updateVariables('test-prompt', newIdentifierMap);
 
-      expect(writeFileSpy).toHaveBeenCalled();
-      const writtenContent = writeFileSpy.mock.calls[0][1] as string;
-      expect(writtenContent).toContain('SETTINGS');
-      expect(writtenContent).toContain('CONFIG');
-      expect(writtenContent).not.toContain('OLD_VAR');
-    });
+    expect(writeFileSpy).toHaveBeenCalled();
+    const writtenContent = writeFileSpy.mock.calls[0][1] as string;
+    expect(writtenContent).toContain('SETTINGS');
+    expect(writtenContent).toContain('CONFIG');
+    expect(writtenContent).not.toContain('OLD_VAR');
+  });
 
-    it('should remove variables field when identifierMap is empty', async () => {
-      const mockContent = `<!--
+  it('should remove variables field when identifierMap is empty', async () => {
+    const mockContent = `<!--
 name: Test
 description: Test
 ccVersion: 1.0.0
@@ -368,878 +355,35 @@ variables:
 
 Content`;
 
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
-      const writeFileSpy = vi
-        .spyOn(fs, 'writeFile')
-        .mockResolvedValue(undefined);
+    vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
+    const writeFileSpy = vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
 
-      await promptSync.updateVariables('test-prompt', {});
+    await promptSync.updateVariables('test-prompt', {});
 
-      expect(writeFileSpy).toHaveBeenCalled();
-      const writtenContent = writeFileSpy.mock.calls[0][1] as string;
-      expect(writtenContent).not.toContain('variables:');
-      expect(writtenContent).not.toContain('OLD_VAR');
-    });
-
-    it('should skip writing when variables are already current', async () => {
-      const prompt: StringsPrompt = {
-        id: 'test-prompt',
-        name: 'Test',
-        description: 'Test',
-        ccVersion: '1.0.0',
-        version: '1.0.0',
-        pieces: ['Content ${', '}'],
-        identifiers: [1],
-        identifierMap: { '1': 'SETTINGS' },
-      } as StringsPrompt;
-      const mockContent = promptSync.generateMarkdownFromPrompt(prompt);
-
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
-      const writeFileSpy = vi
-        .spyOn(fs, 'writeFile')
-        .mockResolvedValue(undefined);
-
-      await promptSync.updateVariables('test-prompt', { '1': 'SETTINGS' });
-
-      expect(writeFileSpy).not.toHaveBeenCalled();
-    });
+    expect(writeFileSpy).toHaveBeenCalled();
+    const writtenContent = writeFileSpy.mock.calls[0][1] as string;
+    expect(writtenContent).not.toContain('variables:');
+    expect(writtenContent).not.toContain('OLD_VAR');
   });
 
-  describe('generateDiffHtml', () => {
-    it('should generate HTML diff file with two side-by-side diffs', async () => {
-      const writeFileSpy = vi
-        .spyOn(fs, 'writeFile')
-        .mockResolvedValue(undefined);
-
-      const htmlPath = await promptSync.generateDiffHtml(
-        'test-prompt',
-        'Test Prompt',
-        'Old baseline\nLine 2',
-        'User customization\nLine 2',
-        'New baseline\nLine 2',
-        '1.0.0',
-        '2.0.0',
-        '/path/to/test-prompt.md'
-      );
-
-      expect(writeFileSpy).toHaveBeenCalled();
-      expect(htmlPath).toContain('test-prompt.diff.html');
-
-      const htmlContent = writeFileSpy.mock.calls[0][1] as string;
-      expect(htmlContent).toContain('<!DOCTYPE html>');
-      expect(htmlContent).toContain('test-prompt');
-      expect(htmlContent).toContain('1.0.0');
-      expect(htmlContent).toContain('2.0.0');
-      expect(htmlContent).toContain('Your Customizations');
-      expect(htmlContent).toContain('Upstream Changes');
-    });
-
-    it('should escape HTML in content', async () => {
-      vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
-
-      await promptSync.generateDiffHtml(
-        'test',
-        'Test',
-        '<script>alert("xss")</script>',
-        '<script>alert("xss")</script>',
-        'Safe & sound',
-        '1.0.0',
-        '2.0.0',
-        '/path/to/test.md'
-      );
-
-      const htmlContent = (
-        fs.writeFile as typeof fs.writeFile & {
-          mock: { calls: [string, string][] };
-        }
-      ).mock.calls[0][1] as string;
-      expect(htmlContent).not.toContain('<script>');
-      expect(htmlContent).toContain('&lt;script&gt;');
-      expect(htmlContent).toContain('&amp;');
-    });
-  });
-
-  describe('syncPrompt', () => {
-    const mockPrompt: StringsPrompt = {
-      id: 'test-id',
-      name: 'test-prompt',
-      description: 'Test prompt',
-      version: '2.0.0',
-      pieces: ['Greet user as ${', '.preferredName}!'],
+  it('should skip writing when variables are already current', async () => {
+    const prompt: StringsPrompt = {
+      id: 'test-prompt',
+      name: 'Test',
+      description: 'Test',
+      ccVersion: '1.0.0',
+      version: '1.0.0',
+      pieces: ['Content ${', '}'],
       identifiers: [1],
       identifierMap: { '1': 'SETTINGS' },
-    };
+    } as StringsPrompt;
+    const mockContent = promptSync.generateMarkdownFromPrompt(prompt);
 
-    it('should create new file if it does not exist', async () => {
-      vi.spyOn(fs, 'access').mockRejectedValue(createEnoent());
-      const writeFileSpy = vi
-        .spyOn(fs, 'writeFile')
-        .mockResolvedValue(undefined);
+    vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
+    const writeFileSpy = vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
 
-      const result = await promptSync.syncPrompt(mockPrompt);
+    await promptSync.updateVariables('test-prompt', { '1': 'SETTINGS' });
 
-      expect(result.action).toBe('created');
-      expect(result.newVersion).toBe('2.0.0');
-      expect(writeFileSpy).toHaveBeenCalled();
-    });
-
-    it('should skip if versions match', async () => {
-      const mockContent = `<!--
-name: test-prompt
-description: Test prompt
-ccVersion: 2.0.0
--->
-
-Greet user as \${SETTINGS.preferredName}!`;
-
-      vi.spyOn(fs, 'access').mockResolvedValue(undefined);
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
-      vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
-
-      const result = await promptSync.syncPrompt(mockPrompt);
-
-      expect(result.action).toBe('skipped');
-      expect(result.oldVersion).toBe('2.0.0');
-      expect(result.newVersion).toBe('2.0.0');
-    });
-
-    it('should warn about version mismatch when user version is older', async () => {
-      const mockContent = `<!--
-name: test-prompt
-description: Test prompt
-ccVersion: 1.0.0
--->
-
-Greet user as \${SETTINGS.preferredName}!`;
-
-      // Mock the old strings file for downloading old version
-      const mockOldStringsFile = {
-        version: '1.0.0',
-        prompts: [
-          {
-            id: 'test-prompt',
-            name: 'test-prompt',
-            description: 'Test prompt',
-            pieces: ['Greet user as ', '!'],
-            identifiers: [1],
-            identifierMap: { '1': 'SETTINGS.preferredName' },
-            version: '1.0.0',
-          },
-        ],
-      };
-
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      const hashIndexModule = await import('../systemPromptHashIndex');
-
-      vi.mocked(downloadStringsFile).mockResolvedValue(
-        mockOldStringsFile as StringsFile
-      );
-      vi.spyOn(hashIndexModule, 'getPromptHash').mockResolvedValue(
-        'different-hash'
-      ); // Simulate user modification
-
-      vi.spyOn(fs, 'access').mockResolvedValue(undefined);
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
-      vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
-
-      const result = await promptSync.syncPrompt(mockPrompt);
-
-      expect(result.action).toBe('conflict');
-      expect(result.oldVersion).toBe('1.0.0');
-      expect(result.newVersion).toBe('2.0.0');
-      expect(result.diffHtmlPath).toBeDefined();
-    });
-
-    it('should always update variables list', async () => {
-      const mockContent = `<!--
-name: test-prompt
-description: Test prompt
-ccVersion: 2.0.0
-variables:
-  - OLD_VAR
--->
-
-Greet user as \${SETTINGS.preferredName}!`;
-
-      vi.spyOn(fs, 'access').mockResolvedValue(undefined);
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockContent);
-      const writeFileSpy = vi
-        .spyOn(fs, 'writeFile')
-        .mockResolvedValue(undefined);
-
-      await promptSync.syncPrompt(mockPrompt);
-
-      // Should have called writeFile for updating variables
-      expect(writeFileSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe('syncSystemPrompts', () => {
-    it('should sync all prompts from strings file', async () => {
-      const mockStringsFile: StringsFile = {
-        version: '2.0.0',
-        prompts: [
-          {
-            id: 'prompt1',
-            name: 'Prompt 1',
-            description: 'First prompt',
-            version: '2.0.0',
-            pieces: ['Content 1'],
-            identifiers: [],
-            identifierMap: {},
-          },
-          {
-            id: 'prompt2',
-            name: 'Prompt 2',
-            description: 'Second prompt',
-            version: '2.0.0',
-            pieces: ['Content 2'],
-            identifiers: [],
-            identifierMap: {},
-          },
-        ],
-      };
-
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      const hashIndexModule = await import('../systemPromptHashIndex');
-
-      vi.mocked(downloadStringsFile).mockResolvedValue(
-        mockStringsFile as StringsFile
-      );
-      vi.spyOn(hashIndexModule, 'storeHashes').mockResolvedValue(0);
-
-      vi.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
-      vi.spyOn(fs, 'access').mockRejectedValue(createEnoent());
-      vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
-
-      const result = await promptSync.syncSystemPrompts('2.0.0');
-
-      expect(result.ccVersion).toBe('2.0.0');
-      expect(result.results).toHaveLength(2);
-      expect(result.results[0].action).toBe('created');
-      expect(result.results[1].action).toBe('created');
-    });
-
-    it('should throw error for failed prompt syncs', async () => {
-      const mockStringsFile: StringsFile = {
-        version: '2.0.0',
-        prompts: [
-          {
-            id: 'prompt1',
-            name: 'Prompt 1',
-            description: 'First prompt',
-            version: '2.0.0',
-            pieces: ['Content'],
-            identifiers: [],
-            identifierMap: {},
-          },
-        ],
-      };
-
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      vi.mocked(downloadStringsFile).mockResolvedValue(
-        mockStringsFile as StringsFile
-      );
-
-      vi.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
-      // Make the file exist (so it tries to read it)
-      vi.spyOn(fs, 'access').mockResolvedValue(undefined);
-      // But make reading fail with permission error
-      vi.spyOn(fs, 'readFile').mockRejectedValue(
-        new Error('Permission denied')
-      );
-
-      // A failing prompt is reported and skipped, not fatal: rethrowing aborted
-      // the loop, so one malformed prompt left every later prompt without its
-      // override .md (CC 2.1.206's artifact templates hit exactly this).
-      const errorSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const summary = await promptSync.syncSystemPrompts('2.0.0');
-      expect(summary.results).toEqual([]);
-      expect(
-        errorSpy.mock.calls.some(c =>
-          String(c[0]).includes('Permission denied')
-        )
-      ).toBe(true);
-      errorSpy.mockRestore();
-    });
-
-    it('should throw error if download fails', async () => {
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      vi.mocked(downloadStringsFile).mockRejectedValue(
-        new Error('Download failed')
-      );
-
-      await expect(promptSync.syncSystemPrompts('2.0.0')).rejects.toThrow(
-        'Download failed'
-      );
-    });
-  });
-
-  describe('displaySyncResults', () => {
-    it('should display sync results without errors', () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const summary = {
-        ccVersion: '2.0.0',
-        results: [
-          {
-            id: 'prompt1',
-            name: 'Prompt 1',
-            description: 'Test prompt 1',
-            action: 'created' as const,
-            newVersion: '2.0.0',
-          },
-          {
-            id: 'prompt2',
-            name: 'Prompt 2',
-            description: 'Test prompt 2',
-            action: 'skipped' as const,
-            oldVersion: '2.0.0',
-            newVersion: '2.0.0',
-          },
-        ],
-      };
-
-      promptSync.displaySyncResults(summary);
-
-      expect(consoleSpy).toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map(call => call[0]).join('\n');
-      expect(output).toContain('Skipped 1 up-to-date file');
-      expect(output).toContain('Created 1 new prompt file');
-    });
-
-    it('should display conflicts', () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const summary = {
-        ccVersion: '2.0.0',
-        results: [
-          {
-            id: 'prompt1',
-            name: 'Prompt 1',
-            description: 'Test prompt',
-            action: 'conflict' as const,
-            oldVersion: '1.0.0',
-            newVersion: '2.0.0',
-            diffHtmlPath: '/path/to/diff.html',
-          },
-        ],
-      };
-
-      promptSync.displaySyncResults(summary);
-
-      const output = consoleSpy.mock.calls.map(call => call[0]).join('\n');
-      expect(output).toContain('Conflicts detected');
-      expect(output).toContain('1.0.0');
-      expect(output).toContain('2.0.0');
-      expect(output).toContain('diff.html');
-    });
-  });
-
-  describe('loadSystemPromptsWithRegex', () => {
-    it('should correctly handle variable names with double dollar signs ($$)', async () => {
-      const mockStringsFile: StringsFile = {
-        version: '1.0.0',
-        prompts: [
-          {
-            id: 'test-prompt',
-            name: 'Test',
-            description: 'Test',
-            version: '1.0.0',
-            pieces: ['\nUsage: ${', '()} ms'],
-            identifiers: [1],
-            identifierMap: { '1': 'MAX_TIMEOUT' },
-          },
-        ],
-      };
-
-      // Mock the download function to return our test data
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      vi.mocked(downloadStringsFile).mockResolvedValue(mockStringsFile);
-
-      // Preload the strings file using the public API
-      await promptSync.preloadStringsFile('1.0.0');
-
-      // Create mock markdown file
-      const mockMarkdown = `<!--
-name: Test
-description: Test
-ccVersion: 1.0.0
-variables:
-  - MAX_TIMEOUT
--->
-
-Usage: \${MAX_TIMEOUT()} ms`;
-
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockMarkdown);
-
-      const results = await promptSync.loadSystemPromptsWithRegex('1.0.0');
-      expect(results).toHaveLength(1);
-
-      // Simulate matching with a variable that contains $$
-      // This would come from the actual minified code in cli.js
-      const matchResult = ['full match', 'J$$'] as RegExpMatchArray;
-      const interpolated = results[0].getInterpolatedContent(matchResult);
-
-      // The bug: J$$ should NOT become J$
-      expect(interpolated).toBe('\nUsage: ${J$$()} ms');
-      expect(interpolated).not.toBe('\nUsage: ${J$()} ms');
-    });
-
-    it('should correctly handle <<BUILD_TIME>> placeholder', async () => {
-      const mockStringsFile: StringsFile = {
-        version: '1.0.0',
-        prompts: [
-          {
-            id: 'test-prompt',
-            name: 'Test',
-            description: 'Test',
-            version: '1.0.0',
-            pieces: ['\nVersion: <<CCVERSION>>, BUILD_TIME:"<<BUILD_TIME>>"'],
-            identifiers: [],
-            identifierMap: {},
-          },
-        ],
-      };
-
-      // Mock the download function to return our test data
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      vi.mocked(downloadStringsFile).mockResolvedValue(mockStringsFile);
-
-      // Preload the strings file using the public API
-      await promptSync.preloadStringsFile('1.0.0');
-
-      // Create mock markdown file with placeholders
-      const mockMarkdown = `<!--
-name: Test
-description: Test
-ccVersion: 1.0.0
--->
-
-Version: <<CCVERSION>>, BUILD_TIME:"<<BUILD_TIME>>"`;
-
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockMarkdown);
-
-      // Pass buildTime to loadSystemPromptsWithRegex (simulating extraction from cli.js)
-      const buildTime = '2025-12-09T19:43:43Z';
-      const results = await promptSync.loadSystemPromptsWithRegex(
-        '1.0.0',
-        false,
-        buildTime
-      );
-      expect(results).toHaveLength(1);
-
-      // The regex should match the actual content in cli.js
-      const testCliContent =
-        '\nVersion: 1.0.0, BUILD_TIME:"2025-12-09T19:43:43Z"';
-      const regex = new RegExp(results[0].regex);
-      const match = testCliContent.match(regex);
-
-      expect(match).not.toBeNull();
-
-      // Simulate matching - the interpolated content should have both placeholders replaced
-      const matchResult = [
-        '\nVersion: 1.0.0, BUILD_TIME:"2025-12-09T19:43:43Z"',
-      ] as RegExpMatchArray;
-      const interpolated = results[0].getInterpolatedContent(matchResult);
-
-      // Should replace <<CCVERSION>> with 1.0.0 and <<BUILD_TIME>> with the provided buildTime
-      expect(interpolated).toBe(
-        '\nVersion: 1.0.0, BUILD_TIME:"2025-12-09T19:43:43Z"'
-      );
-    });
-
-    it('should generate regex that matches both actual newlines and literal \\n', async () => {
-      const mockStringsFile: StringsFile = {
-        version: '1.0.0',
-        prompts: [
-          {
-            id: 'test-prompt',
-            name: 'Test',
-            description: 'Test',
-            version: '1.0.0',
-            pieces: ['Hello\nWorld'], // actual newline after JSON parse
-            identifiers: [],
-            identifierMap: {},
-          },
-        ],
-      };
-
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      vi.mocked(downloadStringsFile).mockResolvedValue(mockStringsFile);
-
-      await promptSync.preloadStringsFile('1.0.0');
-
-      const mockMarkdown = `<!--
-name: Test
-description: Test
-ccVersion: 1.0.0
--->
-
-Hello
-World`;
-
-      vi.spyOn(fs, 'readFile').mockResolvedValue(mockMarkdown);
-
-      const results = await promptSync.loadSystemPromptsWithRegex('1.0.0');
-      expect(results).toHaveLength(1);
-
-      const regex = new RegExp(results[0].regex, 'si');
-
-      // Should match actual newline (template literal style)
-      const templateLiteralContent = 'Hello\nWorld';
-      expect(templateLiteralContent.match(regex)).not.toBeNull();
-
-      // Should match literal \n (string literal style)
-      const stringLiteralContent = 'Hello\\nWorld';
-      expect(stringLiteralContent.match(regex)).not.toBeNull();
-    });
-    it('skips a catalogued id with no override file without logging', async () => {
-      const mockStringsFile: StringsFile = {
-        version: '1.0.0',
-        prompts: [
-          {
-            id: 'no-override',
-            name: 'Test',
-            description: 'Test',
-            version: '1.0.0',
-            pieces: ['Hello'],
-            identifiers: [],
-            identifierMap: {},
-          },
-        ],
-      };
-      const { downloadStringsFile } = await import('../systemPromptDownload');
-      vi.mocked(downloadStringsFile).mockResolvedValue(mockStringsFile);
-      await promptSync.preloadStringsFile('1.0.0');
-
-      const enoent = Object.assign(new Error('missing'), { code: 'ENOENT' });
-      vi.spyOn(fs, 'readFile').mockRejectedValue(enoent);
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const results = await promptSync.loadSystemPromptsWithRegex('1.0.0');
-      expect(results).toHaveLength(0);
-      expect(errorSpy).not.toHaveBeenCalled();
-      errorSpy.mockRestore();
-    });
-  });
-
-  describe('escapeDepthZeroBackticks', () => {
-    it('should escape depth-0 backticks', () => {
-      const input = 'Use `code` here';
-      const expected = 'Use \\`code\\` here';
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(expected);
-    });
-
-    it('should not double-escape already-escaped backticks', () => {
-      const input = 'Use \\`code\\` here';
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(input);
-    });
-
-    it('should preserve backticks inside ${...} interpolations', () => {
-      const input = '${cond?`a`:`b`}';
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(input);
-    });
-
-    it('should escape depth-0 backticks but preserve interpolation backticks', () => {
-      const input = 'Use `x` and ${c?`a`:`b`}';
-      const expected = 'Use \\`x\\` and ${c?`a`:`b`}';
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(expected);
-    });
-
-    it('should preserve backticks inside nested braces in interpolation', () => {
-      const input = '${fn({k:`v`})}';
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(input);
-    });
-
-    it('should escape consecutive backticks', () => {
-      const input = '```code```';
-      const expected = '\\`\\`\\`code\\`\\`\\`';
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(expected);
-    });
-
-    it('should return empty string for empty input', () => {
-      expect(promptSync.escapeDepthZeroBackticks('').content).toBe('');
-    });
-
-    it('should return input unchanged when no backticks present', () => {
-      const input = 'plain text with no backticks';
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(input);
-    });
-
-    it('should escape backtick after escaped backslash (REGEX-001 fixed)', () => {
-      const input = 'text\\\\`more';
-      // \\\\` in source = two actual backslashes + backtick at runtime.
-      // Even backslash count means the backtick is unescaped.
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(
-        'text\\\\\\`more'
-      );
-    });
-
-    it('should not escape backtick after odd number of backslashes', () => {
-      const input = 'text\\\\\\`more';
-      // Three backslashes + backtick: odd count means backtick is already escaped
-      expect(promptSync.escapeDepthZeroBackticks(input).content).toBe(input);
-    });
-
-    it('should handle unclosed interpolation gracefully (SFH-002)', () => {
-      const input = '`pre` ${unclosed `backtick`';
-      const result = promptSync.escapeDepthZeroBackticks(input);
-      expect(result.content).toBe('\\`pre\\` ${unclosed `backtick`');
-      expect(result.incomplete).toBe(true);
-    });
-
-    it('should escape backtick immediately after interpolation close', () => {
-      expect(promptSync.escapeDepthZeroBackticks('${x}`y`').content).toBe(
-        '${x}\\`y\\`'
-      );
-    });
-
-    it('should escape depth-0 backticks across multiple lines', () => {
-      const input = 'line1 `a`\nline2 `b`\nline3 ${x?`c`:`d`}';
-      const result = promptSync.escapeDepthZeroBackticks(input);
-      expect(result.content).toBe(
-        'line1 \\`a\\`\nline2 \\`b\\`\nline3 ${x?`c`:`d`}'
-      );
-      expect(result.incomplete).toBe(false);
-    });
-
-    it('should not let } inside nested template literal close the interpolation (SFHPFV-003)', () => {
-      const input = 'Use `x` and ${cond?`}`:`other`}';
-      const result = promptSync.escapeDepthZeroBackticks(input);
-      expect(result.content).toBe('Use \\`x\\` and ${cond?`}`:`other`}');
-      expect(result.incomplete).toBe(false);
-    });
-
-    it('should not treat escaped \\${ as interpolation start at depth 0 (INTERP-001)', () => {
-      const input = 'text \\${ `code`';
-      const result = promptSync.escapeDepthZeroBackticks(input);
-      expect(result.content).toBe('text \\${ \\`code\\`');
-      expect(result.incomplete).toBe(false);
-    });
-
-    it('should not treat escaped \\${ inside interpolation as nested (INTERP-002)', () => {
-      const input = '${a \\${b} `code`';
-      const result = promptSync.escapeDepthZeroBackticks(input);
-      expect(result.content).toBe('${a \\${b} \\`code\\`');
-      expect(result.incomplete).toBe(false);
-    });
-
-    it('should not treat escaped \\${ inside template in interpolation (INTERP-003)', () => {
-      const input = '${a?`text \\${ more`:`other`} `code`';
-      const result = promptSync.escapeDepthZeroBackticks(input);
-      expect(result.content).toBe('${a?`text \\${ more`:`other`} \\`code\\`');
-      expect(result.incomplete).toBe(false);
-    });
-
-    it('should handle deeply nested template literals in interpolations', () => {
-      const input = '${a?`${b?`deep`:`also`}`:`flat`}';
-      const result = promptSync.escapeDepthZeroBackticks(input);
-      expect(result.content).toBe(input);
-      expect(result.incomplete).toBe(false);
-    });
-  });
-
-  describe('applyIdentifierMapping', () => {
-    // identifiers/identifierMap/extractedVars are positional: extractedVars[i]
-    // is the minified name captured for the label at identifiers[i].
-    const map = (content: string, pairs: Array<[string, string]>): string =>
-      promptSync.applyIdentifierMapping(
-        content,
-        pairs.map((_, i) => i),
-        Object.fromEntries(pairs.map(([human], i) => [String(i), human])),
-        pairs.map(([, minified]) => minified),
-        '1.0.0'
-      );
-
-    it('leaves a label appearing in prose byte-for-byte unchanged', () => {
-      const content = 'Use `$CLAUDE_JOB_DIR/tmp` for temporary files.';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(content);
-    });
-
-    it('leaves a bare label in prose unchanged even mid-sentence', () => {
-      const content =
-        'The CLAUDE_JOB_DIR variable points at the job directory.';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(content);
-    });
-
-    it('maps every identifier inside a call expression', () => {
-      const content = '${PATH_MODULE.join(CLAUDE_JOB_DIR,"tmp")}';
-      expect(
-        map(content, [
-          ['PATH_MODULE', 'q1'],
-          ['CLAUDE_JOB_DIR', '$e'],
-        ])
-      ).toBe('${q1.join($e,"tmp")}');
-    });
-
-    it('maps a label nested inside a call argument', () => {
-      const content = 'Ladder: ${JSON.stringify(VERDICT_LADDER)}';
-      expect(map(content, [['VERDICT_LADDER', 'Xy2']])).toBe(
-        'Ladder: ${JSON.stringify(Xy2)}'
-      );
-    });
-
-    it('leaves a code-looking line outside any interpolation unchanged', () => {
-      const content = 'const VERDICT_LADDER = ["a","b"];';
-      expect(map(content, [['VERDICT_LADDER', 'Xy2']])).toBe(content);
-    });
-
-    it('does not map a label inside a string literal in an expression', () => {
-      const content = '${f("CLAUDE_JOB_DIR")}';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(content);
-    });
-
-    it('does not map a label inside a single-quoted string', () => {
-      const content = "${f('CLAUDE_JOB_DIR')+CLAUDE_JOB_DIR}";
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        "${f('CLAUDE_JOB_DIR')+$e}"
-      );
-    });
-
-    it('maps both computed and property-position labels', () => {
-      expect(map('${o[CLAUDE_JOB_DIR]}', [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        '${o[$e]}'
-      );
-      // A property position is a real capture slot here — see
-      // isSubstitutableReference: pieces split on `.`/`?.` make the property
-      // name itself an extracted variable.
-      expect(map('${o.CLAUDE_JOB_DIR}', [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        '${o.$e}'
-      );
-    });
-
-    it('round-trips an optional-chained slot generated from pieces', () => {
-      // Shape emitted by reconstructContentFromPieces for pieces
-      // ['... ${', '?.', '??', '()}'] — the property name is slot 1.
-      const pieces = [
-        'This conversation was forked out of ${',
-        '?.',
-        '??',
-        '()}.',
-      ];
-      const identifiers = [0, 1, 2];
-      const identifierMap = { '0': 'VAR_0', '1': 'VAR_1', '2': 'VAR_2' };
-      const generated = promptSync.reconstructContentFromPieces(
-        pieces,
-        identifiers,
-        identifierMap
-      );
-      expect(generated).toContain('${VAR_0?.VAR_1??VAR_2()}');
-
-      const applied = promptSync.applyIdentifierMapping(
-        generated,
-        identifiers,
-        identifierMap,
-        ['z0', 'displayName', 'z2'],
-        '1.0.0'
-      );
-      expect(applied).toBe(
-        'This conversation was forked out of ${z0?.displayName??z2()}.'
-      );
-    });
-
-    it('does not map an object-literal key but does map its value', () => {
-      const content = '${JSON.stringify({CLAUDE_JOB_DIR: CLAUDE_JOB_DIR})}';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        '${JSON.stringify({CLAUDE_JOB_DIR: $e})}'
-      );
-    });
-
-    it('maps a spread of the binding', () => {
-      expect(map('${f(...VERDICT_LADDER)}', [['VERDICT_LADDER', 'Xy2']])).toBe(
-        '${f(...Xy2)}'
-      );
-    });
-
-    it('leaves an escaped \\${LABEL} entirely alone', () => {
-      const content = 'Literal \\${CLAUDE_JOB_DIR} stays put.';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(content);
-    });
-
-    it('throws on an unbalanced ${', () => {
-      expect(() =>
-        map('Broken ${CLAUDE_JOB_DIR', [['CLAUDE_JOB_DIR', '$e']])
-      ).toThrow(/unbalanced/);
-    });
-
-    it('throws on an interpolation closed only inside a string literal', () => {
-      expect(() => map('${f("}")', [['CLAUDE_JOB_DIR', '$e']])).toThrow(
-        /unbalanced/
-      );
-    });
-
-    it('maps inside a nested template literal expression', () => {
-      const content = '${a?`dir ${CLAUDE_JOB_DIR}`:`none`}';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        '${a?`dir ${$e}`:`none`}'
-      );
-    });
-
-    it('does not map template-literal text between interpolations', () => {
-      const content = '${a?`CLAUDE_JOB_DIR ${CLAUDE_JOB_DIR}`:``}';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        '${a?`CLAUDE_JOB_DIR ${$e}`:``}'
-      );
-    });
-
-    it('does not map inside a comment within an expression', () => {
-      const content = '${/* CLAUDE_JOB_DIR */ CLAUDE_JOB_DIR}';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        '${/* CLAUDE_JOB_DIR */ $e}'
-      );
-    });
-
-    it('does not map inside a regex literal within an expression', () => {
-      const content = '${s.replace(/CLAUDE_JOB_DIR/g,CLAUDE_JOB_DIR)}';
-      expect(map(content, [['CLAUDE_JOB_DIR', '$e']])).toBe(
-        '${s.replace(/CLAUDE_JOB_DIR/g,$e)}'
-      );
-    });
-
-    it('treats a slash after an identifier as division, not a regex', () => {
-      const content = '${TOTAL_BUDGET/2} and ${TOTAL_BUDGET}';
-      expect(map(content, [['TOTAL_BUDGET', 'k9']])).toBe('${k9/2} and ${k9}');
-    });
-
-    it('picks the longest matching label for overlapping names', () => {
-      const content = '${JOB_DIR} ${JOB_DIR_ROOT}';
-      expect(
-        map(content, [
-          ['JOB_DIR', 'a1'],
-          ['JOB_DIR_ROOT', 'b2'],
-        ])
-      ).toBe('${a1} ${b2}');
-    });
-
-    it('preserves minified names containing $$ (#237)', () => {
-      expect(map('Usage: ${MAX_TIMEOUT()} ms', [['MAX_TIMEOUT', 'J$$']])).toBe(
-        'Usage: ${J$$()} ms'
-      );
-    });
-
-    it('substitutes UNKNOWN_<idx> fallback labels', () => {
-      const result = promptSync.applyIdentifierMapping(
-        'Value: ${UNKNOWN_0}',
-        [0],
-        {},
-        ['zZ'],
-        '1.0.0'
-      );
-      expect(result).toBe('Value: ${zZ}');
-    });
-
-    it('still replaces <<CCVERSION>> outside interpolations', () => {
-      const result = promptSync.applyIdentifierMapping(
-        'CC <<CCVERSION>> built <<BUILD_TIME>>',
-        [],
-        {},
-        [],
-        '2.1.214',
-        false,
-        '2026-01-01T00:00:00Z'
-      );
-      expect(result).toBe('CC 2.1.214 built 2026-01-01T00:00:00Z');
-    });
+    expect(writeFileSpy).not.toHaveBeenCalled();
   });
 });

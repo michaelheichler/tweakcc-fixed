@@ -1,3 +1,4 @@
+import { findClosingBracket } from './helpers';
 import { showDiff } from './index';
 
 export const ROUTER_TURN_STATUS_RUNTIME = `
@@ -27,10 +28,13 @@ export const writeComplexityRouterTurnStatus = (
   if (!oldFile.includes('subtype:"turn_duration"')) return oldFile;
 
   const factory = oldFile.match(
-    /function ([$\w]+)\(([$\w]+),([$\w]+),([$\w]+),([$\w]+),([$\w]+)\)\{return\{type:"system",subtype:"turn_duration",durationMs:\2,/
+    /function ([$\w]+)\(([$\w]+)((?:,[$\w]+){3,4})\)\{return\{type:"system",subtype:"turn_duration",durationMs:\2,/
   );
+  // 2.1.288+: the request-site call also passes `carriedEffort:CARRY`, and a
+  // second counterfactual call passes `carriedEffort:null` for telemetry. Only
+  // the real call (a bound carried-effort var) is the request site.
   const request = oldFile.match(
-    /([$\w]+)\(\(\)=>(([$\w]+)\(([$\w]+),([$\w]+)\.effortValue,\{turnEffort:\5\.turnEffort,hookEffortValue:\5\.hookEffortValue\}\))\)/
+    /([$\w]+)\(\(\)=>(([$\w]+)\(([$\w]+),([$\w]+)\.effortValue,\{turnEffort:\5\.turnEffort,hookEffortValue:\5\.hookEffortValue(?:,carriedEffort:(?!null\})[$\w]+)?\}\))\)/
   );
   const renderer = oldFile.match(
     /children:`\$\{([$\w]+)\} for \$\{([$\w]+)\}\$\{([$\w]+)\?` \\xB7 done \$\{\3\}`:""\}`/
@@ -42,40 +46,57 @@ export const writeComplexityRouterTurnStatus = (
     return null;
   }
   const requestPrefix = oldFile.slice(0, request.index);
+  const escapeId = (id: string) => id.replace(/\$/g, '\\$');
+  // The request site sits in the main-query generator: its first param is the
+  // message list, its sixth the options object, either bare or (2.1.288+)
+  // destructured as `{modelFacts:F,...REST}` with REST the options; 2.1.317+
+  // adds trailing params. 2.1.285+ aliases the options to a local
+  // (`D=b===h.fallbackModel?h:{...h,fallbackModel:b}`) that the request site
+  // reads. Candidates are tried nearest first, so a nested generator without
+  // the alias is skipped and an earlier generator elsewhere never wins over
+  // the enclosing one.
   const query = [
     ...requestPrefix.matchAll(
-      /function\*[$\w]+\(([$\w]+),[$\w]+,[$\w]+,[$\w]+,[$\w]+,([$\w]+)\)\{/g
+      /function\*[$\w]+\(([$\w]+),[$\w]+,[$\w]+,[$\w]+,[$\w]+,(?:([$\w]+)|\{(?:[$\w]+:[$\w]+,)*\.\.\.([$\w]+)\})(?:,[$\w]+)*\)\{/g
     ),
-  ].at(-1);
+  ]
+    .reverse()
+    .find(q => {
+      // Only a generator whose body encloses the request site; the alias
+      // test then reads that body alone.
+      const open = q.index! + q[0].length - 1;
+      if (findClosingBracket(oldFile, open, oldFile.length) < request.index!)
+        return false;
+      const options = q[2] ?? q[3];
+      return (
+        options === request[5] ||
+        new RegExp(
+          `[,{]${escapeId(request[5])}=[$\\w]+===${escapeId(options)}\\.fallbackModel\\?${escapeId(options)}:\\{\\.\\.\\.${escapeId(options)},`
+        ).test(oldFile.slice(open, request.index))
+      );
+    });
   const renderPrefix = oldFile.slice(
     Math.max(0, renderer.index! - 7000),
     renderer.index
   );
+  // 2.1.304+: the props destructure gains trailing keys (`snapshot:h`).
   const message = [
     ...renderPrefix.matchAll(
-      /\{message:([$\w]+),addMargin:[$\w]+,verb:[$\w]+\}/g
+      /\{message:([$\w]+),addMargin:[$\w]+,verb:[$\w]+(?:,[$\w]+:[$\w]+)*\}/g
     ),
   ].at(-1)?.[1];
-  const escapeId = (id: string) => id.replace(/\$/g, '\\$');
-  // 2.1.285+: the generator aliases its options param to a local
-  // (`D=b===h.fallbackModel?h:{...h,fallbackModel:b}`) and the request site
-  // reads that alias. The alias is the options object for the record call.
-  const optionsAlias =
-    !!query &&
-    (query[2] === request[5] ||
-      new RegExp(
-        `[,{]${escapeId(request[5])}=[$\\w]+===${escapeId(query[2])}\\.fallbackModel\\?${escapeId(query[2])}:\\{\\.\\.\\.${escapeId(query[2])},`
-      ).test(oldFile.slice(query.index, request.index)));
-  if (!query || !optionsAlias || !message) {
+  if (!query || !message) {
     console.error('patch: complexityRouter: failed to find turn status scopes');
     return null;
   }
+  // Up to 2.1.294 the factory takes a budget second, and so does every call.
+  const budgetArg = factory[3].split(',').length === 5 ? '([$\\w]+),' : '()';
   // The message-list arg is a bare identifier, or (2.1.285+) a snapshot getter
   // expression like `H.transcript.getSnapshot()`.
   const calls = [
     ...oldFile.matchAll(
       new RegExp(
-        `${factory[1].replace(/\$/g, '\\$')}\\(([$\\w]+(?:\\.durationMs)?),([$\\w]+),([$\\w]+)\\(((?:[$\\w]+(?:\\([^()]*\\))?)(?:\\.[$\\w]+(?:\\([^()]*\\))?)*),([$\\w]+)\\)(,[$\\w]+\\.pendingBackgroundAgentCount,[$\\w]+\\.pendingWorkflowCount)?\\)`,
+        `(?<![$\\w.])${factory[1].replace(/\$/g, '\\$')}\\(([$\\w]+(?:\\.durationMs)?),${budgetArg}([$\\w]+)\\(((?:[$\\w]+(?:\\([^()]*\\))?)(?:\\.[$\\w]+(?:\\([^()]*\\))?)*),([$\\w]+)\\)(,[$\\w]+\\.pendingBackgroundAgentCount,[$\\w]+\\.pendingWorkflowCount)?\\)`,
         'g'
       )
     ),

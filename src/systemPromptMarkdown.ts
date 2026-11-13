@@ -13,6 +13,7 @@ export interface StringsPrompt {
   version: string;
   occurrences?: number;
   platforms?: string[];
+  asset?: string;
 }
 
 export interface StringsFile {
@@ -71,8 +72,24 @@ export const stringifyPromptMarkdown = (
 ): string => {
   const header = matter
     .stringify('', frontmatterData, { delimiters: ['<!--', '-->'] })
-    .replace(/\n$/, '');
-  return header + (content.endsWith('\n') ? content : content + '\n');
+    .replace(/\n$/, '')
+    .split('\n');
+  for (const [key, value] of Object.entries(frontmatterData)) {
+    if (typeof value !== 'string') continue;
+    const start = header.findIndex(line => line.startsWith(`${key}:`));
+    if (start < 0) continue;
+    let end = start + 1;
+    while (
+      end < header.length &&
+      (header[end] === '' || /^\s/.test(header[end]))
+    ) {
+      end++;
+    }
+    header.splice(start, end - start, `${key}: ${JSON.stringify(value)}`);
+  }
+  return (
+    header.join('\n') + (content.endsWith('\n') ? content : content + '\n')
+  );
 };
 
 export const generateMarkdownFromPrompt = (
@@ -81,7 +98,7 @@ export const generateMarkdownFromPrompt = (
   extraFrontmatter?: Record<string, unknown>
 ): string => {
   const content =
-    customContent ||
+    customContent ??
     reconstructContentFromPieces(
       prompt.pieces,
       prompt.identifiers,

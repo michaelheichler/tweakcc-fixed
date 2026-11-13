@@ -1,53 +1,36 @@
 import { describe, it, expect, vi } from 'vitest';
 import { writeModelCustomizations, CUSTOM_MODELS } from './modelSelector';
 
-// modelSelector injects extra Claude models into CC's model-picker list.
-// The patch (a) finds the custom-model push site
-//   `<var>.push({value:V,label:L,description:"Custom model"})`
-// to learn the list variable name, then (b) walks back (<=5000 bytes) for the
-// function whose body declares that variable
-//   `function name(args){ ... let <var>=[...]; ... }`
-// and splices a `<var>.push({...});` for each CUSTOM_MODELS entry right after
-// the declaration's semicolon.
-//
-// FIXTURE mirrors that minified shape: a function that declares the list var
-// `nQ` (with a comma-prefixed sibling, the `let `-prefixed form is also valid),
-// later building the user's custom model and pushing it onto `nQ`.
-// NOTE: the push-site lead boundary is a negative lookbehind on [$\w] (NOT a
-// literal space) — CC 2.1.197 restructured the enumeration into a for-of loop so
-// the push is now preceded by `;` (`...continue;<var>.push(...)`). The operands
-// stay identifier-only `value:`/`label:`. The space-preceded fixtures below still
-// satisfy the lookbehind; the `;`-preceded case has its own regression test.
 const FIXTURE =
   'q=1;function $Hk(B,Q){let aZ=B.foo,nQ=[{value:"claude-x",label:"X",description:"Built in"}];' +
   'if(Q){let mV=Q.model,nm=Q.name; nQ.push({value:mV,label:nm,description:"Custom model"})}return nQ}z=2;';
 
 describe('writeModelCustomizations', () => {
-  it('splices a push() for every CUSTOM_MODELS entry onto the discovered list var', () => {
-    const out = writeModelCustomizations(FIXTURE);
+  it.each(CUSTOM_MODELS)(
+    'adds configured model $value to the discovered list',
+    model => {
+      const out = writeModelCustomizations(FIXTURE);
 
-    expect(out).not.toBeNull();
-    // Discovered the list var (`nQ`) and emitted a push for each custom model,
-    // each serialized via JSON.stringify (quoted keys).
-    for (const model of CUSTOM_MODELS) {
+      expect(out).not.toBeNull();
       expect(out).toContain(`nQ.push(${JSON.stringify(model)});`);
     }
-    // The marquee model id lands verbatim with the JSON.stringify quoting the
-    // skip-guard later keys off of.
-    expect(out).toContain('"value":"claude-opus-4-6"');
-    // Injection sits right after the declaration's `;` and before the original
-    // custom push (so the injected models are in the list when it's returned).
+  );
+
+  it('inserts models before the user supplied model', () => {
+    const out = writeModelCustomizations(FIXTURE)!;
     const declEnd =
       out!.indexOf('description:"Built in"}];') +
       'description:"Built in"}];'.length;
-    const injectAt = out!.indexOf('nQ.push({"value":"claude-opus-4-6"');
+    const firstModelPush = `nQ.push(${JSON.stringify(CUSTOM_MODELS[0])});`;
+    const injectAt = out.indexOf(firstModelPush);
     const origPush = out!.indexOf('description:"Custom model"');
-    expect(injectAt).toBe(declEnd); // spliced immediately after the declaration
+    expect(injectAt).toBe(declEnd);
     expect(injectAt).toBeLessThan(origPush);
   });
+});
 
+describe('model list insertion shapes', () => {
   it('honors the let/comma declaration via the `let `-prefixed form too', () => {
-    // Same shape but the list var is the FIRST (let-prefixed) declarator.
     const fixture =
       'function r0(A){let nQ=[{value:"a",label:"A",description:"Built in"}],zz=1;' +
       ' nQ.push({value:x,label:y,description:"Custom model"});return nQ}';
@@ -57,9 +40,6 @@ describe('writeModelCustomizations', () => {
   });
 
   it('matches the CC 2.1.197 shape where the push is preceded by `;` (no space)', () => {
-    // 2.1.197 turned the availableModels enumeration into a for-of loop, so the
-    // model-list push lost its leading space: `...continue;t.push({...})`. The
-    // lookbehind must still discover `t` and splice after `let t=Amp(e),n=1;`.
     const fixture =
       'function Rmp(e){let t=Amp(e),n=1;for(let l of e){if(t.has(l))continue;' +
       't.push({value:l,label:l,description:"Custom model"})}return t}';
@@ -68,8 +48,9 @@ describe('writeModelCustomizations', () => {
     expect(out).toContain(`t.push(${JSON.stringify(CUSTOM_MODELS[0])});`);
     const declEnd =
       out!.indexOf('let t=Amp(e),n=1;') + 'let t=Amp(e),n=1;'.length;
-    const injectAt = out!.indexOf('t.push({"value":"claude-opus-4-6"');
-    expect(injectAt).toBe(declEnd); // spliced right after the declaration's `;`
+    const firstModelPush = `t.push(${JSON.stringify(CUSTOM_MODELS[0])});`;
+    const injectAt = out!.indexOf(firstModelPush);
+    expect(injectAt).toBe(declEnd);
   });
 
   it('keeps a `$`-bearing list var name intact (escapeIdent path)', () => {
@@ -83,20 +64,16 @@ describe('writeModelCustomizations', () => {
 
   it('produces valid JS injection (descriptions with special chars stay escaped)', () => {
     const out = writeModelCustomizations(FIXTURE)!;
-    // The injected run sits between the declaration and the original `if(Q){`.
-    // Slice exactly that run (all JSON.stringify'd pushes) and confirm it parses
-    // as valid JS — proving descriptions with parens/dates stay properly quoted.
-    const start = out.indexOf('nQ.push({"value":"claude-opus-4-6"');
+    const firstModelPush = `nQ.push(${JSON.stringify(CUSTOM_MODELS[0])});`;
+    const start = out.indexOf(firstModelPush);
     const injected = out.slice(start, out.indexOf('if(Q){', start));
     expect(() => new Function('nQ', injected)).not.toThrow();
-    // Sanity: the run contains exactly one push per custom model.
     expect(injected.match(/nQ\.push\(\{/g)).toHaveLength(CUSTOM_MODELS.length);
   });
 
   it('is idempotent: returns the file unchanged when custom models already present', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const already =
-      'x=1;nQ.push({"value":"claude-opus-4-6","label":"Opus 4.6","description":"d"});y=2;';
+    const already = `x=1;nQ.push(${JSON.stringify(CUSTOM_MODELS[0])});y=2;`;
     expect(writeModelCustomizations(already)).toBe(already);
     logSpy.mockRestore();
   });
@@ -111,11 +88,36 @@ describe('writeModelCustomizations', () => {
 
   it('returns null when the push site exists but no declaring function is found', () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    // Push present (with the required leading space), but `nQ` is never declared
-    // inside a function within lookback -> the second null branch.
     const noDecl =
       'x=1; nQ.push({value:x,label:y,description:"Custom model"});';
     expect(writeModelCustomizations(noDecl)).toBeNull();
     errSpy.mockRestore();
   });
+});
+
+const pickerRowsAfterPatch = (
+  nativeRows: { value: string; label: string; description?: string }[]
+) => {
+  const fixture =
+    `function f(){let n=${JSON.stringify(nativeRows)};` +
+    'if(false)n.push({value:x,label:y,description:"Custom model"});return n}';
+  const patched = writeModelCustomizations(fixture);
+  return new Function(`${patched};return f();`)() as {
+    value: string;
+    label: string;
+  }[];
+};
+
+it.each([
+  { nativeRows: [] },
+  { nativeRows: [{ value: 'claude-fable-5-2', label: 'Fable 5.2' }] },
+  { nativeRows: [{ value: 'fable', label: 'Fable 5.2' }] },
+])('makes the native Fable picker entry available once', ({ nativeRows }) => {
+  const rows = pickerRowsAfterPatch(nativeRows);
+
+  expect(
+    rows.filter(
+      row => row.value === 'claude-fable-5-2' || row.label === 'Fable 5.2'
+    )
+  ).toHaveLength(1);
 });

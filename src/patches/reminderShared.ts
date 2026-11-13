@@ -1,4 +1,6 @@
 import { showDiff } from './index';
+import { interpolations, literalEnd, matchingBrace } from './reminderSyntax';
+import { resolveSlots, emitReminder } from './reminderRendering';
 
 export interface ReminderApplyResult {
   id: string;
@@ -18,6 +20,8 @@ export interface ReminderInjection {
   placeholders: Record<string, string>;
   defaultBody: string;
   shadows?: string[];
+  previousDefaultBodies?: string[];
+  bodyIsMarker?: boolean;
   apply: (
     content: string,
     body: string,
@@ -25,7 +29,7 @@ export interface ReminderInjection {
   ) => string | null;
 }
 
-const findAndReplace = (
+export const findAndReplace = (
   content: string,
   pattern: RegExp,
   buildReplacement: (match: RegExpMatchArray) => string,
@@ -53,33 +57,103 @@ const findAndReplace = (
   return newContent;
 };
 
-const simpleEntryPattern = (key: string): RegExp =>
+export const simpleEntryPattern = (key: string): RegExp =>
   new RegExp(
     `${key}:\\(([$\\w]+)\\)=>([$\\w]+)\\(\\[([$\\w]+)\\(\\{content:\`((?:[^\`\\\\]|\\\\.)*)\`,isMeta:!0\\}\\)\\]\\)`
   );
 
-const slotExpr = (
+export const slotExpr = (
   template: string,
   param: string,
   prop: string
 ): string | null => {
   const m = template.match(
-    new RegExp(`\\$\\{((?:[$\\w]+\\()*${param}\\.${prop}\\)*)\\}`)
+    new RegExp(`\\$\\{((?:[$\\w]+\\()*${param}\\.${prop}\\)*(?:\\?\\?"")?)\\}`)
   );
-  return m ? m[1] : null;
+  if (m) return m[1];
+  const ref = new RegExp(`(?:^|[^$\\w.])${param}\\.${prop}(?![$\\w])`);
+  const calls = interpolations(template).filter(
+    x => /^[$\w]+\(.*\)(?:\?\?"")?$/s.test(x) && ref.test(x)
+  );
+  return calls.length === 1 ? calls[0] : null;
 };
 
-interface ReminderSlot {
+export interface ReminderSlot {
   placeholder: string;
   resolve: (template: string, param: string) => string | null;
+  optional?: boolean;
 }
 
-const propSlot = (placeholder: string, prop: string): ReminderSlot => ({
+export const propSlot = (placeholder: string, prop: string): ReminderSlot => ({
   placeholder,
   resolve: (template, param) => slotExpr(template, param, prop),
 });
 
-const toolNameSlot = (placeholder: string): ReminderSlot => ({
+export const pageCountTextSlot = (placeholder: string): ReminderSlot => ({
+  placeholder,
+  resolve: (template, param) =>
+    template.match(
+      new RegExp(
+        `\\$\\{(${param}\\.pageCount===null\\?"page count unknown":(?:\`(?:[^\`\\\\]|\\\\.|\\$\\{[^}]*\\})*\`|"[^"]*"))\\}`
+      )
+    )?.[1] ??
+    `${param}.pageCount===null?"page count unknown":${param}.pageCount+(${param}.pageCount===1?" page":" pages")`,
+});
+
+export const refusalTernary = (
+  template: string,
+  param: string
+): {
+  head: string;
+  refused: string;
+  otherwise: string;
+} | null => {
+  const head = `${param}.wholeRefusedByModel?`;
+  let emptied: {
+    head: string;
+    refused: string;
+    otherwise: string;
+  } | null = null;
+  for (const x of interpolations(template)) {
+    if (!x.startsWith(head) || x[head.length] !== '`') continue;
+    const end = literalEnd(x, head.length);
+    if (end < 0 || x[end + 1] !== ':') continue;
+    const t = {
+      head,
+      refused: x.slice(head.length, end + 1),
+      otherwise: x.slice(end + 2),
+    };
+    if (t.otherwise !== '""') return t;
+    emptied ??= t;
+  }
+  return emptied;
+};
+
+export const modelRefusedSlot = (placeholder: string): ReminderSlot => ({
+  placeholder,
+  optional: true,
+  resolve: (template, param) => {
+    const t = refusalTernary(template, param);
+    if (t) return `${t.head}${t.refused}:""`;
+    return template.includes('wholeRefusedByModel') ? null : '""';
+  },
+});
+
+export const unreadableReasonSlot = (placeholder: string): ReminderSlot => ({
+  placeholder,
+  resolve: (template, param) => {
+    const t = refusalTernary(template, param);
+    if (t)
+      return t.otherwise === '""'
+        ? null
+        : `${t.head}${t.refused}:${t.otherwise}`;
+    return template.includes('wholeRefusedByModel')
+      ? null
+      : '"This PDF is too large to read all at once."';
+  },
+});
+
+export const toolNameSlot = (placeholder: string): ReminderSlot => ({
   placeholder,
   resolve: (template, param) =>
     template.match(/\$\{([$\w]+\.name)\}/)?.[1] ??
@@ -90,16 +164,17 @@ const toolNameSlot = (placeholder: string): ReminderSlot => ({
     null,
 });
 
-interface MatchedEntry {
+export interface MatchedEntry {
   index: number;
   length: number;
   hParam: string;
   wrapFn: string;
   metaFn: string;
   template: string;
+  blockPreamble?: string;
 }
 
-const matchSimpleEntry = (
+export const matchSimpleEntry = (
   content: string,
   key: string
 ): MatchedEntry | null => {
@@ -115,7 +190,7 @@ const matchSimpleEntry = (
   };
 };
 
-const matchComposedEntry = (
+export const matchComposedEntry = (
   content: string,
   key: string
 ): MatchedEntry | null => {
@@ -144,7 +219,85 @@ const matchComposedEntry = (
   };
 };
 
-const applySimpleEntry = (
+export const matchEmittedEntry = (
+  content: string,
+  key: string
+): MatchedEntry | null => {
+  const head = new RegExp(
+    `${key}:\\(([$\\w]+)\\)=>\\(\\(c\\)=>c\\.trim\\(\\)===""\\?\\[\\]:([$\\w]+)\\(\\[([$\\w]+)\\(\\{content:c,isMeta:!0\\}\\)\\]\\)\\)\\(`
+  );
+  const m = content.match(head);
+  if (!m || m.index === undefined) return null;
+  const argOpen = m.index + m[0].length - 1;
+  const argClose = matchingBrace(content, argOpen);
+  if (argClose < 0) return null;
+  return {
+    index: m.index,
+    length: argClose + 1 - m.index,
+    hParam: m[1],
+    wrapFn: m[2],
+    metaFn: m[3],
+    template: content.slice(argOpen + 1, argClose),
+  };
+};
+
+export const matchBlockEntry = (
+  content: string,
+  key: string
+): MatchedEntry | null => {
+  const head = new RegExp(`${key}:\\(([$\\w]+)\\)=>\\{`);
+  const m = content.match(head);
+  if (!m || m.index === undefined) return null;
+  const bodyOpen = m.index + m[0].length - 1;
+  const bodyClose = matchingBrace(content, bodyOpen);
+  if (bodyClose < 0) return null;
+  const body = content.slice(bodyOpen + 1, bodyClose);
+  const returnRe = /return ([$\w]+)\(\[([$\w]+)\(\{content:/g;
+  let last: RegExpExecArray | null = null;
+  for (let r = returnRe.exec(body); r; r = returnRe.exec(body)) last = r;
+  const emittedRe =
+    /return ?\(\(c\)=>c\.trim\(\)===""\?\[\]:([$\w]+)\(\[([$\w]+)\(\{content:c,isMeta:!0\}\)\]\)\)\(/g;
+  let emitted: RegExpExecArray | null = null;
+  for (let r = emittedRe.exec(body); r; r = emittedRe.exec(body)) emitted = r;
+  if (emitted && (!last || emitted.index > last.index)) {
+    const argOpen = bodyOpen + 1 + emitted.index + emitted[0].length - 1;
+    const argClose = matchingBrace(content, argOpen);
+    if (argClose !== bodyClose - 1) return null;
+    return {
+      index: m.index,
+      length: bodyClose + 1 - m.index,
+      hParam: m[1],
+      wrapFn: emitted[1],
+      metaFn: emitted[2],
+      template:
+        body.slice(0, emitted.index) + content.slice(argOpen + 1, argClose),
+      blockPreamble: body.slice(0, emitted.index),
+    };
+  }
+  if (!last) return null;
+  const objOpen =
+    bodyOpen + 1 + last.index + last[0].length - 1 - 'content:'.length;
+  if (content[objOpen] !== '{') return null;
+  const objClose = matchingBrace(content, objOpen);
+  if (objClose < 0) return null;
+  const tail = ',isMeta:!0';
+  const objBody = content.slice(objOpen + 1, objClose);
+  if (!objBody.startsWith('content:') || !objBody.endsWith(tail)) return null;
+  if (content.slice(objClose + 1, bodyClose) !== ')])') return null;
+  return {
+    index: m.index,
+    length: bodyClose + 1 - m.index,
+    hParam: m[1],
+    wrapFn: last[1],
+    metaFn: last[2],
+    template:
+      body.slice(0, last.index) +
+      objBody.slice('content:'.length, objBody.length - tail.length),
+    blockPreamble: body.slice(0, last.index),
+  };
+};
+
+export const applySimpleEntry = (
   content: string,
   key: string,
   slots: ReminderSlot[],
@@ -153,31 +306,39 @@ const applySimpleEntry = (
 ): string | null => {
   const patchName = key.replace(/_/g, '-');
   const found =
-    matchSimpleEntry(content, key) ?? matchComposedEntry(content, key);
+    matchSimpleEntry(content, key) ??
+    matchComposedEntry(content, key) ??
+    matchEmittedEntry(content, key) ??
+    matchBlockEntry(content, key);
   if (!found) {
     if (new RegExp(`${key}:\\([$\\w]+\\)=>\\[\\]`).test(content))
       return content;
     console.error(`patch: reminder ${patchName}: failed to find anchor`);
     return null;
   }
-  const { index, length, hParam, wrapFn, metaFn, template } = found;
+  const { index, length, hParam, wrapFn, metaFn, template, blockPreamble } =
+    found;
   let replacement: string;
   if (isSuppressed) {
     replacement = `${key}:(${hParam})=>[]`;
   } else {
-    let built = body;
-    for (const slot of slots) {
-      if (!built.includes(slot.placeholder)) continue;
-      const expr = slot.resolve(template, hParam);
-      if (expr === null) {
-        console.error(
-          `patch: reminder ${patchName}: no pristine expression for ${slot.placeholder}`
-        );
-        return null;
-      }
-      built = built.split(slot.placeholder).join(`\${${expr}}`);
-    }
-    replacement = `${key}:(${hParam})=>${wrapFn}([${metaFn}({content:\`${built}\`,isMeta:!0})])`;
+    const resolved = resolveSlots(
+      patchName,
+      body,
+      slots.map(slot => ({
+        token: slot.placeholder,
+        expr: body.includes(slot.placeholder)
+          ? slot.resolve(template, hParam)
+          : null,
+        optional: slot.optional,
+      }))
+    );
+    if (resolved === null) return null;
+    const call = emitReminder(wrapFn, metaFn, body, resolved);
+    replacement =
+      blockPreamble === undefined
+        ? `${key}:(${hParam})=>${call}`
+        : `${key}:(${hParam})=>{${blockPreamble}return ${call}}`;
   }
   const newContent =
     content.slice(0, index) + replacement + content.slice(index + length);
@@ -185,48 +346,7 @@ const applySimpleEntry = (
   return newContent;
 };
 
-const matchingBrace = (content: string, openIdx: number): number => {
-  if (content[openIdx] !== '{') return -1;
-  let depth = 0;
-  let inTpl = false;
-  let inSingle = false;
-  let inDouble = false;
-  let inTplExpr = 0;
-  for (let i = openIdx; i < content.length; i++) {
-    const c = content[i];
-    const prev = content[i - 1];
-    if (inSingle) {
-      if (c === '\\') i++;
-      else if (c === "'") inSingle = false;
-    } else if (inDouble) {
-      if (c === '\\') i++;
-      else if (c === '"') inDouble = false;
-    } else if (inTpl) {
-      if (c === '\\') i++;
-      else if (c === '`' && inTplExpr === 0) inTpl = false;
-      else if (c === '$' && content[i + 1] === '{') {
-        inTplExpr++;
-        i++;
-      } else if (c === '}' && inTplExpr > 0) {
-        inTplExpr--;
-      }
-    } else if (c === "'" && prev !== '\\') {
-      inSingle = true;
-    } else if (c === '"' && prev !== '\\') {
-      inDouble = true;
-    } else if (c === '`' && prev !== '\\') {
-      inTpl = true;
-    } else if (c === '{') {
-      depth++;
-    } else if (c === '}') {
-      depth--;
-      if (depth === 0) return i;
-    }
-  }
-  return -1;
-};
-
-const findCaseBody = (
+export const findCaseBody = (
   content: string,
   caseName: string,
   anchorEnglish: string
@@ -255,47 +375,25 @@ const findCaseBody = (
   return { headerIdx, bodyStart, bodyEnd };
 };
 
-const discoverWrappers = (
+export const discoverWrappers = (
   caseBody: string
 ): {
   arrayWrap: string;
   msgCtor: string;
-} => {
+} | null => {
   const re = /return\s+[^;]*?([$\w]+)\(\[([$\w]+)\(\{content:/g;
   let last: RegExpExecArray | null = null;
   let m: RegExpExecArray | null;
   while ((m = re.exec(caseBody)) !== null) last = m;
-  return last
-    ? { arrayWrap: last[1], msgCtor: last[2] }
-    : { arrayWrap: 'o5', msgCtor: 'j6' };
+  return last ? { arrayWrap: last[1], msgCtor: last[2] } : null;
 };
 
-const discoverFeatureGuard = (caseBody: string): string | null => {
-  const m = caseBody.match(
-    /^\s*if\((!?[$\w]+\(\)(?:(?:\|\||&&)!?[$\w]+\(\))*)\)return\s*\[\]/
-  );
-  return m ? m[1] : null;
-};
+export const discoverDeltaParam = (
+  caseBody: string,
+  sampleProp: string
+): string | null =>
+  caseBody.match(new RegExp(`([$\\w]+)\\.${sampleProp}(?![$\\w])`))?.[1] ??
+  null;
 
-const discoverDeltaParam = (caseBody: string, sampleProp: string): string => {
-  const m = caseBody.match(new RegExp(`([$\\w]+)\\.${sampleProp}\\b`));
-  return m ? m[1] : 'H';
-};
-
-export {
-  findAndReplace,
-  simpleEntryPattern,
-  slotExpr,
-  ReminderSlot,
-  propSlot,
-  toolNameSlot,
-  MatchedEntry,
-  matchSimpleEntry,
-  matchComposedEntry,
-  applySimpleEntry,
-  matchingBrace,
-  findCaseBody,
-  discoverWrappers,
-  discoverFeatureGuard,
-  discoverDeltaParam,
-};
+export const isSuppressedCase = (content: string, key: string): boolean =>
+  content.includes(`case"${key}":{return [];}`);

@@ -1,25 +1,22 @@
-import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import {
-  ensureReminderOverrideFile,
-  loadReminderOverride,
-  substitutePlaceholders,
-} from '../systemReminderSync';
+import * as os from 'node:os';
+import * as fs from 'node:fs/promises';
 import { ReminderInjection, ReminderApplyResult } from './reminderShared';
 import {
   CLAUDEMD_INJECTION,
-  SKILLS_INJECTION,
   MCP_INSTRUCTIONS_INJECTION,
   AGENT_LISTING_INJECTION,
   OUTPUT_STYLE_INJECTION,
+} from './reminderInjectionsContext';
+import { SKILLS_INJECTION } from './reminderInjectionsSkills';
+import {
   THINKING_REMINDER_INJECTION,
   ULTRATHINK_INJECTION,
   DATE_CHANGE_INJECTION,
   HOOK_ADDITIONAL_CONTEXT_INJECTION,
   HOOK_BLOCKING_ERROR_INJECTION,
   HOOK_STOPPED_INJECTION,
-} from './reminderInjectionsContext';
+} from './reminderInjectionsHooks';
 import {
   TOOL_CALLED_INJECTION,
   TOOL_RESULT_INJECTION,
@@ -27,8 +24,8 @@ import {
   LOCAL_CMD_CAVEAT_INJECTION,
   COMPACT_FILE_REF_INJECTION,
   PDF_REF_INJECTION,
-  EDITED_TEXT_FILE_INJECTION,
 } from './reminderInjectionsTools';
+import { EDITED_TEXT_FILE_INJECTION } from './reminderInjectionsEditedText';
 import {
   SELECTED_LINES_INJECTION,
   OPENED_FILE_INJECTION,
@@ -37,20 +34,25 @@ import {
   AUTO_MODE_EXIT_INJECTION,
   NESTED_MEMORY_INJECTION,
   AGENT_MENTION_INJECTION,
-  MEMORY_UPDATE_INJECTION,
   VERIFY_PLAN_INJECTION,
 } from './reminderInjectionsFiles';
+import { MEMORY_UPDATE_INJECTION } from './reminderInjectionsMemory';
 import {
   TOKEN_USAGE_INJECTION,
   BUDGET_USD_INJECTION,
+  OUTPUT_TOKEN_USAGE_INJECTION,
   TASK_LIST_REMINDER_INJECTION,
   TASK_NOTIFICATION_FRAMING_INJECTION,
-  USER_NEW_MSG_INJECTION,
   STOP_HOOK_GOAL_INJECTION,
-  MCP_PER_SERVER_ROUTER_INJECTION,
-  OUTPUT_TOKEN_USAGE_INJECTION,
 } from './reminderInjectionsSession';
-export type { ReminderApplyResult, ReminderInjection } from './reminderShared';
+import { USER_NEW_MSG_INJECTION } from './reminderInjectionsMessages';
+import { MCP_PER_SERVER_ROUTER_INJECTION } from './reminderInjectionsMcpRouter';
+import { withStockBodyNoop, normalizeBody } from './reminderStockBody';
+import {
+  ensureReminderOverrideFile,
+  loadReminderOverride,
+  substitutePlaceholders,
+} from '../systemReminderSync';
 
 export const REMINDER_REGISTRY: ReminderInjection[] = [
   CLAUDEMD_INJECTION,
@@ -88,7 +90,7 @@ export const REMINDER_REGISTRY: ReminderInjection[] = [
   USER_NEW_MSG_INJECTION,
   STOP_HOOK_GOAL_INJECTION,
   MCP_PER_SERVER_ROUTER_INJECTION,
-];
+].map(withStockBodyNoop);
 
 const discoverMcpServerNames = async (): Promise<string[]> => {
   const candidates = [
@@ -111,17 +113,93 @@ const discoverMcpServerNames = async (): Promise<string[]> => {
   return [];
 };
 
+const applyReminderOverride = async (
+  content: string,
+  injection: ReminderInjection,
+  ccVersion: string
+): Promise<{ content: string; result: ReminderApplyResult }> => {
+  const created = await ensureReminderOverrideFile(
+    injection.id,
+    injection.name,
+    injection.description,
+    ccVersion,
+    Object.keys(injection.placeholders),
+    injection.defaultBody
+  );
+  const base = {
+    id: injection.id,
+    name: injection.name,
+    description: injection.description,
+    applied: false,
+    failed: false,
+    skipped: false,
+  };
+  const override = await loadReminderOverride(injection.id);
+  if (!override) {
+    return {
+      content,
+      result: {
+        ...base,
+        state: 'default',
+        skipped: true,
+        details: 'override file missing after ensure (unexpected)',
+      },
+    };
+  }
+  const { result: substituted, errors } = substitutePlaceholders(
+    override.body,
+    injection.placeholders
+  );
+  if (errors.length > 0) {
+    return {
+      content,
+      result: {
+        ...base,
+        state: 'override',
+        failed: true,
+        details: errors.join('; '),
+      },
+    };
+  }
+  const next = injection.apply(content, substituted, override.isSuppressed);
+  if (next === null) {
+    return {
+      content,
+      result: {
+        ...base,
+        state: override.isSuppressed ? 'suppressed' : 'override',
+        failed: true,
+        details: 'patch function returned null',
+      },
+    };
+  }
+  const isStock = [
+    injection.defaultBody,
+    ...(injection.previousDefaultBodies ?? []),
+  ].some(body => normalizeBody(body) === normalizeBody(override.body));
+  const state = override.isSuppressed
+    ? 'suppressed'
+    : isStock
+      ? 'default'
+      : 'override';
+  return {
+    content: next,
+    result: {
+      ...base,
+      state,
+      applied: next !== content,
+      details: created ? 'seeded default file' : undefined,
+    },
+  };
+};
+
 export const applySystemReminderOverrides = async (
   content: string,
   ccVersion: string
-): Promise<{
-  content: string;
-  results: ReminderApplyResult[];
-}> => {
+): Promise<{ content: string; results: ReminderApplyResult[] }> => {
   const results: ReminderApplyResult[] = [];
   let working = content;
-  const mcpServerNames = await discoverMcpServerNames();
-  for (const name of mcpServerNames) {
+  for (const name of await discoverMcpServerNames()) {
     await ensureReminderOverrideFile(
       `mcp-${name}`,
       `MCP server: ${name}`,
@@ -132,75 +210,11 @@ export const applySystemReminderOverrides = async (
     );
   }
   for (const injection of REMINDER_REGISTRY) {
-    const created = await ensureReminderOverrideFile(
-      injection.id,
-      injection.name,
-      injection.description,
-      ccVersion,
-      Object.keys(injection.placeholders),
-      injection.defaultBody
-    );
-    const override = await loadReminderOverride(injection.id);
-    if (!override) {
-      results.push({
-        id: injection.id,
-        name: injection.name,
-        description: injection.description,
-        state: 'default',
-        applied: false,
-        failed: false,
-        skipped: true,
-        details: 'override file missing after ensure (unexpected)',
-      });
-      continue;
-    }
-    const { result: substituted, errors } = substitutePlaceholders(
-      override.body,
-      injection.placeholders
-    );
-    if (errors.length > 0) {
-      results.push({
-        id: injection.id,
-        name: injection.name,
-        description: injection.description,
-        state: 'override',
-        applied: false,
-        failed: true,
-        skipped: false,
-        details: errors.join('; '),
-      });
-      continue;
-    }
-    const next = injection.apply(working, substituted, override.isSuppressed);
-    if (next === null) {
-      results.push({
-        id: injection.id,
-        name: injection.name,
-        description: injection.description,
-        state: override.isSuppressed ? 'suppressed' : 'override',
-        applied: false,
-        failed: true,
-        skipped: false,
-        details: 'patch function returned null',
-      });
-      continue;
-    }
-    const applied = next !== working;
-    working = next;
-    let state: ReminderApplyResult['state'];
-    if (override.isSuppressed) state = 'suppressed';
-    else if (override.body === injection.defaultBody.trim()) state = 'default';
-    else state = 'override';
-    results.push({
-      id: injection.id,
-      name: injection.name,
-      description: injection.description,
-      state,
-      applied,
-      failed: false,
-      skipped: false,
-      details: created ? 'seeded default file' : undefined,
-    });
+    const applied = await applyReminderOverride(working, injection, ccVersion);
+    working = applied.content;
+    results.push(applied.result);
   }
   return { content: working, results };
 };
+
+export type { ReminderApplyResult, ReminderInjection } from './reminderShared';

@@ -34,6 +34,8 @@ import { writeOpusplan1m } from './opusplan1m';
 import { writeThinkingBlockStyling } from './thinkingBlockStyling';
 import { writeFixLspSupport } from './fixLspSupport';
 import { writeNoGlobalCacheScope } from './globalCacheScope';
+import { writeFffInstructionHygiene } from './fffInstructions';
+import { writeEmptyEnvironment } from './emptyEnvironment';
 import { writeFixSummarizeFromHere } from './fixSummarizeFromHere';
 import { writeFixRewindSummaryHeader } from './fixRewindSummaryHeader';
 import { writeStatuslineUpdateThrottle } from './statuslineUpdateThrottle';
@@ -56,6 +58,14 @@ import { writeSubagentModels } from './subagentModels';
 import { writeThinkingVisibility } from './thinkingVisibility';
 import { writeHideStartupBanner } from './hideStartupBanner';
 import { writeHideCtrlGToEdit } from './hideCtrlGToEdit';
+import { writePlanExitCommand } from './planExitCommand';
+import { writeKeybindingCustomization } from './keybindingCustomization';
+import { writeInputCursorColor } from './inputCursorColor';
+import { writeTmuxGraphicsPassthrough } from './tmuxGraphicsPassthrough';
+import { writeDisableCtrlZSuspend } from './disableCtrlZSuspend';
+import { writeSkipSkillShellValidation } from './skipSkillShellValidation';
+import { writeShimmerStyle } from './shimmerStyle';
+import { writeWebFetchUserAgent } from './webFetchUserAgent';
 import { writeHideStartupClawd } from './hideStartupClawd';
 import { writeIncreaseFileReadLimit } from './increaseFileReadLimit';
 import { writeSuppressLineNumbers } from './suppressLineNumbers';
@@ -67,8 +77,10 @@ import { writeAgentsMd } from './agentsMd';
 import { writeAutoAcceptPlanMode } from './autoAcceptPlanMode';
 import { writeAllowBypassPermsInSudo } from './allowBypassPermsInSudo';
 import { writeSuppressNativeInstallerWarning } from './suppressNativeInstallerWarning';
+import { writeModelAtEffort } from './modelAtEffort';
 import { writeScrollEscapeSequenceFilter } from './scrollEscapeSequenceFilter';
 import { writeMaxEffortDefault } from './maxEffortDefault';
+import { writeCompactionHighEffort } from './compactionHighEffort';
 import { writeAutonomousOperationAllModels } from './autonomousOperationAllModels';
 import { writeRefusalFallbackModel } from './refusalFallbackModel';
 import { writeOutputStyleTurnReminder } from './outputStyleTurnReminder';
@@ -81,6 +93,7 @@ import { writeWorktreeMode } from './worktreeMode';
 import { writeResponsiveMode } from './responsiveMode';
 import { writeSessionMemory } from './sessionMemory';
 import { writeSwapRipgrepForFff } from './swapRipgrepForFff';
+import { writeFffBashReads } from './fffBashReads';
 import { writeDreamMode } from './dreamMode';
 import { writeLeanMemoryTypes } from './leanMemoryTypes';
 import { writeToolsets } from './toolsets';
@@ -90,6 +103,9 @@ import { writeInputPatternHighlighters } from './inputPatternHighlighters';
 import { writeConversationTitle } from './conversationTitle';
 import { writeVoiceMode } from './voiceMode';
 import { writeChannelsMode } from './channelsMode';
+import { writeAttachedBackgroundInteractive } from './attachedBackgroundInteractive';
+import { writeProposeGoal } from './proposeGoal';
+import { writeDisableAgentSummaries } from './disableAgentSummaries';
 import {
   writeSuppressDeferredTools,
   writeStripEmptySystemReminders,
@@ -298,6 +314,8 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   opusplan1m: c => writeOpusplan1m(c),
   'thinking-block-styling': c => writeThinkingBlockStyling(c),
   'fix-lsp-support': c => writeFixLspSupport(c),
+  'fff-instruction-hygiene': c => writeFffInstructionHygiene(c),
+  'empty-environment': c => writeEmptyEnvironment(c),
   // The patch acts only once an identity line differs from stock, so one is
   // replaced here to exercise both of its anchors against the real bundle.
   'no-global-cache-scope': c =>
@@ -313,6 +331,15 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'statusline-update-throttle': c =>
     writeStatuslineUpdateThrottle(c, 300, false),
   'clear-screen': c => writeClearScreen(c),
+  'plan-exit-command': c => writePlanExitCommand(c),
+  'keybinding-customization': c => writeKeybindingCustomization(c),
+  'input-cursor-color': c => writeInputCursorColor(c, 'rgb(255,0,135)'),
+  'tmux-graphics-passthrough': c => writeTmuxGraphicsPassthrough(c),
+  'disable-ctrl-z': c => writeDisableCtrlZSuspend(c),
+  'skip-skill-shell-validation': c => writeSkipSkillShellValidation(c),
+  'shimmer-style': c =>
+    writeShimmerStyle(c, { enabled: false, stepMs: 100, width: 5 }),
+  'webfetch-user-agent': c => writeWebFetchUserAgent(c, 'tweakcc-test/1.0'),
   'input-chevron-color': c => writeInputChevronColor(c, 'green'),
   'session-color': c => writeSessionColor(c),
   'strip-empty-system-reminders': c => writeStripEmptySystemReminders(c),
@@ -360,6 +387,7 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'hide-startup-banner': c => writeHideStartupBanner(c),
   'hide-ctrl-g-to-edit': c => writeHideCtrlGToEdit(c),
   'hide-startup-clawd': c => writeHideStartupClawd(c),
+  'disable-agent-summaries': c => writeDisableAgentSummaries(c),
   'increase-file-read-limit': c => writeIncreaseFileReadLimit(c),
   'suppress-line-numbers': c => writeSuppressLineNumbers(c),
   'suppress-rate-limit-options': c => writeSuppressRateLimitOptions(c),
@@ -371,8 +399,10 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'allow-sudo-bypass-permissions': c => writeAllowBypassPermsInSudo(c),
   'suppress-native-installer-warning': c =>
     writeSuppressNativeInstallerWarning(c),
+  'model-at-effort': c => writeModelAtEffort(c),
   'filter-scroll-escape-sequences': c => writeScrollEscapeSequenceFilter(c),
   'max-effort-default': c => writeMaxEffortDefault(c),
+  'compaction-high-effort': c => writeCompactionHighEffort(c),
   'autonomous-operation-all-models': c => writeAutonomousOperationAllModels(c),
   'refusal-fallback-model': c =>
     writeRefusalFallbackModel(c, {
@@ -393,6 +423,16 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'worktree-mode': c => writeWorktreeMode(c),
   'session-memory': c => writeSessionMemory(c),
   'swap-ripgrep-for-fff': c => writeSwapRipgrepForFff(c, FFF_WRAPPER_PATH),
+  'fff-bash-reads': c => {
+    const search = writeSwapRipgrepForFff(c, FFF_WRAPPER_PATH);
+    return search === null
+      ? null
+      : writeFffBashReads(
+          search,
+          path.join(path.dirname(FFF_WRAPPER_PATH), 'viewers'),
+          FFF_WRAPPER_PATH
+        );
+  },
   'dream-mode': c => writeDreamMode(c),
   'lean-memory-types': c => writeLeanMemoryTypes(c),
   // All three bindings, each distinct: the selection expression emits a branch
@@ -421,6 +461,8 @@ const INVOCATIONS: Record<PatchId, (src: string) => string | null> = {
   'conversation-title': c => writeConversationTitle(c),
   'voice-mode': c => writeVoiceMode(c, true),
   'channels-mode': c => writeChannelsMode(c),
+  'attached-background-interactive': c => writeAttachedBackgroundInteractive(c),
+  'enable-propose-goal': c => writeProposeGoal(c),
   'suppress-deferred-tools': c => writeSuppressDeferredTools(c),
   'claudemd-context-once-per-conversation': c =>
     writeClaudemdContextOncePerConversation(c),
@@ -456,6 +498,17 @@ const EXPECTED_NOOP: Partial<Record<PatchId, string>> = {
     'CC >= 2.1.83 accepts any agent model string (no enum/includes gate)',
   'conversation-title':
     'CC ships /rename natively (name:"rename",aliases:["name"])',
+  'lean-memory-types':
+    'CC >= 2.1.319 removed the tengu_ochre_finch compact memory-types list ' +
+    'and its skill; only the verbose <types> prompt remains',
+};
+
+// Patches that apply but log an error on the pristine bundle, which the
+// harness reports as "partially applied". Each needs a reason and a backlog fix.
+const EXPECTED_PARTIAL: Partial<Record<PatchId, string>> = {
+  toolsets:
+    'code-split bundles have no React global: step 3 falls back to the text ' +
+    '/toolset command after the shared React lookup logs a failure',
 };
 
 type Outcome = 'applied' | 'no-op' | 'null';
@@ -465,6 +518,7 @@ interface PatchOutcome {
   outcome: Outcome;
   bytesDelta: number;
   parseError: string | null;
+  partialError: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -494,6 +548,14 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
     for (const def of getAllPatchDefinitions()) {
       const id = def.id;
       let result: string | null;
+      // Mirror applyCustomizations: an error logged by a patch that still
+      // returns a file is reported as "partially applied" and fails check.
+      const errors: string[] = [];
+      const consoleError = console.error;
+      console.error = (...args: unknown[]) => {
+        errors.push(args.map(String).join(' '));
+        consoleError(...args);
+      };
       try {
         result = INVOCATIONS[id](source);
       } catch (error) {
@@ -503,8 +565,11 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
           outcome: 'null',
           bytesDelta: 0,
           parseError: `threw: ${(error as Error).message}`,
+          partialError: null,
         });
         continue;
+      } finally {
+        console.error = consoleError;
       }
       const outcome: Outcome =
         result === null ? 'null' : result === source ? 'no-op' : 'applied';
@@ -514,6 +579,7 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
         bytesDelta: result === null ? 0 : result.length - source.length,
         parseError:
           outcome === 'applied' ? oracle.check(result!, `patched-${id}`) : null,
+        partialError: result !== null && errors.length > 0 ? errors[0] : null,
       });
       await new Promise<void>(resolve => setImmediate(resolve));
     }
@@ -601,6 +667,20 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
           're-anchor it, or declare the no-op with a reason.'
       ).not.toBe('no-op');
 
+      if (EXPECTED_PARTIAL[id]) {
+        expect(
+          outcome.partialError,
+          `${id} is recorded in EXPECTED_PARTIAL (${EXPECTED_PARTIAL[id]}) ` +
+            'but now applies cleanly — drop the entry'
+        ).not.toBeNull();
+      } else
+        expect(
+          outcome.partialError,
+          `${id} applied only partially against the pristine bundle (the ` +
+            'harness reports "partially applied" and the health check fails): ' +
+            `${outcome.partialError}`
+        ).toBeNull();
+
       expect(
         outcome.parseError,
         `${id} spliced JS that Bun cannot parse — this would brick Claude ` +
@@ -644,62 +724,101 @@ describe.skipIf(skipReason !== null)('every patch vs. pristine cli.js', () => {
 // and reworded two bodies, breaking six of these at once — and the first report
 // came from a user (skrabe/lobotomized-claude-code#25), because `--apply` only
 // runs a reminder whose `.md` exists locally and nothing else exercised them.
-// Each entry is driven twice: with its own defaultBody (the vanilla path) and
-// suppressed (the empty-body path), against the real pristine bundle.
+// An unedited body (the entry's own defaultBody) leaves pristine untouched, so
+// it no longer reaches the anchor. Each entry is therefore driven three ways:
+// its stock body (must be a no-op), an edited body (the stock body plus a
+// probe line, which must change the file, carry the probe into it and splice
+// parseable JS), and
+// suppressed (the empty-body path, also parse-checked).
 describe.skipIf(skipReason !== null)(
   'every system-reminder injection vs. pristine cli.js',
   () => {
+    const PROBE_TEXT = 'Probe line from the pristine gate.';
+    const PROBE = `\n${PROBE_TEXT}`;
+    // Reminders whose feature this build does not ship: an edited body has
+    // nothing to splice, so returning the file unchanged is correct.
+    const EXPECTED_REMINDER_NOOP: Record<string, string> = {
+      'thinking-reminder': 'no thinking_reminder handler in this build',
+      'verify-plan-reminder': 'CC >= 2.1.187 removed the verify-plan case body',
+    };
     const results = new Map<
       string,
-      { body: string | null; suppressed: string | null }
+      {
+        stock: string | null;
+        edited: string | null;
+        suppressed: string | null;
+        editedParse: string | null;
+        suppressedParse: string | null;
+      }
     >();
 
     beforeAll(() => {
+      const scratch = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'tweakcc-pristine-reminders-')
+      );
+      const oracle = makeOracle(bun!, scratch, pristine!.source);
       const source = pristine!.source;
+      const run = (
+        id: string,
+        label: string,
+        f: () => string | null
+      ): string | null => {
+        try {
+          return f();
+        } catch (error) {
+          console.error(
+            `reminder ${id} threw (${label}): ${(error as Error).message}`
+          );
+          return null;
+        }
+      };
+      const parse = (r: string | null, label: string): string | null =>
+        r === null || r === source ? null : oracle.check(r, label);
       for (const entry of REMINDER_REGISTRY) {
         const { result: body } = substitutePlaceholders(
           entry.defaultBody,
           entry.placeholders
         );
-        let applied: string | null;
-        let suppressed: string | null;
-        try {
-          applied = entry.apply(source, body, false);
-        } catch (error) {
-          applied = null;
-          console.error(
-            `reminder ${entry.id} threw: ${(error as Error).message}`
-          );
-        }
-        try {
-          suppressed = entry.apply(source, body, true);
-        } catch (error) {
-          suppressed = null;
-          console.error(
-            `reminder ${entry.id} threw (suppressed): ${(error as Error).message}`
-          );
-        }
-        results.set(entry.id, { body: applied, suppressed });
+        const stock = run(entry.id, 'stock', () =>
+          entry.apply(source, body, false)
+        );
+        const edited = run(entry.id, 'edited', () =>
+          entry.apply(source, body + PROBE, false)
+        );
+        const suppressed = run(entry.id, 'suppressed', () =>
+          entry.apply(source, body, true)
+        );
+        results.set(entry.id, {
+          stock,
+          edited,
+          suppressed,
+          editedParse: parse(edited, `reminder-${entry.id}-edited`),
+          suppressedParse: parse(suppressed, `reminder-${entry.id}-suppressed`),
+        });
       }
       const rows = REMINDER_REGISTRY.map(e => {
         const r = results.get(e.id)!;
         const label = (v: string | null) =>
           v === null ? 'NULL' : v === pristine!.source ? 'no-op' : 'applied';
-        return `  ${e.id.padEnd(40)} default=${label(r.body).padEnd(8)} suppressed=${label(r.suppressed)}`;
+        return (
+          `  ${e.id.padEnd(40)} stock=${label(r.stock).padEnd(8)} ` +
+          `edited=${label(r.edited).padEnd(8)} suppressed=${label(r.suppressed).padEnd(8)}` +
+          (r.editedParse || r.suppressedParse ? ' PARSE-ERROR' : '')
+        );
       }).join('\n');
       console.log(
         `reminder registry (${REMINDER_REGISTRY.length} entries) vs ${pristine!.path}:\n${rows}`
       );
-    });
+    }, 1200000);
 
     it.each(REMINDER_REGISTRY.map(e => e.id))(
-      '%s finds its anchor with its default body and when suppressed',
+      '%s finds its anchor for an edited body and when suppressed, and splices parseable JS',
       id => {
         const r = results.get(id)!;
         expect(
-          r.body,
-          `reminder ${id} returned null against the pristine bundle with its ` +
-            'own defaultBody: its anchor no longer matches this Claude Code ' +
+          r.edited,
+          `reminder ${id} returned null against the pristine bundle for an ` +
+            'edited body: its anchor no longer matches this Claude Code ' +
             'build. Re-derive the registry entry from cli.js — and prefer ' +
             'anchoring on the registry KEY and code shape over the English ' +
             'prose, which Anthropic rewords freely.'
@@ -707,11 +826,41 @@ describe.skipIf(skipReason !== null)(
         expect(
           r.suppressed,
           `reminder ${id} returned null on the SUPPRESS path (empty body) ` +
-            'while the default path matched — the two take different branches ' +
+            'while the edited path matched — the two take different branches ' +
             'and both must find the site.'
         ).not.toBeNull();
+        expect(
+          r.editedParse,
+          `reminder ${id} spliced unparseable JS`
+        ).toBeNull();
+        if (!(id in EXPECTED_REMINDER_NOOP)) {
+          // Non-null and parseable is not enough: a drifted anchor plus a
+          // broad idempotency check returns the file unchanged and passes.
+          expect(
+            r.edited !== pristine!.source,
+            `reminder ${id} returned the file unchanged for an edited body ` +
+              'but is not in EXPECTED_REMINDER_NOOP: a silent dead anchor.'
+          ).toBe(true);
+          if (!REMINDER_REGISTRY.find(e => e.id === id)!.bodyIsMarker)
+            expect(
+              r.edited!.includes(PROBE_TEXT),
+              `reminder ${id} spliced, but the edited body's probe line is ` +
+                'not in the output'
+            ).toBe(true);
+        }
+        expect(
+          r.suppressedParse,
+          `reminder ${id} spliced unparseable JS when suppressed`
+        ).toBeNull();
       },
       600000
+    );
+
+    it.each(REMINDER_REGISTRY.filter(e => !e.bodyIsMarker).map(e => e.id))(
+      '%s leaves pristine untouched for its stock body',
+      id => {
+        expect(results.get(id)!.stock).toBe(pristine!.source);
+      }
     );
   }
 );

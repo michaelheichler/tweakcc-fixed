@@ -107,6 +107,14 @@ export interface InputBoxConfig {
   removeBorder: boolean;
   // Theme color key applied to the idle input chevron (null = leave default).
   chevronIdleThemeColor: string | null;
+  // Theme color key or rgb(r,g,b) for the input cursor (null = inverse video).
+  cursorColor: string | null;
+}
+
+export interface ShimmerConfig {
+  enabled: boolean;
+  stepMs: number | null; // null = CC default (50ms requesting, 200ms otherwise)
+  width: number | null; // null = CC default (3 cells)
 }
 
 export type TableFormat = 'default' | 'ascii' | 'clean' | 'clean-top-bottom';
@@ -132,6 +140,7 @@ export interface MiscConfig {
   hideStartupBanner: boolean;
   hideCtrlGToEdit: boolean;
   hideStartupClawd: boolean;
+  disableAgentSummaries: boolean;
   increaseFileReadLimit: boolean;
   suppressLineNumbers: boolean;
   suppressRateLimitOptions: boolean;
@@ -145,24 +154,29 @@ export interface MiscConfig {
   enableSessionMemory: boolean;
   enableDreamMode: boolean;
   enableLeanMemoryTypes: boolean;
+  /** Both rewind patches: summarize-from-here slicing and the rewind header. */
   fixSummarizeFromHere: boolean;
-  fixRewindSummaryHeader: boolean;
   enableRememberSkill: boolean;
   tokenCountRounding: number | null;
   autoAcceptPlanMode: boolean;
   allowBypassPermissionsInSudo: boolean | null;
   suppressNativeInstallerWarning: boolean;
+  modelAtEffort: boolean;
   filterScrollEscapeSequences: boolean;
   enableWorktreeMode: boolean;
   unlockResponsiveMode: boolean;
   swapRipgrepForFff: boolean;
+  fffLearnFromBashReads: boolean;
   allowCustomAgentModels: boolean;
   enableContextLimitOverride: boolean;
   enableModelCustomizations: boolean;
   enableVoiceMode: boolean;
   enableVoiceConciseOutput: boolean;
   enableChannelsMode: boolean;
+  attachedBackgroundInteractive: boolean;
+  enableProposeGoal: boolean;
   maxEffortDefault: boolean;
+  compactionHighEffort: boolean;
   autonomousOperationAllModels: boolean;
   refusalFallbackModel: boolean;
   refusalFallbackRoutes: RefusalFallbackRoutes;
@@ -177,6 +191,12 @@ export interface MiscConfig {
   autoModeClassifierModel: AutoModeClassifierModel;
   suppressDeferredTools: boolean;
   claudemdContextOncePerConversation: boolean;
+  keybindingCustomization: boolean;
+  tmuxGraphicsPassthrough: boolean;
+  disableCtrlZSuspend: boolean;
+  skipSkillShellValidation: boolean;
+  shimmer: ShimmerConfig;
+  webFetchUserAgent: string | null;
 }
 
 export interface InputPatternHighlighter {
