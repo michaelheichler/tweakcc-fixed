@@ -1,0 +1,936 @@
+src/systemPromptRegex.ts
+  s_488566bd4df792::t_cacbed498d6df1 2-5,37-44,65-67,69
+src/patches/reminderInjectionsTools.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 7-9,11,13,25-53,55,69,79
+  s_488566bd4df792::t_06cbfd4755b2f4 54,70-74,108,136,138-140,176,198,200-202,205-208,212,215-216,219,227,230-231
+src/patches/reminderRendering.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-83,85
+  s_488566bd4df792::t_f48daa9131eb5a 84,86-97
+src/patches/systemPromptApplyGuards.ts
+  s_488566bd4df792::t_450a2861052367 1-135
+  s_488566bd4df792::t_f8a9772ea57828 136-139
+src/patches/reminderBuilder.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-284,286
+  s_488566bd4df792::t_503c58359c7043 285,287-305
+src/tests/systemPromptSyncWorkflow.test.ts
+  s_488566bd4df792::t_5d4b3f101a116b 1-19,83-188,190-289
+  s_488566bd4df792::t_97d2f548b8c22d 20-82,290-334
+  s_488566bd4df792::t_f40b43e1ee5add 189
+src/patches/systemPromptBundleRegressions.test.ts
+  s_488566bd4df792::t_72c765840cfbfd 1-24,27-34,36-84,94-102
+  s_488566bd4df792::t_76f726e769c07c 25-26,35,85-93
+src/patches/reminderShared.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 2-3,23-24,32,60,65,71,73-78,81,84,87,92-156,167,174,177,193,238-239,241,244,247,251,253-255,264,274,276-277,282,298,320,327,329,334,341
+  s_488566bd4df792::t_d853be7537794a 222-237,240,242-243,245-246,248-250,252,256-263,265-273,275,278-281,283-297,299-300,309-312,319,325-326,328,330-333,335-340,349,378,383,388,391-396,398-399
+src/patches/reminderInjectionsSession.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 5,7-9,11,41,71,73,121
+  s_488566bd4df792::t_926094ba634c4b 74-75,78-80,84-86,88,90,98-99,105-120,122-135,139,141-143,154,192,201,218,227
+src/patches/reminderOverridesRegression2.test.ts
+  s_488566bd4df792::t_aa9bbced2e273e 258,263,271,275-277,319
+  s_488566bd4df792::t_c6b3087ab50add 95-110,323-350
+  s_488566bd4df792::t_7035b87b815eab 10-17,111-116,118-141,166,173-177,190-194,198-200,207-209,214-217,223-226,231-233
+  s_488566bd4df792::t_4f59075db76eef 5
+  s_488566bd4df792::t_27d781f6a8a197 1-4,6-9,18-86,117,142-165,167-172,178-189,195-197,201-206,210-213,218-222,227-230,234-257,259-262,264,351-352
+  s_488566bd4df792::t_0460c6205544e5 87-94,265-270,272-274,278-318,320-322
+  s_488566bd4df792::t_8d9bb071c75b10 353-536
+src/tests/systemPromptAssetLoading.test.ts
+  s_488566bd4df792::t_4394fa86e71e85 1-52
+src/patches/reminderInjectionsHooks.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-120
+  s_488566bd4df792::t_4fcd9612c4bb94 121-175
+src/patches/reminderInjectionsMessages.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-66
+  s_488566bd4df792::t_6d38c2e887ef17 67-102
+src/patches/reminderInjectionsMemory.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-71
+  s_488566bd4df792::t_26bb34338212db 72-99
+src/patches/systemReminderOverrides.ts
+  s_488566bd4df792::t_9f9f224b59acdd 10,12,19,43,51-55,158-160,162-163,165-174,178-179
+  s_488566bd4df792::t_8d4e7bbd4738cc 2-3,11,28,39,48-50,93,181-182
+  s_488566bd4df792::t_61d892751655d8 116-157,161,164,175-177,180
+  s_488566bd4df792::t_890f765f10b71b 183-195,199,202,213-215,219-220
+src/patches/reminderStockBody.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-22
+  s_488566bd4df792::t_c791896ee00c97 23-28
+src/systemPromptMetadataQuoting.test.ts
+  s_488566bd4df792::t_b4c470b0eb8a5f 1-2,4-6,8-14,25-49,64-75,95-96
+  s_488566bd4df792::t_0087b122e45cbe 50,53,60-63
+  s_488566bd4df792::t_1004db69c7505f 3,7,15-24,77-94
+  s_488566bd4df792::t_cc2e4ae59f5fe5 56-59
+  s_488566bd4df792::t_137a39ab4a7323 51-52,54-55,76
+  s_488566bd4df792::t_2b5686f2244b79 97
+src/generateMarkdownHtmlCommentBody.test.ts
+  s_488566bd4df792::t_fa546a748442c8 40,42-50,73-79,81-83
+src/patches/systemPromptApplyDiagnostics.ts
+  s_488566bd4df792::t_450a2861052367 1-81
+  s_488566bd4df792::t_24d75f81403202 82-89
+src/patches/reminderOverridesRegression3.test.ts
+  s_488566bd4df792::t_176aea8279b8d3 278-291,296-304
+  s_488566bd4df792::t_89476743b476a6 5,260-261,292-295,307,311,321
+  s_488566bd4df792::t_5943d00fa4c43e 1-4,6,26-48,67,73,82,102,124,176-178,184,192,202-204,214-216,222-224,264-266,305-306,320
+  s_488566bd4df792::t_2c32cf83d7528c 7-25,49-66,68-72,74,76-77,79-81,83-101,103-123,125-138,140-175,179-183,185-191,193-201,205-213,217-221,225-232,234-256,258-259,262-263,267-277
+  s_488566bd4df792::t_3287a6e52a7277 75,78,139,233,257
+  s_488566bd4df792::t_2c1018f12170fe 308-310,312-319,322-546
+src/patches/reminderInjectionsSkills.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-130
+  s_488566bd4df792::t_5a0391c1a29e55 131-157
+tools/lib/continuity.mjs
+  s_488566bd4df792::t_d4f1d6ca5036f7 5,55,68,88
+  s_488566bd4df792::t_15a050dbcc187d 1-4,6-54,56-67,69-87,89
+  s_488566bd4df792::t_26df8f402a0ff2 90-148
+src/patches/reminderOverridesRegression4.test.ts
+  s_488566bd4df792::t_f82e52fb890f00 1-4,6-271
+  s_488566bd4df792::t_f1ec8c555f0881 5
+  s_488566bd4df792::t_cd72e31bda8514 272-434
+src/patches/systemPromptApplyState.ts
+  s_488566bd4df792::t_450a2861052367 1-189
+  s_488566bd4df792::t_6f8907176e9219 190-192
+src/tests/systemPromptSync.test.ts
+  s_488566bd4df792::t_0fff21799f2b4a 99-105,107-110,112-116,118-119,173-174,236,248,254,260,268,278,286,311
+  s_488566bd4df792::t_0ea6e768b6c378 4
+  s_488566bd4df792::t_5d4b3f101a116b 17-22,33-42,44,46-47,55-63,65,67-68,73-81,84,86-88,123-124,126-130,132-133,135-138,140-144,146-148,150,152-160,195,237
+  s_488566bd4df792::t_530d1425c68dde 89-98,121-122,161-162,164-165,167-172,176-192,194,196-205,207-210,212-214,216-225,227-235,240-242,245-247,249,251-253,255-256,258-259,261-264,266-267,270,272-277,279-280,282,284-285,294,296,298-304,307,309-310,313,315-318,320,322-324,334-335,337-338,340-345,347-348,358-359,361,363-366,369-376,379-380,382-383,385,387
+src/patches/systemReminderOverrides.test.ts
+  s_488566bd4df792::t_483521d55beaf1 78-87,89-90
+  s_488566bd4df792::t_c73b7fb85ee23a 2,15-76,88,93-113,130-137,140-141,150,166,265,280,282,288,294,299,304
+  s_488566bd4df792::t_32e3f6b3d740b1 77,91-92,148,161,167-168,236,248,250,267,276,278-279,281,283-287,289-293,295-298,300-303,305-311,321,323,328,379-384,386-395,397-402,404-407,411-422,426-432
+src/systemPromptMarkdown.ts
+  s_488566bd4df792::t_741a0eeb914db4 16
+  s_488566bd4df792::t_877069c0d422db 75-87
+  s_488566bd4df792::t_27069861a6af0a 88-92,101
+src/patches/systemPrompts.ts
+  s_488566bd4df792::t_acb8140b52a915 2-4,10-11,13-23,32-168,179,183-184,189-191
+  s_488566bd4df792::t_0ebe5f4ba33465 192-198,200-202,204,206-207
+src/patches/reminderSyntax.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-110
+src/patches/modelSelector.test.ts
+  s_488566bd4df792::t_c5cf873ace450c 27
+  s_488566bd4df792::t_8403d2604bcbba 97-100,102-107,112-119
+  s_488566bd4df792::t_0c4066ac81cfaa 9-12,14,17-20,52
+  s_488566bd4df792::t_fb2f13ce72bd4f 108-111
+  s_488566bd4df792::t_68ad53c9a45cd0 101
+  s_488566bd4df792::t_58a3f314525532 24-25,30,32,51,53,67-68,76,120-123
+src/tests/systemPromptInterpolation.test.ts
+  s_488566bd4df792::t_5d4b3f101a116b 1-314
+src/systemPromptSync.ts
+  s_488566bd4df792::t_741a0eeb914db4 257,274,320
+  s_488566bd4df792::t_86d2190ca86903 29,127-129,327
+src/patches/reminderInjectionsMcpRouter.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-60
+  s_488566bd4df792::t_9ef16e72e7d739 61-69
+src/patches/reminderInjectionsEditedText.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 1-187
+  s_488566bd4df792::t_f49113f6055b7e 188-255
+src/patches/reminderInjectionsContext.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 4,6-14,16,18-20,31,34,45-52,64,81,83-85,88-91,93-94,97,99,107-108,114-157,161,163-165,168-172,174-176,182-183,191-192,198-199,202-203,209,212,214,218-219,224,227-228,232-233,238-239,245,252,260,263
+  s_488566bd4df792::t_5b5874d87d695f 179-180,196-197,200-201,204-208,210-211,213,215-217,220-223,225-226,229-231,234-237,240-244,246-251,253-259,261-262,267
+src/tests/systemPromptRegexLoading.test.ts
+  s_488566bd4df792::t_5d4b3f101a116b 1-187
+src/patches/reminderInjectionsFiles.ts
+  s_488566bd4df792::t_8d4e7bbd4738cc 13,60,95,97,105,114,167,176,178
+  s_488566bd4df792::t_8825a5542b7548 7,11,81,93-94,96,98-104,106-110,112-113,115-126,131,157,166,168-175,177,179-184,218,231,233,241-243,251,280,307-323
+.github/workflows/ci.yml
+  s_488566bd4df792::t_fc51bbb383a30c 10-37,48-49,68-71
+.github/workflows/release.yml
+  s_488566bd4df792::t_4be58f1e7bc705 9-13,15,50-61
+.github/workflows/rg-fff.yml
+  s_488566bd4df792::t_28ad8efa131cef 11,44,85
+.gitignore
+  s_488566bd4df792::t_42963f05773b76 15-16
+.prettierignore
+  s_488566bd4df792::t_c58ba750b8446a 3
+README.md
+  s_488566bd4df792::t_95e0ec82f6e399 1,3,5-7,9,13,15-19,21,23,25,27,29-41,43,45,47,49-53,55,57,59,61,63-67,69,71-74,76,78,80,82-87,90,92,94,96,98
+data/detection-coverage-allowlist.json
+  s_488566bd4df792::t_bab8d6664f898e 1018-1137
+data/map-drift-allowlist.json
+  s_488566bd4df792::t_ca1425da8e9a9a 1-44
+data/mixed-call-verdicts.json
+  s_488566bd4df792::t_c000f57b877328 1-3568
+data/output-contract-allowlist.json
+  s_488566bd4df792::t_1eb2ea6af0e5c2 4,8,12,16-20
+data/param-slot-allowlist.json
+  s_488566bd4df792::t_e38846bb1390a0 447-658
+data/prompt-classification.json
+  s_488566bd4df792::t_70681a47e5f192 329-334,346-351,360-365,1158-1163,1279-1284,2055-2060,2115-2120,2485-2490,2573-2578,3361-3366,3556-3561,3595-3600,3736-3741,3761-3766,4125,4128-4133,4656-4661,4795-4800,5066,5130-5135,5194-5199,5489-5494,5885-5890,6984-6989,7263-7268,7512-7517,9008-9013,9239-9244,9703-9708,9786-9791,9793-9798,10071-10076,10730-10735,10776-10787,11407-11412,11566-11571,12297-12302,12305-12310,13241-13246,13786-13791,14181-14186,14399-14404,15039-15044,15047-15052,15331-15336,15580-15585,15671-15676,15870-15875,16471,16564-16569,16948-16953,17878-17883,17924-17929,18176-18181,18406-18411,18473-18478,18719-18724,18751-18756,19335-19340,19363-19368,19959-19964,20496-20501,20530-20535,20606-20611,20703,20730-20735,21019-21024,21974-21979,22373-22378,22886-22891,22904-22909,22960-22965,23043-23048,23278-23283,23381-23386,23429-23434,23717-23722,23771-23776,24300-24305,24556-24561,25150-25155,25367-25372,25407-25412,25679-25684,25772-25777,26622-26627,26742-26747,27711-27716,27753-27758,28349-28354,28549-28554,28593-28598,29067,29212-29217,29444-29449,29703-29708,30029-30034,30798-30803,30875-30880,30905-30910,30976-30981,31399-31404,31469-31474,31558-31563,31814-31819,32177-32182,33380,33790-33795,33833,34192-34197,35043,35926-35931,36124-36129,36196-36201,36579-36584,36937-36942,36975-36980,37487-37492,37586-37591,37611-37616,38971,39345-39350,40662-40667,40902-40907,40946-40951,41068,41137-41142,42404-42409,42507,43277-43282,44811-44816,45922-45927,46069-46074,47167-47172,47192-47197,50191-50196,50873-50878,53714-53719,54183-54188,54281-54292,55051-55056,55194-55199,56533-56538,58017,59563-59568,60347-60352,60557-60568,60832-60837,61228-61233,61711-61716,64383,66956-66959,72649-72654,72675-72686,73072,75551-75556,75740,78216-78221,78228-78233,78490-78495,78804-78809,82179-82184,82335,82694,83393-83404,83669-83671,83677-83682,83685-83690,85613-85624,85661-85662,85923,86005-86006,86599,87238-87239,87252,87959-87964,88025-150491
+data/prompt-coverage-allowlist.json
+  s_488566bd4df792::t_5e6baa0a952cd9 276-650
+data/prompt-verdicts.json
+  s_488566bd4df792::t_c57663fdcaf2ab 18475-18476,30177-30179,30255-30257,30265-30267,48934-87787
+data/prompts/prompts-2.1.286.json
+  s_488566bd4df792::t_533162eae075d4 1-155128
+data/prompts/prompts-2.1.288.json
+  s_488566bd4df792::t_380e0f9cfcd494 1-160326
+data/prompts/prompts-2.1.291.json
+  s_488566bd4df792::t_a32dbe0553bff6 1-174748
+data/prompts/prompts-2.1.292.json
+  s_488566bd4df792::t_c404c90faa9624 1-177493
+data/prompts/prompts-2.1.294.json
+  s_488566bd4df792::t_9fcfa315476e0e 1-180489
+data/prompts/prompts-2.1.295.json
+  s_488566bd4df792::t_a6f102d95cef58 1-186410
+data/prompts/prompts-2.1.296.json
+  s_488566bd4df792::t_53cacc2c5c7cc1 1-223959
+data/prompts/prompts-2.1.299.json
+  s_488566bd4df792::t_fa7f2c8c5dba19 1-228192
+data/prompts/prompts-2.1.300.json
+  s_488566bd4df792::t_efd2378731bd62 1-230894
+data/prompts/prompts-2.1.301.json
+  s_488566bd4df792::t_f37c1de8dbc403 1-232336
+data/prompts/prompts-2.1.302.json
+  s_488566bd4df792::t_13e675434251c0 1-235145
+data/prompts/prompts-2.1.303.json
+  s_488566bd4df792::t_b056a6afc0af95 1-235156
+data/prompts/prompts-2.1.304.json
+  s_488566bd4df792::t_6ebd20ee2bee59 1-236977
+data/prompts/prompts-2.1.305.json
+  s_488566bd4df792::t_4df0e183b8abf7 1-241114
+data/prompts/prompts-2.1.306.json
+  s_488566bd4df792::t_1b90e0d76633e6 1-241114
+data/prompts/prompts-2.1.308.json
+  s_488566bd4df792::t_e92757a184c30a 1-242316
+data/prompts/prompts-2.1.310.json
+  s_488566bd4df792::t_b418743f5b82cc 1-244143
+data/prompts/prompts-2.1.311.json
+  s_488566bd4df792::t_20f17766c40ce8 1-245622
+data/prompts/prompts-2.1.312.json
+  s_488566bd4df792::t_a5b7803ac1ac5c 1-244926
+data/prompts/prompts-2.1.314.json
+  s_488566bd4df792::t_b18a8e795e7baa 1-251173
+data/prompts/prompts-2.1.316.json
+  s_488566bd4df792::t_f1db96a29799a1 1-252526
+data/prompts/prompts-2.1.317.json
+  s_488566bd4df792::t_f02975f4b0f8e1 1-256498
+data/prompts/prompts-2.1.318.json
+  s_488566bd4df792::t_65c35dda04bea7 1-264352
+data/prompts/prompts-2.1.319.json
+  s_488566bd4df792::t_f5b56869c16e01 1-271382
+data/prompts/prompts-2.1.322.json
+  s_488566bd4df792::t_919c8dee4cd30a 1-270124
+data/removed-id-allowlist.json
+  s_488566bd4df792::t_dae7d71652a1e5 2753-8423
+data/settings-descriptions/oracle-2.1.286.json
+  s_488566bd4df792::t_a67318c0f22770 1-374
+data/settings-descriptions/oracle-2.1.288.json
+  s_488566bd4df792::t_a2c229417f81cf 1-376
+data/settings-descriptions/oracle-2.1.291.json
+  s_488566bd4df792::t_bd17e76dadc49e 1-377
+data/settings-descriptions/oracle-2.1.292.json
+  s_488566bd4df792::t_9412f777123e63 1-377
+data/settings-descriptions/oracle-2.1.294.json
+  s_488566bd4df792::t_c716601d8b2034 1-377
+data/settings-descriptions/oracle-2.1.295.json
+  s_488566bd4df792::t_4ccaf5d93dd5c7 1-378
+data/settings-descriptions/oracle-2.1.296.json
+  s_488566bd4df792::t_6738400f3088b4 1-378
+data/settings-descriptions/oracle-2.1.299.json
+  s_488566bd4df792::t_218bd2efe2dfb0 1-378
+data/settings-descriptions/oracle-2.1.300.json
+  s_488566bd4df792::t_699df3c4110990 1-378
+data/settings-descriptions/oracle-2.1.301.json
+  s_488566bd4df792::t_028f8dcaf4b992 1-378
+data/settings-descriptions/oracle-2.1.302.json
+  s_488566bd4df792::t_d51cfd64bd8f47 1-378
+data/settings-descriptions/oracle-2.1.303.json
+  s_488566bd4df792::t_1d48cb16aadcb4 1-378
+data/settings-descriptions/oracle-2.1.304.json
+  s_488566bd4df792::t_caf096f5bcc453 1-378
+data/settings-descriptions/oracle-2.1.305.json
+  s_488566bd4df792::t_9594f59626ab48 1-382
+data/settings-descriptions/oracle-2.1.306.json
+  s_488566bd4df792::t_97d44579ca9ac2 1-382
+data/settings-descriptions/oracle-2.1.308.json
+  s_488566bd4df792::t_6dccd2ec9936f9 1-383
+data/settings-descriptions/oracle-2.1.310.json
+  s_488566bd4df792::t_bf06b0147355ae 1-383
+data/settings-descriptions/oracle-2.1.311.json
+  s_488566bd4df792::t_d89a34969b0210 1-384
+data/settings-descriptions/oracle-2.1.312.json
+  s_488566bd4df792::t_83c6a5bd7d2628 1-384
+data/settings-descriptions/oracle-2.1.314.json
+  s_488566bd4df792::t_9c2a74a5d46e69 1-385
+data/settings-descriptions/oracle-2.1.316.json
+  s_488566bd4df792::t_827bd4df8af429 1-386
+data/settings-descriptions/oracle-2.1.317.json
+  s_488566bd4df792::t_802233e9d703dd 1-387
+data/settings-descriptions/oracle-2.1.318.json
+  s_488566bd4df792::t_5d2fb77e31ff6f 1-388
+data/settings-descriptions/oracle-2.1.319.json
+  s_488566bd4df792::t_e446b6b4be3b09 1-390
+data/settings-descriptions/oracle-2.1.322.json
+  s_488566bd4df792::t_6ae024f772effc 1-390
+data/slot-context-allowlist.json
+  s_488566bd4df792::t_bd881a6486565b 1-137
+data/slot-literal-allowlist.json
+  s_488566bd4df792::t_4402bf6b44c2e0 1904-5268
+data/stale-reinjection-allowlist.json
+  s_488566bd4df792::t_642feb2a70864e 2-4
+data/tag-balance-allowlist.json
+  s_488566bd4df792::t_ee8842ed774003 1
+data/trim-slot-allowlist.json
+  s_488566bd4df792::t_678eba3d292800 240-241,254-255,257,335,337,348-349,351,355-356,363-364,366,385-426,428
+docs/fff-agent-navigation.md
+  s_488566bd4df792::t_2efa403a83b1e3 1-96
+docs/fff-search.md
+  s_488566bd4df792::t_d195ec94d79f56 1-221
+docs/upstream-comparison.md
+  s_488566bd4df792::t_2b818e143a9526 1-46
+package.json
+  s_488566bd4df792::t_1964fba04fda1a 3-4,76,81,84,100
+pnpm-lock.yaml
+  s_488566bd4df792::t_5d8cd176e07976 11-13,54-56,69-71,78-80
+skills/showtime/REFERENCE.md
+  s_488566bd4df792::t_f15729d79b24e8 607-617
+skills/showtime/SKILL.md
+  s_488566bd4df792::t_4f79f1bf3cd6f9 115,161-170,201-202,219,227,231-232,238-239,249,285,430,435,437,441,486-487,507,558-565
+skills/showtime/driver.mjs
+  s_488566bd4df792::t_8607ea66efbead 20,66-74,174,184,188-200,208-209,212,214,216,234,239-240,261,308,350,364-368,373,396,475-496,507
+skills/showtime/runState.mjs
+  s_488566bd4df792::t_cbf3748a047488 1-42
+skills/showtime/runState.test.mjs
+  s_488566bd4df792::t_76d12a4e249bac 1-19
+src/browserBridgeUpdate.test.ts
+  s_488566bd4df792::t_add1fd13c997e8 1-53
+src/browserBridgeUpdate.ts
+  s_488566bd4df792::t_52fe18aaf05427 1-66
+src/defaultSettings.ts
+  s_488566bd4df792::t_f36f0a28c928c4 713,723,743,748,755-756,758,767-772
+src/fffBashSetup.test.ts
+  s_488566bd4df792::t_7787d697c99a42 1-79
+src/fffBashSetup.ts
+  s_488566bd4df792::t_567ed27adb50b5 1-59
+src/fffDescription.ts
+  s_488566bd4df792::t_7bc8725d1a2b12 1-10
+src/index.tsx
+  s_488566bd4df792::t_0ceff9d6bef036 149,160-164
+src/matcherDifferential.ts
+  s_488566bd4df792::t_29b5e88579cee8 1-82
+src/mutableText.test.ts
+  s_488566bd4df792::t_02ed980078bd28 24-44
+src/mutableText.ts
+  s_488566bd4df792::t_bff755e0cde8e8 4-7,16-28,30,86-87,90-91,93-98
+src/nativeInstallation.test.ts
+  s_488566bd4df792::t_e4c4ebbe795364 1,10-12,14,261-514
+src/nativeInstallation.ts
+  s_488566bd4df792::t_e392e18cf4aa0c 11-22,263,301-316,975-1060,1100-1101,1214-1215,1218-1220,1261-1262,1269-1273,1296-1395,1919-1950,1978-1981,2163
+src/nativeTextAssets.test.ts
+  s_488566bd4df792::t_3215fa46f43fd1 1-175
+src/nativeTextAssets.ts
+  s_488566bd4df792::t_5c2a6b43852619 1-250
+src/patches/agentsMd.test.ts
+  s_488566bd4df792::t_79cd549f076537 263-342
+src/patches/agentsMd.ts
+  s_488566bd4df792::t_27b8c358392718 81,102,110-111,113,116,118,166-169,183,188,193-201,214,225-233,247
+src/patches/allPatchesAgainstPristine.test.ts
+  s_488566bd4df792::t_0aa9e503814524 37-38,61-68,80,83,96,106-108,317-318,334-342,390,402,405,426-435,464-465,501-511,521,551-558,568,571-572,582,670-683,727-732,736-743,746-752,756-759,761-765,767,770,772,774-797,803-807,812,815,819-821,829,832-854,858-864
+src/patches/applyPatchImplementations.test.ts
+  s_488566bd4df792::t_c60652ea808ebc 1-93
+src/patches/attachedBackgroundInteractive.test.ts
+  s_488566bd4df792::t_40a14b0a1940b3 1-191
+src/patches/attachedBackgroundInteractive.ts
+  s_488566bd4df792::t_72c96dc0bd36cd 1-251
+src/patches/autonomousOperationAllModels.test.ts
+  s_488566bd4df792::t_36cbb8a47739fe 70-83
+src/patches/autonomousOperationAllModels.ts
+  s_488566bd4df792::t_61a32a97c60970 84,115-155
+src/patches/channelsMode.test.ts
+  s_488566bd4df792::t_f58449c05e7e49 14-19,87-110
+src/patches/channelsMode.ts
+  s_488566bd4df792::t_d1ed903af720f2 59-63,66-72,74-81,84-102,104,287-288
+src/patches/compactionHighEffort.test.ts
+  s_488566bd4df792::t_564499ecd0f192 1-34
+src/patches/compactionHighEffort.ts
+  s_488566bd4df792::t_b5a99cc73dae78 1-50
+src/patches/complexityRouter.test.ts
+  s_488566bd4df792::t_ebdd31a602db2e 134-147,476-495
+src/patches/complexityRouter.ts
+  s_488566bd4df792::t_ac6be221b6840d 326,414-427,429
+src/patches/complexityRouterHybrid.test.ts
+  s_488566bd4df792::t_a9dd185615102b 111-123
+src/patches/complexityRouterModels.test.ts
+  s_488566bd4df792::t_1253c339e9bf07 25-47,65,183-224,238-267
+src/patches/complexityRouterModels.ts
+  s_488566bd4df792::t_8839c68a7018bc 9-10,36,46-63,73-76,113-118,129-133,135-138,142,179
+src/patches/complexityRouterTurnStatus.test.ts
+  s_488566bd4df792::t_441f31935c4dcb 34-57,59-138
+src/patches/complexityRouterTurnStatus.ts
+  s_488566bd4df792::t_eec2cb77304790 1,31,33-35,37,49-57,60,62-77,82,85,88,92-93,99
+src/patches/contextLimit.test.ts
+  s_488566bd4df792::t_958468079ea4c4 7-15
+src/patches/contextLimit.ts
+  s_488566bd4df792::t_32c34b2dd731a0 15-28
+src/patches/disableAgentSummaries.test.ts
+  s_488566bd4df792::t_89ea59db074246 1-160
+src/patches/disableAgentSummaries.ts
+  s_488566bd4df792::t_609439ac46821f 1-81
+src/patches/disableCtrlZSuspend.test.ts
+  s_488566bd4df792::t_502e5ce261efdb 1-25
+src/patches/disableCtrlZSuspend.ts
+  s_488566bd4df792::t_008164eb3eb659 1-26
+src/patches/emptyEnvironment.test.ts
+  s_488566bd4df792::t_048733bdf263ce 1-79
+src/patches/emptyEnvironment.ts
+  s_488566bd4df792::t_fe1f3c28514af5 1-36
+src/patches/fablePlan.test.ts
+  s_488566bd4df792::t_db7c7e86840614 1-2,69-162,178-182,184,186-187,205,208,221,228-582,609-611,654-655,678-681,684,782-903
+src/patches/fablePlan.ts
+  s_488566bd4df792::t_83db815d1aee2e 31-32,39-42,44-48,63-66,70,74-106,153-161,168-178,180-181,185,187-188,192-193,195,204-232,349-357,392-403,405-460,474,481-651,655-657,688-689,691,694-704,706-711,726-730,804-805,807,883-889
+src/patches/fffBashReads.test.ts
+  s_488566bd4df792::t_73d3f43faf2828 1-341
+src/patches/fffBashReads.ts
+  s_488566bd4df792::t_af67b49cd84c49 1-72
+src/patches/fffContext.test.ts
+  s_488566bd4df792::t_f879d7d3dfa403 1-54
+src/patches/fffContext.ts
+  s_488566bd4df792::t_d5647f02246c3a 1-24
+src/patches/fffInstructionHygiene.test.ts
+  s_488566bd4df792::t_5aa4a097d86c71 1-652
+src/patches/fffInstructionSuffixes.ts
+  s_488566bd4df792::t_946c101f423d12 1-19
+src/patches/fffInstructions.test.ts
+  s_488566bd4df792::t_fb223876f8c950 1-450
+src/patches/fffInstructions.ts
+  s_488566bd4df792::t_b3abacaab2fd61 1-557
+src/patches/fffPlacementPristine.test.ts
+  s_488566bd4df792::t_ad37c5793710ba 1-106
+src/patches/fffRuntime.test.ts
+  s_488566bd4df792::t_5b4a63398620d9 1-87
+src/patches/fffRuntime.ts
+  s_488566bd4df792::t_5836c5ee9446c1 1-76
+src/patches/fixRewindSummaryHeader.test.ts
+  s_488566bd4df792::t_6cd7f613925a17 17-20,22-38,43,50,53,62,71,75-95
+src/patches/fixRewindSummaryHeader.ts
+  s_488566bd4df792::t_b4f782ffc968db 10-12,15-19,23-24,27,33-68,72-73,76,80,84,87-88,95,116,118-119
+src/patches/fixSummarizeFromHere.test.ts
+  s_488566bd4df792::t_86b4c04d993917 9-14,16-31
+src/patches/fixSummarizeFromHere.ts
+  s_488566bd4df792::t_50ddb096f25c98 12,17-24,27-31,36-40,42-46,48-53,55-77,79-87,89
+src/patches/helpers.ts
+  s_488566bd4df792::t_01af3ab3bd1033 1,430-460
+src/patches/index.ts
+  s_488566bd4df792::t_db0029ae5ccd76 1-8,84,101,107,117-118,123-124,137-144,186-189,250-263,277,300-306,308-354,477-483,558-564,580-587,676,678-685,753-768,831,848-849,878-889,892,894,904-907,1194-1206,1238-1243,1250,1267-1269,1397-1400,1449-1452,1461-1464,1492-1527,1563-1566,1641-1648
+src/patches/inlineBlobOverrides.test.ts
+  s_488566bd4df792::t_0714d128c7d9e0 37,195-231,386-436,470-533
+src/patches/inlineBlobOverrides.ts
+  s_488566bd4df792::t_91131d32718189 637-666,739-742,745-746,752-755,778-779,870-881,883-892,969-997,1116-1136,1140-1150,1152,1166
+src/patches/inputCursorColor.test.ts
+  s_488566bd4df792::t_4962d37d4f14d3 1-31
+src/patches/inputCursorColor.ts
+  s_488566bd4df792::t_2c372399eb5bae 1-44
+src/patches/keybindingCustomization.test.ts
+  s_488566bd4df792::t_f67167864c7a7a 1-34
+src/patches/keybindingCustomization.ts
+  s_488566bd4df792::t_9cf05028f4dba1 1-36
+src/patches/leanMemoryTypes.test.ts
+  s_488566bd4df792::t_2dc19137549d2b 30-32
+src/patches/leanMemoryTypes.ts
+  s_488566bd4df792::t_315d90bab64753 27-31,39
+src/patches/modelAtEffort.test.ts
+  s_488566bd4df792::t_ca4053b3102485 1-96
+src/patches/modelAtEffort.ts
+  s_488566bd4df792::t_1eeef72692a094 1-51
+src/patches/modelFacingNotice.test.ts
+  s_488566bd4df792::t_e7d6fc48cf51c7 24,26-28,51
+src/patches/modelSelector.ts
+  s_488566bd4df792::t_055ee5bb5f032e 6,65,75-79
+src/patches/patchesAppliedIndication.test.ts
+  s_488566bd4df792::t_9d8c700556cb42 258-326
+src/patches/patchesAppliedIndication.ts
+  s_488566bd4df792::t_6223e1ab35f501 571-573,575,605-676,713-717,719,743-746,748,751-763,765,767-781,806-809
+src/patches/planExitCommand.test.ts
+  s_488566bd4df792::t_375c40b88ffdef 1-74
+src/patches/planExitCommand.ts
+  s_488566bd4df792::t_6d204d6227e4f7 1-168
+src/patches/promptHygiene.test.ts
+  s_488566bd4df792::t_9b6c1dcebfedd7 1-37
+src/patches/promptHygiene.ts
+  s_488566bd4df792::t_ea666d444df162 1-26
+src/patches/proposeGoal.test.ts
+  s_488566bd4df792::t_93738237caa663 1-35
+src/patches/proposeGoal.ts
+  s_488566bd4df792::t_12427cabc625eb 1-42
+src/patches/refusalFallbackModel.test.ts
+  s_488566bd4df792::t_1b5c8a8dcb548d 61-65,81-85,99,483-498,506-539
+src/patches/refusalFallbackModel.ts
+  s_488566bd4df792::t_dea0c3a80bc274 412,566,623-629,666-675
+src/patches/sessionMemory.test.ts
+  s_488566bd4df792::t_eb14cb3b7b44a4 96-107
+src/patches/sessionMemory.ts
+  s_488566bd4df792::t_df11376534dca2 342-362,384-389
+src/patches/shimmerStyle.test.ts
+  s_488566bd4df792::t_9356f7f7f68855 1-75
+src/patches/shimmerStyle.ts
+  s_488566bd4df792::t_ae5ae277f61ad3 1-110
+src/patches/skipSkillShellValidation.test.ts
+  s_488566bd4df792::t_e6b52850c9d388 1-56
+src/patches/skipSkillShellValidation.ts
+  s_488566bd4df792::t_2d0b198fa87ca4 1-103
+src/patches/swapRipgrepForFff.test.ts
+  s_488566bd4df792::t_1fe9c54dc36102 2-14,17-22,25-26,28-30,32,34-41,72-88,90-135,138-190,192-267,270-271,273-280,283-404,406,409-413,416-429,432-433,435-437,439-471,473,477-495
+src/patches/swapRipgrepForFff.ts
+  s_488566bd4df792::t_c2fe1528f9e506 5-24,26-29,31-36,38,40-61,63-80,82-89,91-98,100,103-112,114-120,122-128,131-140,142,144,146-154,161-187,189-190,192-193
+src/patches/systemPrompts.test.ts
+  s_488566bd4df792::t_4c0856903b4360 5,113-115,145,992-1031
+src/patches/tmuxGraphicsPassthrough.test.ts
+  s_488566bd4df792::t_d334d128d39b40 1-76
+src/patches/tmuxGraphicsPassthrough.ts
+  s_488566bd4df792::t_59d5eea4ae4b05 1-54
+src/patches/toolsets.test.ts
+  s_488566bd4df792::t_26e82d8f43de75 202-213,392-429
+src/patches/toolsets.ts
+  s_488566bd4df792::t_b49b60bd283d32 647-650,679,1063-1071,1127-1133,1139-1153,1157-1167
+src/patches/userSentNewMessage.test.ts
+  s_488566bd4df792::t_fd880d17d3a067 11-14,17,91-176
+src/patches/webFetchUserAgent.test.ts
+  s_488566bd4df792::t_b94c7d50f685f1 1-19
+src/patches/webFetchUserAgent.ts
+  s_488566bd4df792::t_407a16db3bea79 1-27
+src/ripgrepFff.test.ts
+  s_488566bd4df792::t_2a2b9eecacbe40 1-189
+src/ripgrepFff.ts
+  s_488566bd4df792::t_c33a35219316be 55,81-91,112,119-145,148,150-151,203,213-214
+src/systemPromptConflict.ts
+  s_488566bd4df792::t_3c4a8e74a53f3d 1-50
+src/systemPromptDisplay.ts
+  s_488566bd4df792::t_5576093ebb3720 1-120
+src/systemPromptExpressionIdentifiers.ts
+  s_488566bd4df792::t_b465626aa99b70 1-196
+src/systemPromptPieceMatcher.test.ts
+  s_488566bd4df792::t_bd566f7862c402 328-373,384-440
+src/systemPromptPieceMatcher.ts
+  s_488566bd4df792::t_52b79347de79fb 2-5,17,82,84-88,90,92,95,101-102,122-126,162-185,188-191,358-364,371-374,554-571,573-576,578-627,632-633,640-641,643,648-705,722-732,746,769,796,807,809-810,853-859
+src/systemPromptPieceMatcherCorpus.test.ts
+  s_488566bd4df792::t_d61cdc6c8043c7 7-10,12-25,28-32,66-69,71-85,94-102,105,111,132-142
+src/systemPromptPreflight.test.ts
+  s_488566bd4df792::t_cacfdab2ce3c2d 1-2,5,225-262
+src/systemPromptPreflight.ts
+  s_488566bd4df792::t_71dadde478ab96 35,49-54,152,173-174,200-202,227-228,237-243,245,261,271,279,282,304,332-365,386,389,400,406,479-483,507-509,512-513,515,517,523-530,535-536,538-542,710,732
+src/systemPromptSites.ts
+  s_488566bd4df792::t_3dc1de2b7463d7 654-665
+src/systemPromptSync.test.ts
+  s_488566bd4df792::t_ccbe1f205a21e9 31-85
+src/systemReminderSync.ts
+  s_488566bd4df792::t_d81346a11fc5a4 18-23,28-30
+src/tests/promotedSlotsCrossPlatform.test.ts
+  s_488566bd4df792::t_5582a58d776a12 1-127
+src/tests/promptExtractorCaptureRules.test.ts
+  s_488566bd4df792::t_4b2bcd03c1a0e5 46-53,56-63,66-69,235-237,275-307
+src/tests/promptExtractorFuzzyCollisions.test.ts
+  s_488566bd4df792::t_d182deb62b1ccb 4-11,51-54,145-211
+src/tests/promptExtractorNormalize.test.ts
+  s_488566bd4df792::t_ba7f27f5a44715 66-95
+src/types.ts
+  s_488566bd4df792::t_6083c6dc6996e1 110-117,143,157,164,169,176-177,179,194-199
+src/ui/components/BrowserBridgeView.tsx
+  s_488566bd4df792::t_2f9c9e6f6b3d79 9-12,175-184,189-192,634-638,681-687
+src/ui/components/MainMenu.tsx
+  s_488566bd4df792::t_cae22db12e1a43 1,4-5,91-114,119-131
+src/ui/components/MiscView.tsx
+  s_488566bd4df792::t_ad104820e329f4 1-6,10,12,58-66,81,101,106,113-114,116,125-130,139-144,244,360-373,542-543,553-566,608-635,737,739,859-871,913-926,989-1140
+src/virtualBundle.test.ts
+  s_488566bd4df792::t_3909dba21e94e1 1-73
+src/virtualBundle.ts
+  s_488566bd4df792::t_69cfaeab33f6b3 1-119
+tools/appendVerdicts.mjs
+  s_488566bd4df792::t_317307611bef88 1-130
+tools/appendVerdicts.test.mjs
+  s_488566bd4df792::t_cc2b1bfff6c4e4 1-62
+tools/applySafetyHarness.mjs
+  s_488566bd4df792::t_02cc482598151d 280-306,414-417,425-426,562-571,576
+tools/applySafetyHarness.test.mjs
+  s_488566bd4df792::t_718f8602160cbb 3-4,27-30,126-127,204-208,214-215,223-227,244-248,252-293
+tools/auditCallSlots.mjs
+  s_488566bd4df792::t_d9cf921aab94ac 27-30,56-76,154,199
+tools/auditCallSlots.test.mjs
+  s_488566bd4df792::t_c12915ce29399e 1-66
+tools/auditCorpus.test.mjs
+  s_488566bd4df792::t_25211847f7861c 1-1023
+tools/auditCorpusSearch.mjs
+  s_488566bd4df792::t_f828ca758d6b07 1-251
+tools/auditMisbinds.mjs
+  s_488566bd4df792::t_7a1f8d8c166f74 17-22,37,40,80-82,119-182,184-186,211-213,219-221,228-237,241-266,268-270,273,277-279
+tools/auditMisbinds.test.mjs
+  s_488566bd4df792::t_6bb990c83bc000 1-248
+tools/auditPacketMd.test.mjs
+  s_488566bd4df792::t_4555024d86bf89 1-161
+tools/buildAuditPacket.mjs
+  s_488566bd4df792::t_62fe8c95f72c5e 8,10-40,54,57-92,96-106,109-121,125-132,158-168,180,221-241,247-248,251-271,273-318,324-338,340-357,360-374,378,380-465,467-481,484-581,584-588,590-593,595,598-600,603-614,620-627,630-636,638-641,643,654-667,669,672,675-700
+tools/buildClassifyEvidence.mjs
+  s_488566bd4df792::t_7c8a5699cb9896 2,4-12,14-28,31-48,50,52-60,62,71-86,89-110,112-129,132-141,144-162,164-171,173-226,229-236,238,240-257,259-260,262,264-265,267,270-271,273-299,301-573,575-623,626-631
+tools/buildTrimTasks.mjs
+  s_488566bd4df792::t_ea7796d375bdf1 1-220
+tools/buildTrimTasks.test.mjs
+  s_488566bd4df792::t_19fcd4835a83e1 1-226
+tools/bundleQuery.mjs
+  s_488566bd4df792::t_5a65fb1e7b0b28 1-121
+tools/bundleSites.test.js
+  s_488566bd4df792::t_27d8c3d0d08321 1-440
+tools/checkAuditVerdicts.mjs
+  s_488566bd4df792::t_0df37838794e88 1-352
+tools/checkBakedIdentifiers.mjs
+  s_488566bd4df792::t_459e991126f649 1-563
+tools/checkBakedIdentifiers.test.mjs
+  s_488566bd4df792::t_5ecc18caad8c65 1-352
+tools/checkClassifyVerdicts.mjs
+  s_488566bd4df792::t_dbc91287c830c7 1-43
+tools/checkContentSwap.mjs
+  s_488566bd4df792::t_ab8577e8b09f81 1-102
+tools/checkInlineBlobDrift.mts
+  s_488566bd4df792::t_c2981954675558 1-79
+tools/checkMapDrift.mjs
+  s_488566bd4df792::t_2130326261b8c6 41-45,48,52,62-65,68,74,80-98,100-101,295,298,301-311
+tools/checkMapDrift.test.mjs
+  s_488566bd4df792::t_5b92d8cbc1985e 186-262
+tools/checkMixedCallVerdicts.mjs
+  s_488566bd4df792::t_4ee06274008bb7 1-521
+tools/checkMixedCallVerdicts.test.mjs
+  s_488566bd4df792::t_8176ffad2058dd 1-629
+tools/checkNeedleRetention.test.mjs
+  s_488566bd4df792::t_cdfc58022de053 13,133-144
+tools/checkOutputContracts.mjs
+  s_488566bd4df792::t_fdc5386261ce24 73
+tools/checkParamSlotLiterals.mjs
+  s_488566bd4df792::t_949bbd0d6ee2c7 40-41,107-126,130-162,164,166,168-171,173-196,198-233,238-243,246,250-260,262-282,284-300,302-305,307,312-318,321,323-345,348-349,351-353,355-375
+tools/checkParamSlotLiterals.test.mjs
+  s_488566bd4df792::t_cee2f3beacdf0b 1-101
+tools/checkRemovedIdCoverage.mjs
+  s_488566bd4df792::t_56658b0677c2c8 47-55,78-79,96-97,169-175,187,189,237-297,301-334,336-339,348-425,433-434,471-620,623-648,653-669,676-680,689,705-708,710-719,721-764,777-785,787-790,795-796,799,806,842-844,849-852,855-864,873
+tools/checkRemovedIdCoverage.test.mjs
+  s_488566bd4df792::t_4d891187c21611 36,42,44,107-112,140-154,201-1031
+tools/checkScannedLiterals.mjs
+  s_488566bd4df792::t_9be906794bc7fa 45-55,113-117,119-131,133-153,155-191,193-217,221-222,225-227,241-243,246-249,251-260,263-264,266,269-289,327,342,344,351,399-402,412,431-453,456-457,460,464-466,472-473,497-542,559-572,575-580,583-585,590-594
+tools/checkScannedLiterals.test.mjs
+  s_488566bd4df792::t_89273f4c0d4088 7-11,15,20-21,72-247,301-524
+tools/checkSiblingArms.mjs
+  s_488566bd4df792::t_d13e247be7a4a1 1-1224
+tools/checkSiblingArms.test.mjs
+  s_488566bd4df792::t_6b1a5f2a9c3648 1-796
+tools/checkSlotContext.mjs
+  s_488566bd4df792::t_49fe1f5094e928 1-1065
+tools/checkSlotContext.test.mjs
+  s_488566bd4df792::t_b53fa7e16546a7 1-1182
+tools/checkSlotLiterals.mjs
+  s_488566bd4df792::t_55dfb68702f9f9 74-75,78-84,148-149,179-182,184-213,215-216,218,220-236,240-245,249,251-253,255-265,268-277,299-305,322,329-331,335,339-340,342-346,384-547,563-570,573-574,577,585-593,595-615,638-654,667
+tools/checkSlotLiterals.test.mjs
+  s_488566bd4df792::t_0f02851342338e 13,15-21,93-95,116-118,124,126,130,135,144-423
+tools/checkSubstitutionTags.mjs
+  s_488566bd4df792::t_91bd50dd2c9f0b 72
+tools/checkTagBalance.mjs
+  s_488566bd4df792::t_953405836c0a78 1-351
+tools/checkTagBalance.test.mjs
+  s_488566bd4df792::t_1acf9ef8be577d 1-177
+tools/classifyEvidence.test.mjs
+  s_488566bd4df792::t_2aa94850945d3a 1-212
+tools/classifyRound2.test.mjs
+  s_488566bd4df792::t_0a1879c49c09c6 1-760
+tools/classifySiteProvenance.test.mjs
+  s_488566bd4df792::t_48425fa21d10a1 1-277
+tools/contentSwap.test.mjs
+  s_488566bd4df792::t_124b4bc26765c3 1-93
+tools/deferredTools.test.mjs
+  s_488566bd4df792::t_d7c997089110e8 1-68
+tools/detectionCoverage.js
+  s_488566bd4df792::t_8f53a58026a8e8 36-39,95-98,111-116,265-266,277-281,399
+tools/detectionCoverage.test.js
+  s_488566bd4df792::t_2e3193ec255696 81-83,86-95,181-204
+tools/harvestAudit.mjs
+  s_488566bd4df792::t_f8467607fc561b 1-201
+tools/harvestClassify.mjs
+  s_488566bd4df792::t_fa2d8e5d2b8106 1-93
+tools/lib/auditCorpus.mjs
+  s_488566bd4df792::t_5f0146b6e22a05 1-1103
+tools/lib/auditPacketMd.mjs
+  s_488566bd4df792::t_77ba2afeb4e019 1-873
+tools/lib/bundleQuery.mjs
+  s_488566bd4df792::t_70a911df9d8021 1-733
+tools/lib/bundleSites.cjs
+  s_488566bd4df792::t_69d2b291325672 1-711
+tools/lib/classifyPacketMd.mjs
+  s_488566bd4df792::t_674047f6940459 1-398
+tools/lib/classifyRoutes.mjs
+  s_488566bd4df792::t_c0a78ce1b099ba 1-307
+tools/lib/classifyVerdicts.mjs
+  s_488566bd4df792::t_da8e933d913eef 1-300
+tools/lib/classifyVerdicts.test.mjs
+  s_488566bd4df792::t_89ad53500e1eea 1-64
+tools/lib/concatNeighbours.mjs
+  s_488566bd4df792::t_616fb59bf35fe8 1-241
+tools/lib/contentSwap.mjs
+  s_488566bd4df792::t_27b672c2c18da9 1-100
+tools/lib/deferredTools.mjs
+  s_488566bd4df792::t_e129e7ff648d95 1-150
+tools/lib/emissionRoute.mjs
+  s_488566bd4df792::t_b840db8130fb8d 1-1991
+tools/lib/emissionRoute.test.mjs
+  s_488566bd4df792::t_cc22066d4a41c3 1-202
+tools/lib/matcherDifferential.d.mts
+  s_488566bd4df792::t_e594c3706d7958 1-41
+tools/lib/matcherDifferential.mjs
+  s_488566bd4df792::t_d4357b388f5638 1-478
+tools/lib/matcherDifferential.test.mjs
+  s_488566bd4df792::t_5a0237bc5ba1f8 1-85
+tools/lib/matcherDifferentialWorker.mjs
+  s_488566bd4df792::t_a485e4fcd7c68c 1-46
+tools/lib/moduleBundle.cjs
+  s_488566bd4df792::t_2c788cf95037c5 3,51,66
+tools/lib/normalizeLiteralNames.mjs
+  s_488566bd4df792::t_dcd1461bd717eb 1-46
+tools/lib/normalizeLiteralNames.test.mjs
+  s_488566bd4df792::t_de7e1355f725f6 1-32
+tools/lib/packByWeight.mjs
+  s_488566bd4df792::t_117b9c6f6ea72b 48-88
+tools/lib/packetParts.mjs
+  s_488566bd4df792::t_3dca7097ad616f 1-181
+tools/lib/packetParts.test.mjs
+  s_488566bd4df792::t_48a41c6d234074 1-124
+tools/lib/probeEnvironment.mjs
+  s_488566bd4df792::t_72ed4c8f26a3c8 1-10
+tools/lib/probeEnvironment.test.mjs
+  s_488566bd4df792::t_636cb39dd05513 1-133
+tools/lib/searchNeedles.mjs
+  s_488566bd4df792::t_0ed035dbee05d3 229-235,287
+tools/lib/searchNeedles.test.mjs
+  s_488566bd4df792::t_0defe24bf5c86b 1-14
+tools/lib/settingsSchema.cjs
+  s_488566bd4df792::t_156b3a758be3f6 35-39,42-46,223,232,358,420-427,431-441,516-524,539-557,559-600,602-609,614-618,622-623
+tools/lib/settingsSchema.test.mjs
+  s_488566bd4df792::t_17cd0f4c091b2c 191-242
+tools/lib/slotScope.mjs
+  s_488566bd4df792::t_ba8af8cd2f08ac 1-107
+tools/lib/slotValues.mjs
+  s_488566bd4df792::t_b8ba81064579ef 1-1068
+tools/lib/throwingRewriters.mjs
+  s_488566bd4df792::t_d44c51197964ec 1-1661
+tools/lib/throwingRewriters.test.mjs
+  s_488566bd4df792::t_f8f23e2529fd3c 1-228
+tools/navigation-eval/NATIVE-HANDLER.md
+  s_488566bd4df792::t_246d4e5e29aeb9 1-175
+tools/navigation-eval/README.md
+  s_488566bd4df792::t_f555ff98433b56 1-181
+tools/navigation-eval/RESULTS.md
+  s_488566bd4df792::t_f0433f9eb5d11e 1-107
+tools/navigation-eval/adoption/CONFIRMATION.md
+  s_488566bd4df792::t_8b5b783e0138e6 1-106
+tools/navigation-eval/adoption/EXPLORATORY.md
+  s_488566bd4df792::t_ff4cd68c5caaa5 1-49
+tools/navigation-eval/adoption/README.md
+  s_488566bd4df792::t_da9663ca9e1232 1-204
+tools/navigation-eval/adoption/capability.v1.json
+  s_488566bd4df792::t_80ac0e308ac876 1-548
+tools/navigation-eval/adoption/common.mjs
+  s_488566bd4df792::t_cb2fd0e4b5e37b 1-45
+tools/navigation-eval/adoption/confirmation.v1.json
+  s_488566bd4df792::t_3d6e867ab92121 1-1382
+tools/navigation-eval/adoption/evidence.check.mjs
+  s_488566bd4df792::t_95fc698d3f50ae 1-140
+tools/navigation-eval/adoption/evidence.mjs
+  s_488566bd4df792::t_5dc80e6dd0a6f2 1-293
+tools/navigation-eval/adoption/exploratory.v1.json
+  s_488566bd4df792::t_eec9ea68042798 1-1386
+tools/navigation-eval/adoption/freeze.v1.json
+  s_488566bd4df792::t_3a4067f83ae1d5 1-43
+tools/navigation-eval/adoption/guard-failure.v1.json
+  s_488566bd4df792::t_75dd69d9a1b551 1-229
+tools/navigation-eval/adoption/guidance.v1.txt
+  s_488566bd4df792::t_96955397985418 1
+tools/navigation-eval/adoption/integrity.v1.json
+  s_488566bd4df792::t_3c85ed107bbefe 1-17
+tools/navigation-eval/adoption/lifecycle.check.mjs
+  s_488566bd4df792::t_ae2e2758e22eac 1-454
+tools/navigation-eval/adoption/lifecycle.v1.json
+  s_488566bd4df792::t_24ae314fea967b 1-87
+tools/navigation-eval/adoption/native-contract.v1.json
+  s_488566bd4df792::t_f9e0e0bb21ec7d 1-36
+tools/navigation-eval/adoption/proxy.check.mjs
+  s_488566bd4df792::t_c9d1babaf1cfd5 1-189
+tools/navigation-eval/adoption/proxy.mjs
+  s_488566bd4df792::t_c3f3835d3c4806 1-313
+tools/navigation-eval/adoption/run.mjs
+  s_488566bd4df792::t_2e6c4bfcbf78c4 1-564
+tools/navigation-eval/adoption/runtime.mjs
+  s_488566bd4df792::t_f3c5999a6725c7 1-382
+tools/navigation-eval/adoption/tasks.v1.json
+  s_488566bd4df792::t_6355c28b2817a6 1-105
+tools/navigation-eval/candidates/generate-native-interleaving.mjs
+  s_488566bd4df792::t_9baf8a79ed549f 1-88
+tools/navigation-eval/candidates/native-search-interleaving.mjs
+  s_488566bd4df792::t_61613b93be0ff5 1-131
+tools/navigation-eval/candidates/native-search-interleaving.test.mjs
+  s_488566bd4df792::t_c050fb465bbdbc 1-189
+tools/navigation-eval/core.mjs
+  s_488566bd4df792::t_a4dddce028608d 1-418
+tools/navigation-eval/core.test.mjs
+  s_488566bd4df792::t_a582a232b6032f 1-312
+tools/navigation-eval/fixtures.mjs
+  s_488566bd4df792::t_c07d009d84fb25 1-200
+tools/navigation-eval/integrity.json
+  s_488566bd4df792::t_5ba44ca77bbd08 1-32
+tools/navigation-eval/manifest.json
+  s_488566bd4df792::t_4593fa2b8c6a35 1-625
+tools/navigation-eval/native-adapter.mjs
+  s_488566bd4df792::t_a5da56c59b613e 1-47
+tools/navigation-eval/native-extraction.mjs
+  s_488566bd4df792::t_1aa5b997d78015 1-159
+tools/navigation-eval/native-handler.mjs
+  s_488566bd4df792::t_899ec3e3a4dcbc 1-243
+tools/navigation-eval/native-handler.test.mjs
+  s_488566bd4df792::t_a1623a0398bce4 1-111
+tools/navigation-eval/prepare-native-pair.mjs
+  s_488566bd4df792::t_f3692c127b65ce 1-94
+tools/navigation-eval/run.mjs
+  s_488566bd4df792::t_e12435aeee3560 1-222
+tools/navigation-eval/validate-native-pair.mjs
+  s_488566bd4df792::t_804d62c56f86ef 1-329
+tools/parallelSetPackets.mjs
+  s_488566bd4df792::t_1c3a8a2e80dece 20,22-26,30-36,48-54,93,95-97,109-110,113
+tools/parseRegion.mjs
+  s_488566bd4df792::t_5ed3476eeb1c74 1-785
+tools/parseRegion.test.mjs
+  s_488566bd4df792::t_58e669e0ef7731 1-304
+tools/probeCacheKey.mjs
+  s_488566bd4df792::t_9786e7b9a6fd3c 1-270
+tools/probeCacheKey.test.mjs
+  s_488566bd4df792::t_713f6a5eb5a837 1-130
+tools/promptExtractor.js
+  s_488566bd4df792::t_852952334bd488 6-7,121-195,227-255,370-517,519-547,708-711,713-739,775-783,875-886,967-1018,1653-1655,2261-2262,2264-2266,2488-2489,2496-2502,3691-3696,3735-3760,3868-3870,3882-3884,3886,4024-4026,4028,4031-4045,4050-4054,4167-4177,4179,4312-4331,4340-4355,4357-4380,4384-4400,4409-4424,4429,4432,4445-4456,4467,4781-4782,4851-4897,4917-4921,4939-4940,4950-4952,4956-4961,4963-4966,4968,4972,4977-4988,4990-5010,5012-5028,5030-5040,5042-5048,5050-5059,5061-5071,5073-5104,5106-5129,5131-5192,5194-5217,5219,5221-5267,5270-5278,5280-5281,5283-5314,5316-5317,5319-5364,5367,5369-5390,5393-5400,5402,5405,5458-5461,5481-5483,5485-5488,5495,5519,5521-5522,5646-5659,5661,5663-5676,5678-5679,5687-5688,5690,5692-5694,5696-5724,5726-5764,5766,5769-5782,5823-5847,5855-6126,6190-6214,6217-6229,6231-6245,6247-6266,6306-6332,6340,6506-6517,6523-6528,6538,6554-6558,6605,6653,6680-6682,6684,6699-6709,6723-6741,6743,6745,6749,6753,6757,6768-6770,6772-6774,6788,6790-6793
+tools/promptExtractor.test.js
+  s_488566bd4df792::t_ca975f4213d149 1,12,62,66-71,79-100,132,139-145,150,161-162,164-392,404-432,526-539
+tools/promptExtractorAssets.test.js
+  s_488566bd4df792::t_41a8c4e64400d2 1-189
+tools/promptExtractorIdCollisions.test.js
+  s_488566bd4df792::t_8bdd0f4b78b5f6 1-287
+tools/promptExtractorPromotedSlots.test.js
+  s_488566bd4df792::t_8478416222b735 1-528
+tools/promptExtractorSettings.test.js
+  s_488566bd4df792::t_1d36e55b1bd471 21-23,25-27,31-36
+tools/promptExtractorSlotLiterals.test.js
+  s_488566bd4df792::t_2c395cbdea0a83 15-18,27-33,58-60,92-94,110-158,172-226,241-246,258-263,271-273,280-282,297,300-301,303-308
+tools/readmeStats.mjs
+  s_488566bd4df792::t_7aabfb6e90787c 1-154
+tools/readmeStats.test.mjs
+  s_488566bd4df792::t_a78f818e874781 1-113
+tools/realignPackets.mjs
+  s_488566bd4df792::t_4d4504bdc96b4a 19-22,26-32,36,63-65,67-73,80-89,93,96-98,132-182,200-205,210-223,244-246,271-279
+tools/realignPackets.test.mjs
+  s_488566bd4df792::t_3816e9b789bcc8 1-84
+tools/rg-fff/Cargo.lock
+  s_488566bd4df792::t_9d35df02175856 163-168,240,242,264,266,270,272,355,357,712,714,716,1020,1022-1023,1026-1029,1133-1142
+tools/rg-fff/Cargo.toml
+  s_488566bd4df792::t_068a4362ba2bc4 13,16-22
+tools/rg-fff/compatibility-integration.mjs
+  s_488566bd4df792::t_4303e6b351ad00 1-343
+tools/rg-fff/daemon-integration.mjs
+  s_488566bd4df792::t_1f507c2a591118 1-183
+tools/rg-fff/edge-integration.mjs
+  s_488566bd4df792::t_33b1fe2fbc1c41 1-229
+tools/rg-fff/export-transcripts.py
+  s_488566bd4df792::t_993ac9aea2fdbb 1-86
+tools/rg-fff/freshness-integration.mjs
+  s_488566bd4df792::t_df7c7237fb9932 1-234
+tools/rg-fff/history-integration.mjs
+  s_488566bd4df792::t_bc17a37484844d 1-130
+tools/rg-fff/integration.mjs
+  s_488566bd4df792::t_1a65fa1a8b0a67 1-199
+tools/rg-fff/output-integration.mjs
+  s_488566bd4df792::t_c442ae230f6ed3 1-61
+tools/rg-fff/relevance-integration.mjs
+  s_488566bd4df792::t_f453d0cd6ff730 1-379
+tools/rg-fff/replay.mjs
+  s_488566bd4df792::t_f02a2666c1b65a 1-156
+tools/rg-fff/semantic-integration.mjs
+  s_488566bd4df792::t_d80e4ffb4752ac 1-285
+tools/rg-fff/src/daemon.rs
+  s_488566bd4df792::t_50ef28625a66b2 28,30-31,33-34,39-40,42,44,47,50-52,66-166,175,185,188,191-207,222,233-254,276-321,324-327,341-355,364-399,401,405,412-415,425-427,429,434-435,441-449,452-458,462-481,483-484,486-506,508-525,528-540,542-556,558-567,569,573-588,590-595,600-601,603-604
+tools/rg-fff/src/daemon/freshness.rs
+  s_488566bd4df792::t_f60eae15bfb6c6 1-249
+tools/rg-fff/src/feedback.rs
+  s_488566bd4df792::t_62bf80da431639 1-283
+tools/rg-fff/src/files.rs
+  s_488566bd4df792::t_057e93990cb598 1-521
+tools/rg-fff/src/main.rs
+  s_488566bd4df792::t_90705b90b70c10 21-32,34-35,42-43,78,100-104,115,117-121,123,130-132,135-142,150,177-192,194,200-287,306,329-330,338-342,389,398-402,408-409,414-417,429-433,435-443,450-462,464,481-483,492,494,496-497,502-504,508-509,521-522,524-525,531-532,538-540,545-547,550-551,554-555,569-574,578-593,606-629,644-647,649,667-681,688-692,706,710-720,732-738,742-743,780,785-786,789-793,879-880,897-898,914-922,924-928,959,968,973-974,1008-1025,1027-1068,1077-1082,1092-1094,1098,1115,1119,1128-1130,1134,1138,1141-1145,1154,1166-1170,1203,1207,1305,1314,1328,1354-1357,1376-1418,1422,1424,1426-1428,1456-1459,1478-1482,1544-1547,1568-1574,1580-1588,1592-1594,1606-1609,1611-1614,1632-1639,1643-1646,1698-1704,1709-1717,1722-1733,1736,1738-1745,1747,1751-1754,1758,1761,1765,1789,1791,1793,1800-1801,1804-1815,1863-1893,1901,1904,1907,1911,1917,1919-1920,1922,1926,1928-1930,1932,1936-1937,1943-1958
+tools/rg-fff/src/metrics.rs
+  s_488566bd4df792::t_f8ce0177704d49 1-45
+tools/rg-fff/src/navigation.rs
+  s_488566bd4df792::t_64fbbfdba88831 1-189
+tools/rg-fff/src/ranking.rs
+  s_488566bd4df792::t_fd46994841eb3d 1-119
+tools/rg-fff/src/search.rs
+  s_488566bd4df792::t_4dfe07e1b0d84d 1-408
+tools/rg-fff/src/search/collect.rs
+  s_488566bd4df792::t_e505560a04bcd1 1-222
+tools/rg-fff/src/search/definitions.rs
+  s_488566bd4df792::t_034d8a192b1af5 1-38
+tools/rg-fff/src/search/output.rs
+  s_488566bd4df792::t_a89f68f2b6beb9 1-22
+tools/rg-fff/src/viewers/learning.rs
+  s_488566bd4df792::t_4cd5e997099599 1-125
+tools/rg-fff/src/viewers/mod.rs
+  s_488566bd4df792::t_b769b3aec021b4 1-170
+tools/rg-fff/src/viewers/options.rs
+  s_488566bd4df792::t_9d1032808971fc 1-195
+tools/rg-fff/src/viewers/selection.rs
+  s_488566bd4df792::t_d61a673df2ff2b 1-215
+tools/rg-fff/src/viewers/signals.rs
+  s_488566bd4df792::t_e0914a84a1593d 1-321
+tools/rg-fff/src/viewers/tests.rs
+  s_488566bd4df792::t_28991c36b9636b 1-334
+tools/rg-fff/test_export_transcripts.py
+  s_488566bd4df792::t_5015cb2e9c387b 1-53
+tools/rg-fff/viewer-integration.mjs
+  s_488566bd4df792::t_985accffb7b88b 1-510
+tools/runMatcherDifferential.mjs
+  s_488566bd4df792::t_06485ab1887370 1-63
+tools/slotLiteralReview.mjs
+  s_488566bd4df792::t_9bcf88f5c78312 1-557
+tools/slotLiteralReview.test.mjs
+  s_488566bd4df792::t_b48e71384ab13e 1-488
+tools/tagPlatforms.mjs
+  s_488566bd4df792::t_cbe977474a95ef 16,18,20-21,24-35,37-39,41-43,48,50-52,56-68,70-77,79-83,88-94,99,102-104
+tools/tagPlatforms.test.mjs
+  s_488566bd4df792::t_202644569b381b 1-151
+tools/traceEmissionRoute.mjs
+  s_488566bd4df792::t_2a5b2ea45059d5 1-101
+tools/tuiSmoke.mjs
+  s_488566bd4df792::t_9b9621c4770369 22,120
+tools/turnProbe.mjs
+  s_488566bd4df792::t_9ec0863fbd3b04 33,209,223
+tools/versionBumpReport.js
+  s_488566bd4df792::t_299a6ba1be9810 332
+tools/workflowShape/auditStage1.test.mjs
+  s_488566bd4df792::t_7865e56bf5717c 1-189
+tools/workflowShape/driverTasks.test.mjs
+  s_488566bd4df792::t_9d49e72f5d3715 1-383
+tools/workflowShape/harness.mjs
+  s_488566bd4df792::t_14cc098fc49497 1-72
+tools/workflowShape/pipelineShape.test.mjs
+  s_488566bd4df792::t_ab90461d02d7f9 12,21,23-33,36-38,41-42,44,47-130,138-163,165-166,171-172,177-178,181-212
+tools/workflowShape/retrySalvage.test.mjs
+  s_488566bd4df792::t_ba81e6cd6d7dce 1-2,17,19-22,35-40,45-51,53-65,68-71,75-89,91-96,99,101-105,107-116,119-126,129-136,139,141-143,145-147,150,152-154,156-157,161-182,184-205,207-212,214-222,224-227,229-241,243-260
+tools/workflowShape/tasksWorkflows.test.mjs
+  s_488566bd4df792::t_1ebd9bece51297 1-216
+tools/workflowShape/workerAgent.test.mjs
+  s_488566bd4df792::t_98d604f6fc499f 1-53
+tools/writeAuditVerdicts.mjs
+  s_488566bd4df792::t_3411acf9eb9338 1-112
+tools/writeClassifyVerdicts.mjs
+  s_488566bd4df792::t_84244bfa29ee10 1-104
+vitest.setup.ts
+  s_488566bd4df792::t_1a8710f022e022 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3157b01c00d5a87244df96c7ae59bf88b6ba618",
+  "prompts": {},
+  "sessions": {
+    "s_488566bd4df792": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d43d-80d5-7692-af5d-1c2080e2abcf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Heichler <55435876+michaelheichler@users.noreply.github.com>"
+    }
+  }
+}
