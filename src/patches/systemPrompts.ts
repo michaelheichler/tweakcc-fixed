@@ -218,7 +218,7 @@ export const applySystemPrompts = async (
   if (newContent === null) {
     throw new Error(
       'User cooperation policy requires one main selector, default builder and subagent assembler. ' +
-        'The target source has missing or ambiguous sites. The binary has not changed.'
+        'The target source has missing or ambiguous sites. No patched source has been written.'
     );
   }
   state.results.push({
