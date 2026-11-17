@@ -10,6 +10,29 @@ import { slotExpr, ReminderInjection, findAndReplace } from './reminderShared';
 import { resolveSlots, emitReminder, ResolvedSlot } from './reminderRendering';
 import { showDiff } from './index';
 
+const isEditedTextFileSpliced = (content: string): boolean => {
+  const m = content.match(/edited_text_file:\(([$\w]+)\)=>/);
+  if (!m || m.index === undefined) return false;
+  const rest = content.slice(m.index + m[0].length);
+  const at = rest.indexOf('({content:');
+  if (at < 0) return false;
+  const head = rest.slice(0, at);
+  if (
+    !/^(?:\{let [\s\S]*;return )?(?:\(\(c\)=>c\.trim\(\)===""\?\[\]:)?[$\w]+\(\[[$\w]+$/.test(
+      head
+    )
+  )
+    return false;
+  const emitted = (s: string) =>
+    s.startsWith('`') || s.startsWith('((L)=>{let o=[];');
+  const value = rest.slice(at + '({content:'.length);
+  if (head.includes('((c)=>c.trim()===""?[]:')) {
+    const tail = 'c,isMeta:!0})]))(';
+    return value.startsWith(tail) && emitted(value.slice(tail.length));
+  }
+  return emitted(value);
+};
+
 export const matchEditedTextStructure = (content: string) => {
   const match = content.match(
     /edited_text_file:\(([$\w]+)\)=>\{let ([$\w]+)=`/
@@ -162,6 +185,7 @@ export const EDITED_TEXT_FILE_INJECTION: ReminderInjection = {
     'Pristine has two branches: with a diff snippet ("Here are the relevant changes (shown with line numbers):" + the snippet) and without one, when the snippet budget ran out ("The changes are not shown here; use <Read> if you need the current content."). ' +
     '{{changes}} is that pristine tail for whichever branch fires; {{snippet}} is the bare snippet (empty on the no-snippet branch, so a line holding only it disappears); {{read_tool}} is the Read tool name.',
   apply(content, body, isSuppressed) {
+    if (isEditedTextFileSpliced(content)) return content;
     const structural = applyEditedTextFileStructural(
       content,
       body,

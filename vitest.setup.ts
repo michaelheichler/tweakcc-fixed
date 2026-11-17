@@ -9,8 +9,13 @@ const extractCacheDir = fs.mkdtempSync(
   path.join(os.tmpdir(), 'tweakcc-test-extract-cache-')
 );
 process.env.TWEAKCC_EXTRACT_CACHE_DIR = extractCacheDir;
+const configDir = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'tweakcc-test-config-')
+);
+process.env.TWEAKCC_CONFIG_DIR = configDir;
 afterAll(() => {
   fs.rmSync(extractCacheDir, { recursive: true, force: true });
+  fs.rmSync(configDir, { recursive: true, force: true });
 });
 
 // Tests must never touch the network: a real request makes timing depend on

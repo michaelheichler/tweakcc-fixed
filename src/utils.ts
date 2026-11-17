@@ -499,12 +499,12 @@ export async function doesFileExist(filePath: string): Promise<boolean> {
 }
 
 // Helper function to expand ~ in paths
-export const expandTilde = (filepath: string): string => {
+export function expandTilde(filepath: string): string {
   if (filepath.startsWith('~')) {
     return path.join(os.homedir(), filepath.slice(1));
   }
   return filepath;
-};
+}
 
 /**
  * Compares two semantic versions.

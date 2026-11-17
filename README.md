@@ -3,14 +3,14 @@
 Patch Claude Code's prompts, UI and tools. A fork of [Piebald's tweakcc](https://github.com/Piebald-AI/tweakcc) with fff filename search, effort routing, Fable planning and editable runtime reminders.
 
 [![npm](https://img.shields.io/npm/v/tweakcc-fixed?color=cb3837&label=npm&style=flat-square)](https://www.npmjs.com/package/tweakcc-fixed)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.322-d97757?style=flat-square)](https://github.com/anthropics/claude-code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.325-d97757?style=flat-square)](https://github.com/anthropics/claude-code)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 [Install](#install) · [Fork additions](#fork-additions) · [Prompt editing](#prompt-editing) · [Build from source](#build-from-source)
 
 ## Install
 
-Requires Node.js 20+ and pnpm. Supports npm and native Claude Code installations; the tested target is 2.1.322.
+Requires Node.js 20+ and pnpm. Supports npm and native Claude Code installations. The tested target is 2.1.325.
 
 ```sh
 pnpm dlx tweakcc-fixed@latest            # open the settings UI
@@ -48,15 +48,15 @@ Upstream provides the themes, spinners, thinking text, toolsets, subagent model 
 
 |                           | tweakcc-fixed | upstream |
 | ------------------------- | :-----------: | :------: |
-| Prompt sites (CC 2.1.319) |    17,247     |  1,134   |
-| Unique prompt IDs         |    16,001     |  1,134   |
-| Patches                   |      82       |    61    |
+| Prompt sites (CC 2.1.325) |    17,724     |  1,209   |
+| Unique prompt IDs         |    16,551     |  1,209   |
+| Patches                   |      83       |    61    |
 
-Same Claude Code 2.1.319 catalogue, compared with [upstream 00dbaf9d](https://github.com/Piebald-AI/tweakcc/tree/00dbaf9d0cfbb32d7e9b9e2c93d04a118d63be10). Counts describe source inventory; active prompts depend on model, tools and settings.
+Same Claude Code 2.1.325 catalogue, compared with [upstream 3bc6d52f](https://github.com/Piebald-AI/tweakcc/tree/3bc6d52f32f45b24b5f7ff27b898461e8267ba18). Counts describe source inventory; active prompts depend on model, tools and settings.
 
 <!-- coverage:end -->
 
-Refresh this table from a checkout with `git fetch upstream main`, then `node tools/readmeStats.mjs 2.1.319 --write`. The command requires the same Claude Code catalogue version on both sides.
+Refresh this table from a checkout with `git fetch upstream main`, then `node tools/readmeStats.mjs 2.1.325 --write`. The command requires the same Claude Code catalogue version on both sides.
 
 ## Prompt editing
 
@@ -74,6 +74,15 @@ pnpm dlx tweakcc-fixed@latest --apply
 ```
 
 [lobotomized-claude-code](https://github.com/skrabe/lobotomized-claude-code) supplies ready-made overrides for Opus 5.5 and Fable 5.1. Its [clean Opus fixture](https://github.com/skrabe/lobotomized-claude-code/blob/main/docs/measurements.md) measured 22.6% fewer characters in system blocks and tool descriptions than stock. Token counts and task quality weren't measured.
+
+This personal fork also accepts `~/.tweakcc/user-cooperation.md` during a full
+`--apply`. It appends that text once to the selected main prompt, direct teammate
+builder and normal subagent assembler, including standard and lean routes. Keep
+the policy as plain text without prompt-catalogue frontmatter. Missing or
+ambiguous assembly sites abort the apply before the patcher writes patched
+source. Version 2.9.33 covers Claude Code 2.1.325. Targeted `--patches` runs omit
+this optional layer. Remove the file and run a full apply to omit the policy.
+Deterministic tests check routing and idempotence without Claude model calls.
 
 ## Build from source
 

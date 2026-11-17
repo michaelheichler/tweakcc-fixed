@@ -1,6 +1,10 @@
 import chalk from 'chalk';
+import fs from 'node:fs';
+import path from 'node:path';
+import { CONFIG_DIR } from '../config';
 import { debug, isVerbose } from '../utils';
-import { showDiff, PatchResult } from './index';
+import { showDiff, PatchGroup, PatchResult } from './index';
+import { writeUserCooperation } from './userCooperation';
 import { loadSystemPromptsWithRegex } from '../systemPromptSync';
 import {
   detectUnicodeEscaping,
@@ -204,5 +208,26 @@ export const applySystemPrompts = async (
     await applyPrompt(state, entry);
   }
   await storePromptApplyHashes(state);
-  return { newContent: state.working.toString(), results: state.results };
+  const contentWithOverrides = state.working.toString();
+  const policyFile = path.join(CONFIG_DIR, 'user-cooperation.md');
+  if (patchFilter || !fs.existsSync(policyFile)) {
+    return { newContent: contentWithOverrides, results: state.results };
+  }
+  const policy = fs.readFileSync(policyFile, 'utf8').trim();
+  const newContent = writeUserCooperation(contentWithOverrides, policy);
+  if (newContent === null) {
+    throw new Error(
+      'User cooperation policy requires one main selector, default builder and subagent assembler. ' +
+        'The target source has missing or ambiguous sites. The binary has not changed.'
+    );
+  }
+  state.results.push({
+    id: 'user-cooperation',
+    name: 'User cooperation policy',
+    group: PatchGroup.SYSTEM_PROMPTS,
+    applied: newContent !== contentWithOverrides,
+    modelFacing: true,
+    details: 'Main, teammate and subagent prompt paths',
+  });
+  return { newContent, results: state.results };
 };
