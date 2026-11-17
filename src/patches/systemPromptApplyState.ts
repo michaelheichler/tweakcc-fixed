@@ -1,7 +1,4 @@
-import {
-  loadSystemPromptsWithRegex,
-  reconstructContentFromPieces,
-} from '../systemPromptSync';
+import type { LoadedPrompt } from '../systemPromptCatalogue';
 import { MutableText } from '../mutableText';
 import {
   foldPromptMatchContent,
@@ -13,9 +10,7 @@ import { computeMD5Hash, setAppliedHashes } from '../systemPromptHashIndex';
 import { debug } from '../utils';
 import { PatchGroup, PatchResult } from './index';
 
-export type LoadedPrompt = Awaited<
-  ReturnType<typeof loadSystemPromptsWithRegex>
->[number];
+export type { LoadedPrompt } from '../systemPromptCatalogue';
 
 export interface PromptApplyState {
   version: string;
@@ -29,7 +24,7 @@ export interface PromptApplyState {
   matchSpecs: Map<string, PromptMatchSpec>;
   matchCatalog: PromptPieceMatcherCatalog;
   expiringMatches: Map<number, string[]>;
-  pristinePromptIds: Set<string>;
+  canonicalEntries: Set<LoadedPrompt>;
   groupNames: Map<string, Set<string>>;
   groupMultiplicity: Map<string, number>;
   groupRetained: Map<string, number>;
@@ -41,33 +36,6 @@ export interface PromptApplyState {
 
 export const promptSiteKey = (entry: LoadedPrompt): string =>
   (entry.asset ? 'asset:' : 'js:') + entry.regex;
-
-export const promptBaseline = (entry: LoadedPrompt): string =>
-  reconstructContentFromPieces(
-    entry.pieces,
-    entry.identifiers,
-    entry.identifierMap
-  ).trim();
-
-const sharedPristinePromptIds = (prompts: LoadedPrompt[]): Set<string> => {
-  const firstPristineById = new Map<string, string>();
-  const counts = new Map<string, number>();
-  for (const entry of prompts) {
-    counts.set(entry.promptId, (counts.get(entry.promptId) ?? 0) + 1);
-    if (!firstPristineById.has(entry.promptId)) {
-      firstPristineById.set(entry.promptId, promptBaseline(entry));
-    }
-  }
-  return new Set(
-    prompts
-      .filter(
-        entry =>
-          (counts.get(entry.promptId) ?? 0) > 1 &&
-          entry.prompt.content.trim() === firstPristineById.get(entry.promptId)
-      )
-      .map(entry => entry.promptId)
-  );
-};
 
 const matchExpiryIndexes = (prompts: LoadedPrompt[]): Map<number, string[]> => {
   const lastUse = new Map<string, number>();
@@ -101,14 +69,22 @@ const promptGroups = (prompts: LoadedPrompt[], filter?: string[] | null) => {
 export const createPromptApplyState = (
   content: string,
   prompts: LoadedPrompt[],
+  canonicalEntries: Set<LoadedPrompt>,
   version: string,
   shouldEscapeNonAscii: boolean,
   buildTime?: string,
   patchFilter?: string[] | null,
   pristineContent?: string
 ): PromptApplyState => {
+  const authoredRegexes = new Set(
+    prompts
+      .filter(entry => !canonicalEntries.has(entry))
+      .filter(entry => !patchFilter || patchFilter.includes(entry.promptId))
+      .map(entry => entry.regex)
+  );
   const matchSpecs = new Map<string, PromptMatchSpec>();
   for (const entry of prompts) {
+    if (!authoredRegexes.has(entry.regex)) continue;
     matchSpecs.set(entry.regex, {
       regex: entry.regex,
       pieces: entry.pieces,
@@ -117,7 +93,9 @@ export const createPromptApplyState = (
     });
   }
   const matchCatalog = new PromptPieceMatcherCatalog([...matchSpecs.values()]);
-  matchCatalog.index(content, foldPromptMatchContent(content));
+  if (matchSpecs.size > 0) {
+    matchCatalog.index(content, foldPromptMatchContent(content));
+  }
   const groups = promptGroups(prompts, patchFilter);
   return {
     version,
@@ -133,7 +111,7 @@ export const createPromptApplyState = (
     matchSpecs,
     matchCatalog,
     expiringMatches: matchExpiryIndexes(prompts),
-    pristinePromptIds: sharedPristinePromptIds(prompts),
+    canonicalEntries,
     groupNames: groups.names,
     groupMultiplicity: groups.multiplicity,
     groupRetained: new Map(),

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/);
 this fork uses its own `2.x` line (npm package `tweakcc-fixed`) and is a strict
 superset of upstream. Pre-fork upstream history lives in Piebald's releases.
 
+## [2.9.34] - 2026-11-17
+
+- Classify unchanged catalogue stubs before binary site selection. Keep ambiguous
+  authored edits blocked and retain positions in mixed groups.
+- Recover historical stock baselines when the hash cache lacks an older version.
+  Keep custom bodies and metadata intact when synchronization needs review.
+- Split preflight replay into a separate module and add regression checks for
+  stock stubs, mixed groups and historical synchronization.
+
 ## [2.3.2] - 2026-06-25
 
 Transparency for the patches that change how the model behaves.

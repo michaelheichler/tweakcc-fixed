@@ -84,6 +84,12 @@ source. Version 2.9.33 covers Claude Code 2.1.325. Targeted `--patches` runs omi
 this optional layer. Remove the file and run a full apply to omit the policy.
 Deterministic tests check routing and idempotence without Claude model calls.
 
+Unchanged stock prompt files require no binary edit. Validation checks authored
+replacements and retains the ambiguity guard for their destinations. If the
+original hash cache lacks an older version, synchronization compares the file
+with that version's catalogue before treating it as a personal edit. A conflict
+leaves its body and metadata in place for review.
+
 ## Build from source
 
 Use Node.js 24 and pnpm 11+ for development.

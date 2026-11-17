@@ -29,6 +29,7 @@ import {
 import { createPromptConflictDiff } from './systemPromptConflict';
 import { buildSearchRegexFromPieces } from './systemPromptRegex';
 import { applyIdentifierMapping } from './systemPromptIdentifiers';
+import { createPromptHistory, type PromptHistory } from './systemPromptHistory';
 
 export { compareVersions };
 
@@ -81,7 +82,8 @@ export const clearShadowSetCache = (): void => {
 };
 
 export const syncPrompt = async (
-  prompt: StringsPrompt
+  prompt: StringsPrompt,
+  history: PromptHistory = createPromptHistory()
 ): Promise<SyncResult> => {
   const result: SyncResult = {
     id: prompt.id,
@@ -108,20 +110,27 @@ export const syncPrompt = async (
   }
   const existingFile = await readPromptFile(prompt.id);
   result.oldVersion = existingFile.ccVersion;
-  await updateVariables(prompt.id, prompt.identifierMap);
   if (existingFile.ccVersion && prompt.version) {
     const versionComparison = compareVersions(
       existingFile.ccVersion,
       prompt.version
     );
     if (versionComparison === 0) {
+      await updateVariables(prompt.id, prompt.identifierMap);
       result.action = 'skipped';
       return result;
     }
     if (versionComparison != 0) {
       const oldHash = await getPromptHash(prompt.id, existingFile.ccVersion);
       const currentHash = computeMD5Hash(existingFile.content);
-      const isModified = !oldHash || oldHash !== currentHash;
+      const unmodified = oldHash
+        ? oldHash === currentHash
+        : await history(
+            prompt.id,
+            existingFile.ccVersion,
+            existingFile.content
+          );
+      const isModified = !unmodified;
       if (isModified) {
         result.action = 'conflict';
         result.diffHtmlPath = await createPromptConflictDiff(
@@ -153,9 +162,10 @@ export const syncSystemPrompts = async (
   const stringsFile = await downloadStringsFile(ccVersion);
   await storeHashes(stringsFile);
   await fs.mkdir(SYSTEM_PROMPTS_DIR, { recursive: true });
+  const history = createPromptHistory();
   for (const prompt of stringsFile.prompts) {
     try {
-      const result = await syncPrompt(prompt);
+      const result = await syncPrompt(prompt, history);
       summary.results.push(result);
     } catch (error) {
       console.log(

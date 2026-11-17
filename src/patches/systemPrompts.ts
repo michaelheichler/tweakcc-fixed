@@ -5,6 +5,10 @@ import { CONFIG_DIR } from '../config';
 import { debug, isVerbose } from '../utils';
 import { showDiff, PatchGroup, PatchResult } from './index';
 import { writeUserCooperation } from './userCooperation';
+import {
+  canonicalPromptEntries,
+  promptBaseline,
+} from '../systemPromptCatalogue';
 import { loadSystemPromptsWithRegex } from '../systemPromptSync';
 import {
   detectUnicodeEscaping,
@@ -17,7 +21,6 @@ import {
   createPromptApplyState,
   LoadedPrompt,
   PromptApplyState,
-  promptBaseline,
   promptSiteKey,
   recordPromptResult,
   retainPromptSite,
@@ -86,13 +89,6 @@ const applyMatchedPrompt = (
   entry: LoadedPrompt,
   match: RegExpMatchArray
 ): void => {
-  const baseline = promptBaseline(entry);
-  if (entry.prompt.content.trim() === baseline) {
-    debug(`"${entry.prompt.name}": still vanilla, leaving cli.js untouched`);
-    retainPromptSite(state, entry);
-    recordPromptResult(state, entry, { details: 'unchanged' }, true);
-    return;
-  }
   const delimiter = state.working.charAt(match.index! - 1);
   const replacement = preparePromptReplacement(state, entry, match, delimiter);
   if (replacement === null) return;
@@ -103,7 +99,7 @@ const applyMatchedPrompt = (
     {
       applied: replacement !== match[0],
       details: promptLengthDetails(
-        baseline.length - entry.prompt.content.trim().length
+        promptBaseline(entry).length - entry.prompt.content.trim().length
       ),
     },
     true
@@ -118,13 +114,10 @@ const applyPrompt = async (
     recordPromptResult(state, entry, { skipped: true });
     return;
   }
-  if (state.pristinePromptIds.has(entry.promptId)) {
-    recordPromptResult(
-      state,
-      entry,
-      { skipped: true, details: 'unchanged' },
-      true
-    );
+  if (state.canonicalEntries.has(entry)) {
+    debug(`"${entry.prompt.name}": still vanilla, leaving cli.js untouched`);
+    retainPromptSite(state, entry);
+    recordPromptResult(state, entry, { details: 'unchanged' }, true);
     return;
   }
   debug(`Applying system prompt: ${entry.prompt.name}`);
@@ -195,6 +188,7 @@ export const applySystemPrompts = async (
   const state = createPromptApplyState(
     content,
     prompts,
+    canonicalPromptEntries(loaded),
     version,
     shouldEscapeNonAscii,
     buildTime,
