@@ -9,6 +9,9 @@ const RENAMED_WRAPPER =
   'function $select($request){let{prompt:$blocks,servesDefault:$defaulted}=$choose($request);' +
   'if(!$defaulted&&!$request.analysisOnly)$notify(!1);return $blocks}';
 const POLICY = 'Read the required documents before making dependent edits.';
+const UNICODE_POLICY =
+  'Read /tmp/\u00e9tudes/r\u00e9sum\u00e9.md. Calculate \u221a2 with \ud83e\uddee.' +
+  '\u2028Use \ud835\udefc and preserve each symbol.\u2029Keep \u007f literal.';
 const BUILDER =
   'async function buildPrompt(e,n,r){let s=await selectStored(()=>livePrompt(e,n,r),' +
   '(h)=>h===void 0?freshPrompt(e,n,r):recordedPrompt(h,e,r?.isDetached===!0));' +
@@ -249,13 +252,16 @@ describe('direct agent entry points', () => {
 });
 
 describe('user cooperation patch reapplication', () => {
-  it('keeps the transformed source byte stable on reapplication', () => {
-    const once = writeUserCooperation(SOURCE, POLICY)!;
+  it.each([POLICY, UNICODE_POLICY])(
+    'keeps the transformed source byte stable on reapplication',
+    policy => {
+      const once = writeUserCooperation(SOURCE, policy)!;
 
-    const twice = writeUserCooperation(once, POLICY);
+      const twice = writeUserCooperation(once, policy);
 
-    expect(twice).toBe(once);
-  });
+      expect(twice).toBe(once);
+    }
+  );
 
   it('replaces the prior policy when the configured policy changes', () => {
     const once = writeUserCooperation(SOURCE, 'Previous reading policy.')!;
@@ -278,6 +284,17 @@ describe('user cooperation patch reapplication', () => {
 });
 
 describe('user cooperation policy text', () => {
+  it('escapes Unicode for native source without changing the policy text', () => {
+    const source = writeUserCooperation(SOURCE, UNICODE_POLICY)!;
+    const nativeSource = Buffer.from(source, 'latin1').toString('latin1');
+
+    const outcome = executeSelection(nativeSource, ['Selected prompt.']);
+
+    expect(source).not.toMatch(/[\u007f-\uffff]/);
+    expect(outcome.prompt).toEqual(['Selected prompt.', UNICODE_POLICY]);
+    expect(outcome.compromised).toBe(false);
+  });
+
   it.each([
     'Keep "quoted" instructions and \\ paths.',
     'Read `required.md` before changes.\nRevisit it after compaction.',

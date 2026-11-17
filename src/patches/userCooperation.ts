@@ -63,6 +63,10 @@ export const writeUserCooperation = (
   policy: string
 ): string | null => {
   if (!policy.trim()) return content;
+  const encodedPolicy = JSON.stringify(policy).replace(
+    /[\u007f-\uffff]/g,
+    char => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`
+  );
   const sites: ReturnSite[] = [];
   for (const pattern of ENTRY_PATTERNS) {
     const matches = [...content.matchAll(pattern)];
@@ -74,7 +78,7 @@ export const writeUserCooperation = (
   const ordered = sites.sort((left, right) => right.start - left.start);
   let updated = content;
   for (const site of ordered) {
-    const replacement = `(${APPEND_FUNCTION})(${site.expression},${JSON.stringify(policy)})`;
+    const replacement = `(${APPEND_FUNCTION})(${site.expression},${encodedPolicy})`;
     updated =
       updated.slice(0, site.start) + replacement + updated.slice(site.end);
   }
